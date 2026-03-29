@@ -1,7 +1,8 @@
 // firebase.js — Auth + Firestore sync
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
+  getRedirectResult, signOut, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
@@ -27,9 +28,24 @@ export function getCurrentUser() {
   return currentUser;
 }
 
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
-  await signInWithPopup(auth, provider);
+  if (isMobile) {
+    await signInWithRedirect(auth, provider);
+  } else {
+    await signInWithPopup(auth, provider);
+  }
+}
+
+// Call on app init to handle the redirect result after returning from Google
+export async function handleRedirectResult() {
+  try {
+    await getRedirectResult(auth);
+  } catch (e) {
+    console.warn('Redirect sign-in error:', e);
+  }
 }
 
 export async function signOutUser() {

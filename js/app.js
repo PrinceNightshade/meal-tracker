@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ── Auth ──
 
 function initAuth() {
+  fb.handleRedirectResult(); // handle mobile redirect sign-in return
   renderAuthButton(null);
   fb.onUserChange(async user => {
     renderAuthButton(user);
