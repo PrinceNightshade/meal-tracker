@@ -28,16 +28,22 @@ export function getCurrentUser() {
   return currentUser;
 }
 
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+  || window.navigator.standalone === true;
+
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
-  try {
-    await signInWithPopup(auth, provider);
-  } catch (e) {
-    if (e.code === 'auth/popup-blocked') {
-      // Last resort: redirect (may not work on iOS Safari with ITP)
-      await signInWithRedirect(auth, provider);
-    } else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
-      throw e;
+  if (isStandalone) {
+    // PWA standalone: redirect navigates within the PWA's storage context
+    await signInWithRedirect(auth, provider);
+  } else {
+    // Browser: use popup
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (e) {
+      if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
+        throw e;
+      }
     }
   }
 }
