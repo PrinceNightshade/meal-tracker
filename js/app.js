@@ -570,7 +570,9 @@ function openAddFoodModal(mealType) {
 
   function renderResults() {
     resultsList.innerHTML = '';
-    ui.$('#modal .modal-content').scrollTop = 0;
+    const modalContent = ui.$('#modal .modal-content');
+    modalContent.scrollTop = 0;
+    setTimeout(() => { modalContent.scrollTop = 0; }, 50);
     if (state.results.length === 0) {
       resultsList.innerHTML = '<div class="no-results">No results found</div>';
       return;

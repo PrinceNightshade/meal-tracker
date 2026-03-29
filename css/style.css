@@ -347,7 +347,15 @@ body {
   position: relative;
 }
 
-.modal-content h2 { font-size: 18px; margin-bottom: 12px; }
+.modal-content h2 {
+  font-size: 18px;
+  margin-bottom: 12px;
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  padding-top: 4px;
+  z-index: 3;
+}
 
 #modal-close {
   position: absolute;
@@ -371,6 +379,9 @@ body {
   margin-bottom: 10px;
   background: var(--bg);
   color: var(--text);
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 .search-results { margin-bottom: 10px; }
