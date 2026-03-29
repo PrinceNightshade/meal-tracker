@@ -28,19 +28,17 @@ export function getCurrentUser() {
   return currentUser;
 }
 
-const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-  || window.navigator.standalone === true;
-
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
-  // Standalone PWA: use popup (redirect breaks out of the app)
-  // Mobile browser: use redirect (popup gets blocked)
-  // Desktop: use popup
-  if (isMobile && !isStandalone) {
-    await signInWithRedirect(auth, provider);
-  } else {
+  try {
     await signInWithPopup(auth, provider);
+  } catch (e) {
+    if (e.code === 'auth/popup-blocked') {
+      // Last resort: redirect (may not work on iOS Safari with ITP)
+      await signInWithRedirect(auth, provider);
+    } else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
+      throw e;
+    }
   }
 }
 
