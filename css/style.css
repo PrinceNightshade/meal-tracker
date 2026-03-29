@@ -90,6 +90,25 @@ body {
   border-color: var(--accent);
 }
 
+/* ── Auth Button ── */
+
+.auth-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+.auth-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* ── Bottom Nav ── */
 
 .bottom-nav {

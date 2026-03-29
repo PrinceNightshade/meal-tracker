@@ -213,6 +213,14 @@ export function removeFavorite(favId) {
   write(KEYS.favorites, favs);
 }
 
+export function replaceFavorites(items) {
+  write(KEYS.favorites, items);
+}
+
+export function getAllWeightEntries() {
+  return read(KEYS.weight) || {};
+}
+
 // ── Weight ──
 
 function getAllWeight() {

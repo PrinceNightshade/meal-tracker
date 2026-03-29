@@ -2,6 +2,7 @@
 import * as store from './store.js';
 import { searchFoods, lookupBarcode, debounce } from './api.js';
 import * as ui from './ui.js';
+import * as fb from './firebase.js';
 
 let currentDate = ui.todayStr();
 let currentView = 'daily'; // daily | goals | weight
@@ -15,7 +16,49 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   render();
   bindNav();
+  initAuth();
 });
+
+// ── Auth ──
+
+function initAuth() {
+  renderAuthButton(null);
+  fb.onUserChange(async user => {
+    renderAuthButton(user);
+    if (user) {
+      showToast('Signed in — syncing...');
+      await fb.pullFromCloud(store);
+      render();
+      showToast('Synced');
+    }
+  });
+}
+
+function renderAuthButton(user) {
+  const existing = document.getElementById('auth-btn');
+  if (existing) existing.remove();
+
+  const btn = ui.el('button', {
+    id: 'auth-btn',
+    className: 'auth-btn',
+    textContent: user ? (user.displayName?.split(' ')[0] || 'Account') : 'Sign in',
+    title: user ? 'Sign out' : 'Sign in with Google to sync across devices',
+    onClick: async () => {
+      if (user) {
+        await fb.signOutUser();
+        showToast('Signed out');
+      } else {
+        try {
+          await fb.signInWithGoogle();
+        } catch (e) {
+          showToast('Sign in cancelled');
+        }
+      }
+    },
+  });
+
+  document.querySelector('.date-nav').appendChild(btn);
+}
 
 function bindNav() {
   ui.$('#btn-prev').addEventListener('click', () => {
@@ -87,10 +130,12 @@ function renderDaily() {
     onAdd: (mealType) => openAddFoodModal(mealType),
     onRemove: (mealType, foodId) => {
       store.removeFoodFromMeal(currentDate, mealType, foodId);
+      fb.pushDay(currentDate, store.getDay(currentDate));
       render();
     },
     onToggleFav: (food) => {
       store.addFavorite(food);
+      fb.pushFavorites(store.getFavorites());
       showToast('Added to favorites');
     },
   };
@@ -217,11 +262,13 @@ function renderGoals() {
         const actInput = ui.$('[data-profile="activityLevel"]', container);
         updated.activityLevel = actInput.value;
         store.saveProfile(updated);
+        fb.pushProfile(updated);
 
         // Save weight if provided
         const weightInput = ui.$('[data-profile="weight"]', container);
         if (weightInput && weightInput.value) {
           store.saveWeight(ui.todayStr(), weightInput.value);
+          fb.pushWeight(store.getAllWeightEntries());
         }
 
         if (store.isUnderage()) {
@@ -232,14 +279,9 @@ function renderGoals() {
         // Auto-apply TDEE if goals are still at defaults
         const suggested = store.getSuggestedGoals();
         if (suggested && store.goalsAreDefaults()) {
-          const current = store.getGoals();
-          store.saveGoals({
-            ...current,
-            calories: suggested.calories,
-            protein: suggested.protein,
-            carbs: suggested.carbs,
-            fat: suggested.fat,
-          });
+          const newGoals = { ...store.getGoals(), calories: suggested.calories, protein: suggested.protein, carbs: suggested.carbs, fat: suggested.fat };
+          store.saveGoals(newGoals);
+          fb.pushGoals(newGoals);
           showToast('Profile saved — goals updated from TDEE');
         } else {
           showToast('Profile saved');
@@ -275,13 +317,15 @@ function renderGoals() {
         textContent: 'Apply as my goals',
         onClick: () => {
           const current = store.getGoals();
-          store.saveGoals({
+          const tdeeGoals = {
             ...current,
             calories: suggested.calories,
             protein: suggested.protein,
             carbs: suggested.carbs,
             fat: suggested.fat,
-          });
+          };
+          store.saveGoals(tdeeGoals);
+          fb.pushGoals(tdeeGoals);
           showToast('Goals updated from TDEE');
           renderGoals();
         },
@@ -323,6 +367,7 @@ function renderGoals() {
           }
         });
         store.saveGoals(updated);
+        fb.pushGoals(updated);
         showToast('Goals saved');
         renderGoals();
       },
@@ -353,7 +398,9 @@ function renderGoals() {
         const input = ui.$('[data-key="weightGoal"]', container);
         const val = input.value.trim();
         const current = store.getGoals();
-        store.saveGoals({ ...current, weightGoal: val ? parseFloat(val) : null });
+        const wGoals = { ...current, weightGoal: val ? parseFloat(val) : null };
+        store.saveGoals(wGoals);
+        fb.pushGoals(wGoals);
         showToast('Weight goal saved');
         renderGoals();
       },
@@ -395,6 +442,7 @@ function renderWeight() {
         step: '0.1',
         onChange: (e) => {
           store.saveWeight(ui.todayStr(), e.target.value);
+          fb.pushWeight(store.getAllWeightEntries());
           renderWeight();
         },
       }),
@@ -593,6 +641,7 @@ function openAddFoodModal(mealType) {
           textContent: 'Add',
           onClick: () => {
             store.addFoodToMeal(currentDate, mealType, { ...food, servings });
+            fb.pushDay(currentDate, store.getDay(currentDate));
             closeModal();
             render();
           },
@@ -631,6 +680,7 @@ function openAddFoodModal(mealType) {
           servings: 1,
           source: 'manual',
         });
+        fb.pushDay(currentDate, store.getDay(currentDate));
         closeModal();
         render();
       },
@@ -659,6 +709,7 @@ function openAddFoodModal(mealType) {
                 onClick: (e) => {
                   e.stopPropagation();
                   store.removeFavorite(fav.favId);
+                  fb.pushFavorites(store.getFavorites());
                   openAddFoodModal(mealType);
                 },
               }),
