@@ -29,10 +29,15 @@ export function getCurrentUser() {
 }
 
 const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+  || window.navigator.standalone === true;
 
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
-  if (isMobile) {
+  // Standalone PWA: use popup (redirect breaks out of the app)
+  // Mobile browser: use redirect (popup gets blocked)
+  // Desktop: use popup
+  if (isMobile && !isStandalone) {
     await signInWithRedirect(auth, provider);
   } else {
     await signInWithPopup(auth, provider);
