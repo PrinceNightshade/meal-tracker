@@ -3,6 +3,30 @@
 const USDA_BASE = 'https://api.nal.usda.gov/fdc/v1';
 const OFF_BASE = 'https://world.openfoodfacts.net';
 
+// Map locale region codes to Open Food Facts country tags
+const OFF_COUNTRY_TAGS = {
+  US: 'en:united-states',
+  CA: 'en:canada',
+  GB: 'en:united-kingdom',
+  AU: 'en:australia',
+  NZ: 'en:new-zealand',
+  IE: 'en:ireland',
+  FR: 'en:france',
+  DE: 'en:germany',
+  ES: 'en:spain',
+  IT: 'en:italy',
+  MX: 'en:mexico',
+  BR: 'en:brazil',
+  IN: 'en:india',
+  JP: 'en:japan',
+};
+
+function detectOffCountryTag() {
+  const lang = (navigator.language || navigator.languages?.[0] || '').toUpperCase();
+  const region = lang.split('-')[1]; // "EN-US" → "US"
+  return region ? (OFF_COUNTRY_TAGS[region] || null) : null;
+}
+
 // Free USDA API key — public data, no billing
 const USDA_API_KEY = 'HGLL5EFe4RWMraaWCSRDqtZdl131ajiERSfuQPcu';
 
@@ -193,6 +217,7 @@ function formatFoodName(name) {
 
 async function searchOpenFoodFacts(query, pageSize = 15) {
   try {
+    const countryTag = detectOffCountryTag();
     const params = new URLSearchParams({
       search_terms: query,
       search_simple: '1',
@@ -200,6 +225,11 @@ async function searchOpenFoodFacts(query, pageSize = 15) {
       json: '1',
       page_size: String(pageSize),
       fields: 'product_name,brands,serving_quantity,serving_size,nutriments',
+      ...(countryTag && {
+        tagtype_0: 'countries',
+        tag_contains_0: 'contains',
+        tag_0: countryTag,
+      }),
     });
     const res = await fetch(`${OFF_BASE}/cgi/search.pl?${params}`);
     if (!res.ok) return [];
