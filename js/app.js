@@ -127,6 +127,7 @@ function renderDaily() {
   container.appendChild(summary);
 
   // Meals
+  const favorites = store.getFavorites();
   const mealCallbacks = {
     onAdd: (mealType) => openAddFoodModal(mealType),
     onRemove: (mealType, foodId) => {
@@ -134,15 +135,21 @@ function renderDaily() {
       fb.pushDay(currentDate, store.getDay(currentDate));
       render();
     },
-    onToggleFav: (food) => {
-      store.addFavorite(food);
+    onToggleFav: (food, adding) => {
+      if (adding) {
+        store.addFavorite(food);
+        showToast('Added to favorites');
+      } else {
+        const fav = store.getFavorites().find(f => f.name === food.name);
+        if (fav) store.removeFavorite(fav.favId);
+        showToast('Removed from favorites');
+      }
       fb.pushFavorites(store.getFavorites());
-      showToast('Added to favorites');
     },
   };
 
   for (const mealType of ['breakfast', 'lunch', 'dinner', 'snacks']) {
-    container.appendChild(ui.renderMealSection(mealType, day.meals[mealType], mealCallbacks));
+    container.appendChild(ui.renderMealSection(mealType, day.meals[mealType], mealCallbacks, favorites));
   }
 
 }

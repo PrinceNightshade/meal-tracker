@@ -311,7 +311,8 @@ body {
 }
 
 .btn-icon:hover { background: var(--accent-light); }
-.btn-fav { color: var(--near); }
+.btn-fav { color: var(--text-secondary); }
+.btn-fav.active { color: #f5a623; }
 .btn-remove:hover { color: var(--over); }
 
 .empty-meal {

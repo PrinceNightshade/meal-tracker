@@ -78,7 +78,7 @@ export function renderDailySummaryRings(totals, goals) {
 
 // ── Meal Section ──
 
-export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFav }) {
+export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFav }, favorites = []) {
   const icons = { breakfast: '☀', lunch: '☼', dinner: '☾', snacks: '○' };
   const mealCals = foods.reduce((sum, f) => sum + (f.calories || 0) * (f.servings || 1), 0);
 
@@ -88,18 +88,26 @@ export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFa
       ? `${food.servings} × ${food.servingSize || ''}${food.servingUnit || ''}`
       : `${food.servingSize || ''}${food.servingUnit || ''}`;
 
+    const isFav = favorites.some(f => f.name === food.name);
+    const favBtn = el('button', {
+      className: `btn-icon btn-fav${isFav ? ' active' : ''}`,
+      textContent: isFav ? '★' : '☆',
+      title: isFav ? 'Remove from favorites' : 'Add to favorites',
+      onClick: () => {
+        const nowFav = favBtn.classList.toggle('active');
+        favBtn.textContent = nowFav ? '★' : '☆';
+        favBtn.title = nowFav ? 'Remove from favorites' : 'Add to favorites';
+        onToggleFav(food, nowFav);
+      },
+    });
+
     return el('div', { className: 'food-item' }, [
       el('div', { className: 'food-info' }, [
         el('span', { className: 'food-name', textContent: food.name }),
         el('span', { className: 'food-detail', textContent: `${servLabel} — ${cals} cal` }),
       ]),
       el('div', { className: 'food-actions' }, [
-        el('button', {
-          className: 'btn-icon btn-fav',
-          textContent: '★',
-          title: 'Add to favorites',
-          onClick: () => onToggleFav(food),
-        }),
+        favBtn,
         el('button', {
           className: 'btn-icon btn-remove',
           textContent: '×',
