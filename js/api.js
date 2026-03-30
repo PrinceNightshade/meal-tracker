@@ -76,8 +76,29 @@ const COMMON_FOODS = [
   { name: 'Greek Yogurt (plain, nonfat)', servingSize: 1, servingUnit: 'cup (227g)', calories: 130, protein: 22, carbs: 9, fat: 0, source: 'common', tags: 'greek yogurt plain nonfat' },
   { name: 'Oatmeal (cooked)', servingSize: 1, servingUnit: 'cup', calories: 154, protein: 5, carbs: 27, fat: 3, source: 'common', tags: 'oatmeal oats porridge breakfast' },
   { name: 'Chicken Breast (grilled)', servingSize: 6, servingUnit: 'oz', calories: 280, protein: 52, carbs: 0, fat: 6, source: 'common', tags: 'chicken breast grilled' },
+  { name: 'Chicken Breast (roasted)', servingSize: 6, servingUnit: 'oz', calories: 275, protein: 51, carbs: 0, fat: 6, source: 'common', tags: 'chicken breast roasted baked' },
+  { name: 'Roasted Chicken (thigh)', servingSize: 1, servingUnit: 'thigh (109g)', calories: 255, protein: 26, carbs: 0, fat: 16, source: 'common', tags: 'chicken thigh roasted' },
+  { name: 'Roasted Salmon', servingSize: 6, servingUnit: 'oz', calories: 310, protein: 44, carbs: 0, fat: 14, source: 'common', tags: 'salmon roasted baked fish' },
+  { name: 'Roasted Broccoli', servingSize: 1, servingUnit: 'cup', calories: 55, protein: 4, carbs: 11, fat: 0, source: 'common', tags: 'broccoli roasted vegetables veggies' },
+  { name: 'Roasted Brussels Sprouts', servingSize: 1, servingUnit: 'cup', calories: 65, protein: 5, carbs: 13, fat: 0, source: 'common', tags: 'brussels sprouts roasted vegetables veggies' },
+  { name: 'Roasted Sweet Potato', servingSize: 1, servingUnit: 'medium (130g)', calories: 115, protein: 2, carbs: 27, fat: 0, source: 'common', tags: 'sweet potato roasted vegetables veggies' },
+  { name: 'Roasted Vegetables (mixed)', servingSize: 1, servingUnit: 'cup', calories: 80, protein: 3, carbs: 16, fat: 1, source: 'common', tags: 'roasted vegetables veggies mixed' },
+  { name: 'Roasted Asparagus', servingSize: 1, servingUnit: 'cup', calories: 40, protein: 4, carbs: 7, fat: 0, source: 'common', tags: 'asparagus roasted vegetables veggies' },
+  { name: 'Roasted Cauliflower', servingSize: 1, servingUnit: 'cup', calories: 50, protein: 4, carbs: 10, fat: 0, source: 'common', tags: 'cauliflower roasted vegetables veggies' },
+  { name: 'Sautéed Spinach', servingSize: 1, servingUnit: 'cup', calories: 35, protein: 4, carbs: 3, fat: 1, source: 'common', tags: 'spinach sauteed cooked vegetables' },
+  { name: 'Stir-Fried Vegetables', servingSize: 1, servingUnit: 'cup', calories: 70, protein: 3, carbs: 12, fat: 2, source: 'common', tags: 'stir fry vegetables veggies mixed' },
+  { name: 'Steamed Broccoli', servingSize: 1, servingUnit: 'cup', calories: 54, protein: 4, carbs: 11, fat: 0, source: 'common', tags: 'broccoli steamed vegetables' },
   { name: 'White Rice (cooked)', servingSize: 1, servingUnit: 'cup', calories: 205, protein: 4, carbs: 45, fat: 0, source: 'common', tags: 'rice white cooked' },
   { name: 'Brown Rice (cooked)', servingSize: 1, servingUnit: 'cup', calories: 215, protein: 5, carbs: 45, fat: 2, source: 'common', tags: 'rice brown cooked' },
+  { name: 'Pasta (cooked)', servingSize: 1, servingUnit: 'cup', calories: 220, protein: 8, carbs: 43, fat: 1, source: 'common', tags: 'pasta cooked spaghetti noodles' },
+  { name: 'Black Beans (cooked)', servingSize: 1, servingUnit: 'cup', calories: 227, protein: 15, carbs: 41, fat: 1, source: 'common', tags: 'black beans cooked legumes' },
+  { name: 'Lentils (cooked)', servingSize: 1, servingUnit: 'cup', calories: 230, protein: 18, carbs: 40, fat: 1, source: 'common', tags: 'lentils cooked legumes' },
+  { name: 'Ground Beef (90% lean, cooked)', servingSize: 4, servingUnit: 'oz', calories: 215, protein: 28, carbs: 0, fat: 11, source: 'common', tags: 'ground beef cooked lean' },
+  { name: 'Salmon (baked)', servingSize: 6, servingUnit: 'oz', calories: 310, protein: 44, carbs: 0, fat: 14, source: 'common', tags: 'salmon baked fish' },
+  { name: 'Shrimp (cooked)', servingSize: 4, servingUnit: 'oz', calories: 120, protein: 23, carbs: 1, fat: 2, source: 'common', tags: 'shrimp cooked seafood' },
+  { name: 'Cottage Cheese (low fat)', servingSize: 1, servingUnit: 'cup', calories: 180, protein: 25, carbs: 10, fat: 5, source: 'common', tags: 'cottage cheese low fat dairy' },
+  { name: 'Almonds', servingSize: 1, servingUnit: 'oz (28g)', calories: 165, protein: 6, carbs: 6, fat: 14, source: 'common', tags: 'almonds nuts' },
+  { name: 'Olive Oil', servingSize: 1, servingUnit: 'tbsp', calories: 120, protein: 0, carbs: 0, fat: 14, source: 'common', tags: 'olive oil fat cooking' },
 ];
 
 function searchCommonFoods(query) {
@@ -102,28 +123,26 @@ export async function searchFoods(query, pageSize = 15) {
     searchOpenFoodFacts(query, pageSize),
   ]);
 
-  // Merge: common first, then OFF branded results (better for packaged foods),
-  // then USDA results, deduped by name
+  // Split USDA into generic (Foundation/SR Legacy — whole foods, ingredients)
+  // and branded (packaged products)
+  const usdaGeneric   = usdaResults.filter(f => f._dataType !== 'Branded');
+  const usdaBranded   = usdaResults.filter(f => f._dataType === 'Branded');
+
+  // Merge order: common → USDA generic → OFF branded → USDA branded
+  // Generic whole foods surface first; branded/packaged come after
   const seen = new Set(commonResults.map(f => f.name.toLowerCase()));
   const merged = [...commonResults];
 
-  // OFF results first — they tend to be branded/packaged products
-  for (const food of offResults) {
-    const key = food.name.toLowerCase();
-    if (!seen.has(key)) {
-      seen.add(key);
-      merged.push(food);
+  function addAll(list) {
+    for (const { _dataType, ...food } of list) {
+      const key = food.name.toLowerCase();
+      if (!seen.has(key)) { seen.add(key); merged.push(food); }
     }
   }
 
-  // Then USDA results (whole foods, generics)
-  for (const food of usdaResults) {
-    const key = food.name.toLowerCase();
-    if (!seen.has(key)) {
-      seen.add(key);
-      merged.push(food);
-    }
-  }
+  addAll(usdaGeneric);
+  addAll(offResults);
+  addAll(usdaBranded);
 
   return merged.slice(0, pageSize);
 }
@@ -194,11 +213,12 @@ async function searchUSDA(query, pageSize = 15) {
           source: 'usda',
           fdcId: food.fdcId,
           _score: score,
+          _dataType: food.dataType,
         };
       })
       .sort((a, b) => a._score - b._score)
       .slice(0, pageSize)
-      .map(({ _score, ...food }) => food);
+      .map(({ _score, ...food }) => food); // keep _dataType for merge split, stripped later
   } catch {
     return [];
   }
