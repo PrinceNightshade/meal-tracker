@@ -1,6 +1,6 @@
 // app.js — Main entry point
 import * as store from './store.js';
-import { searchFoods, lookupBarcode, debounce } from './api.js';
+import { searchFoods, lookupBarcode, analyzePhoto, debounce } from './api.js';
 import * as ui from './ui.js';
 import * as fb from './firebase.js';
 
@@ -456,6 +456,43 @@ function renderGoals() {
   ]);
 
   container.appendChild(ui.collapsible('Weight Goal', weightSummary, weightContent, { startOpen: !goals.weightGoal }));
+
+  // ── AI Food Analysis ──
+  const aiKey = localStorage.getItem('mt_openai_key') || '';
+  const aiKeyInput = ui.el('input', {
+    type: 'password',
+    className: 'input-goal ai-key-input',
+    placeholder: 'sk-...',
+    value: aiKey,
+    autocomplete: 'off',
+  });
+  const aiContent = ui.el('div', { className: 'collapsible-content' }, [
+    ui.el('p', { className: 'ai-key-desc', textContent: 'Take a photo of your plate and let GPT-4o estimate the foods and portions. Your key is stored locally on this device only.' }),
+    ui.el('div', { className: 'goal-row' }, [
+      ui.el('label', { textContent: 'OpenAI API key' }),
+      aiKeyInput,
+    ]),
+    ui.el('div', { className: 'ai-key-actions' }, [
+      ui.el('button', {
+        className: 'btn-primary',
+        textContent: 'Save key',
+        onClick: () => {
+          const val = aiKeyInput.value.trim();
+          if (val) { localStorage.setItem('mt_openai_key', val); showToast('API key saved'); }
+          else      { localStorage.removeItem('mt_openai_key'); showToast('API key cleared'); }
+          renderGoals();
+        },
+      }),
+      ui.el('a', {
+        href: 'https://platform.openai.com/api-keys',
+        target: '_blank',
+        rel: 'noopener noreferrer',
+        className: 'ai-key-link',
+        textContent: 'Get a key at platform.openai.com →',
+      }),
+    ]),
+  ]);
+  container.appendChild(ui.collapsible('AI Food Analysis ✨', aiKey ? '✓ Key saved' : 'Not configured', aiContent, { startOpen: !aiKey }));
 }
 
 function selectToggle(btn) {
@@ -603,6 +640,13 @@ function openAddFoodModal(mealType) {
     title: 'Scan barcode',
     textContent: '📷',
     onClick: () => openBarcodeScanner(mealType),
+  });
+
+  const analyzeBtn = ui.el('button', {
+    className: 'btn-scan',
+    title: 'Analyze plate with AI',
+    textContent: '📸',
+    onClick: () => openPhotoAnalyzer(mealType),
   });
 
   const resultsList = ui.el('div', { className: 'search-results' });
@@ -763,7 +807,7 @@ function openAddFoodModal(mealType) {
 
   // Assemble modal
   modalBody.appendChild(ui.el('h2', { textContent: `Add to ${ui.capitalize(mealType)}` }));
-  modalBody.appendChild(ui.el('div', { className: 'search-row' }, [searchInput, scanBtn]));
+  modalBody.appendChild(ui.el('div', { className: 'search-row' }, [searchInput, scanBtn, analyzeBtn]));
   modalBody.appendChild(resultsList);
   if (favsSection) modalBody.appendChild(favsSection);
   modalBody.appendChild(manualSection);
@@ -946,6 +990,151 @@ async function openBarcodeScanner(mealType) {
       : `Camera unavailable: ${err.message}`;
     statusEl.className = 'scanner-status error';
   }
+}
+
+// ── Photo Analyzer ──
+
+function openPhotoAnalyzer(mealType) {
+  const key = localStorage.getItem('mt_openai_key');
+  if (!key) {
+    showToast('Add your OpenAI key in Goals → AI Food Analysis ✨');
+    return;
+  }
+
+  const modalBody = ui.$('#modal-body');
+  modalBody.innerHTML = '';
+  modalBody.appendChild(ui.el('h2', { textContent: `Add to ${ui.capitalize(mealType)}` }));
+
+  const statusEl = ui.el('div', { className: 'analyze-status', textContent: 'Opening camera…' });
+  modalBody.appendChild(ui.el('div', { className: 'analyze-loading' }, [
+    ui.el('div', { className: 'analyze-spinner' }),
+    statusEl,
+  ]));
+  modalBody.appendChild(ui.el('button', {
+    className: 'btn-secondary scanner-back',
+    textContent: '← Search instead',
+    onClick: () => openAddFoodModal(mealType),
+  }));
+
+  // Hidden file input — no `capture` so user can choose camera or library
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'image/*';
+  fileInput.style.display = 'none';
+  document.body.appendChild(fileInput);
+
+  fileInput.onchange = async () => {
+    document.body.removeChild(fileInput);
+    const file = fileInput.files[0];
+    if (!file) { openAddFoodModal(mealType); return; }
+
+    statusEl.textContent = 'Analyzing your photo…';
+
+    try {
+      const foods = await analyzePhoto(file);
+      showAnalyzeResults(foods, mealType);
+    } catch (err) {
+      if (err.code === 'no_key' || err.code === 'auth_error') {
+        showToast(err.code === 'auth_error' ? 'Invalid API key — check Goals → AI Food Analysis' : 'API key missing');
+        openAddFoodModal(mealType);
+      } else {
+        modalBody.innerHTML = '';
+        modalBody.appendChild(ui.el('h2', { textContent: `Add to ${ui.capitalize(mealType)}` }));
+        modalBody.appendChild(ui.el('p', { className: 'analyze-error', textContent: `Analysis failed: ${err.message}` }));
+        modalBody.appendChild(ui.el('div', { className: 'serving-actions', style: 'margin-top:16px' }, [
+          ui.el('button', { className: 'btn-secondary', textContent: '← Try again', onClick: () => openPhotoAnalyzer(mealType) }),
+          ui.el('button', { className: 'btn-primary',   textContent: 'Search instead', onClick: () => openAddFoodModal(mealType) }),
+        ]));
+      }
+    }
+  };
+
+  // Slight delay so the modal UI paints before the system sheet appears
+  setTimeout(() => fileInput.click(), 80);
+}
+
+function showAnalyzeResults(foods, mealType) {
+  const modalBody = ui.$('#modal-body');
+  modalBody.innerHTML = '';
+  modalBody.appendChild(ui.el('h2', { textContent: `Add to ${ui.capitalize(mealType)}` }));
+  modalBody.appendChild(ui.el('p', {
+    className: 'analyze-caption',
+    textContent: `Found ${foods.length} item${foods.length === 1 ? '' : 's'} — adjust servings and confirm:`,
+  }));
+
+  // Per-item state: checked + servings multiplier
+  const states = foods.map(() => ({ checked: true, servings: 1 }));
+
+  const rows = foods.map((food, i) => {
+    const macroEl = ui.el('span', { className: 'analyze-item-macros' });
+
+    function refreshMacros() {
+      const s = states[i].servings;
+      macroEl.textContent = `${Math.round(food.calories * s)} cal · ${Math.round(food.protein * s)}p · ${Math.round(food.carbs * s)}c · ${Math.round(food.fat * s)}f`;
+    }
+    refreshMacros();
+
+    const checkbox = ui.el('input', {
+      type: 'checkbox',
+      className: 'analyze-item-check',
+      checked: true,
+      onChange: (e) => {
+        states[i].checked = e.target.checked;
+        row.classList.toggle('unchecked', !e.target.checked);
+      },
+    });
+
+    const servingsInput = ui.el('input', {
+      type: 'number',
+      className: 'analyze-item-servings',
+      value: '1',
+      min: '0.25',
+      step: '0.25',
+      onInput: (e) => {
+        states[i].servings = parseFloat(e.target.value) || 1;
+        refreshMacros();
+      },
+    });
+
+    const row = ui.el('div', { className: 'analyze-item' }, [
+      checkbox,
+      ui.el('div', { className: 'analyze-item-info' }, [
+        ui.el('span', { className: 'analyze-item-name', textContent: food.name }),
+        ui.el('span', { className: 'analyze-item-portion', textContent: `est. ${food.servingSize} ${food.servingUnit}` }),
+        macroEl,
+      ]),
+      ui.el('div', { className: 'analyze-item-qty' }, [
+        ui.el('span', { className: 'analyze-qty-label', textContent: '×' }),
+        servingsInput,
+      ]),
+    ]);
+    return row;
+  });
+
+  modalBody.appendChild(ui.el('div', { className: 'analyze-results' }, rows));
+  modalBody.appendChild(ui.el('div', { className: 'serving-actions', style: 'margin-top:16px' }, [
+    ui.el('button', {
+      className: 'btn-secondary',
+      textContent: '← Try again',
+      onClick: () => openPhotoAnalyzer(mealType),
+    }),
+    ui.el('button', {
+      className: 'btn-primary',
+      textContent: 'Add selected',
+      onClick: () => {
+        const toAdd = foods.filter((_, i) => states[i].checked);
+        if (!toAdd.length) { showToast('No items selected'); return; }
+        foods.forEach((food, i) => {
+          if (!states[i].checked) return;
+          store.addFoodToMeal(currentDate, mealType, { ...food, servings: states[i].servings });
+        });
+        fb.pushDay(currentDate, store.getDay(currentDate));
+        closeModal();
+        render();
+        showToast(`Added ${toAdd.length} item${toAdd.length === 1 ? '' : 's'}`);
+      },
+    }),
+  ]));
 }
 
 // ── Toast ──

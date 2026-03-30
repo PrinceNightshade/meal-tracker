@@ -343,6 +343,88 @@ export async function lookupBarcode(barcode) {
   };
 }
 
+// ── AI Photo Analysis (OpenAI GPT-4o Vision) ──
+
+async function resizeImageToBase64(file, maxDim = 800) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.85).split(',')[1]);
+      URL.revokeObjectURL(img.src);
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+export async function analyzePhoto(file) {
+  const key = localStorage.getItem('mt_openai_key');
+  if (!key) throw Object.assign(new Error('API key not set'), { code: 'no_key' });
+
+  const base64 = await resizeImageToBase64(file, 800);
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      max_tokens: 600,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `Identify every distinct food item in this meal photo and estimate nutrition for the visible portion.
+
+Return ONLY a JSON array, no markdown, no explanation:
+[{"name":"Grilled chicken breast","amount":6,"unit":"oz","calories":280,"protein":52,"carbs":0,"fat":6}]
+
+Rules:
+- Calories and macros are for the estimated portion visible, not per 100g
+- Use realistic home/restaurant portion sizes
+- Mixed dishes (curry, soup, stew) → single item
+- Round calories to nearest 5, macros to nearest 1g`,
+          },
+          {
+            type: 'image_url',
+            image_url: { url: `data:image/jpeg;base64,${base64}`, detail: 'low' },
+          },
+        ],
+      }],
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    if (res.status === 401) throw Object.assign(new Error('Invalid API key'), { code: 'auth_error' });
+    throw new Error(err.error?.message || `API error ${res.status}`);
+  }
+
+  const data = await res.json();
+  const text = data.choices[0].message.content.trim();
+  const match = text.match(/\[[\s\S]*\]/);
+  if (!match) throw new Error('Unexpected response from AI');
+
+  return JSON.parse(match[0]).map(item => ({
+    name: item.name,
+    servingSize: item.amount,
+    servingUnit: item.unit,
+    calories: Math.round(item.calories),
+    protein: Math.round((item.protein || 0) * 10) / 10,
+    carbs:   Math.round((item.carbs   || 0) * 10) / 10,
+    fat:     Math.round((item.fat     || 0) * 10) / 10,
+    source: 'ai',
+  }));
+}
+
 // ── Debounce helper ──
 
 export function debounce(fn, ms = 300) {

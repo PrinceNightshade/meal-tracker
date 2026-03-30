@@ -503,6 +503,158 @@ body {
 
 .scanner-back { margin-bottom: 8px; }
 
+/* ── Photo Analyzer ── */
+
+.analyze-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px 0 32px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.analyze-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.analyze-status {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.analyze-caption {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.analyze-error {
+  font-size: 14px;
+  color: var(--over);
+  background: color-mix(in srgb, var(--over) 10%, transparent);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 4px;
+}
+
+.analyze-results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.analyze-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  transition: opacity 0.15s;
+}
+
+.analyze-item.unchecked {
+  opacity: 0.4;
+}
+
+.analyze-item-check {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.analyze-item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.analyze-item-name {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.analyze-item-portion {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.analyze-item-macros {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.analyze-item-qty {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.analyze-qty-label {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.analyze-item-servings {
+  width: 52px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  text-align: center;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ── AI Key (Goals section) ── */
+
+.ai-key-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.ai-key-input {
+  font-family: monospace;
+  letter-spacing: 1px;
+}
+
+.ai-key-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.ai-key-link {
+  font-size: 13px;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.ai-key-link:hover { text-decoration: underline; }
+
 .search-results { margin-bottom: 10px; }
 
 .result-row {
