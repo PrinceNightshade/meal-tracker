@@ -400,19 +400,106 @@ body {
 
 /* ── Search ── */
 
+.search-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg);
+  margin-bottom: 10px;
+}
+
 .input-search {
-  width: 100%;
+  flex: 1;
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 15px;
-  margin-bottom: 10px;
   background: var(--bg);
   color: var(--text);
-  position: sticky;
-  top: 0;
-  z-index: 2;
 }
+
+.btn-scan {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* ── Barcode Scanner ── */
+
+.scanner-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #000;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.scanner-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Aiming box */
+.scanner-viewfinder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.scanner-viewfinder::before {
+  content: '';
+  display: block;
+  width: 60%;
+  aspect-ratio: 3 / 2;
+  border: 2px solid rgba(255,255,255,0.85);
+  border-radius: 6px;
+  box-shadow: 0 0 0 2000px rgba(0,0,0,0.35);
+}
+
+@keyframes scan-pulse {
+  0%, 100% { border-color: rgba(255,255,255,0.85); }
+  50%       { border-color: var(--accent); }
+}
+
+.scanner-status.scanning ~ * .scanner-viewfinder::before,
+.scanner-container:has(.scanner-status.scanning) .scanner-viewfinder::before {
+  animation: scan-pulse 1.5s ease-in-out infinite;
+}
+
+.scanner-status {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 8px 12px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 13px;
+  text-align: center;
+}
+
+.scanner-status.found  { background: rgba(52,168,83,0.85); }
+.scanner-status.error  { background: rgba(234,67,53,0.8); }
+
+.scanner-back { margin-bottom: 8px; }
 
 .search-results { margin-bottom: 10px; }
 

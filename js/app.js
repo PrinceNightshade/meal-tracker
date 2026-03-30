@@ -6,6 +6,7 @@ import * as fb from './firebase.js';
 
 let currentDate = ui.todayStr();
 let currentView = 'daily'; // daily | goals | weight
+let activeCameraStream = null; // track live camera so closeModal can stop it
 
 // ── Init ──
 
@@ -582,6 +583,7 @@ function renderWeight() {
 // ── Add Food Modal ──
 
 function openAddFoodModal(mealType) {
+  stopActiveCamera();
   const modal = ui.$('#modal');
   const modalBody = ui.$('#modal-body');
 
@@ -592,8 +594,15 @@ function openAddFoodModal(mealType) {
   const searchInput = ui.el('input', {
     type: 'text',
     className: 'input-search',
-    placeholder: 'Search foods (e.g. "chicken breast")...',
+    placeholder: 'Search foods…',
     autofocus: 'true',
+  });
+
+  const scanBtn = ui.el('button', {
+    className: 'btn-scan',
+    title: 'Scan barcode',
+    textContent: '📷',
+    onClick: () => openBarcodeScanner(mealType),
   });
 
   const resultsList = ui.el('div', { className: 'search-results' });
@@ -676,64 +685,7 @@ function openAddFoodModal(mealType) {
   }
 
   function selectFood(food) {
-    showServingPicker(food);
-  }
-
-  function showServingPicker(food) {
-    modalBody.innerHTML = '';
-    let servings = 1;
-
-    const preview = ui.el('div', { className: 'serving-preview' });
-
-    function updatePreview() {
-      const cals = Math.round(food.calories * servings);
-      const p = Math.round(food.protein * servings);
-      const c = Math.round(food.carbs * servings);
-      const f = Math.round(food.fat * servings);
-      preview.innerHTML = `<strong>${cals} cal</strong> · ${p}p · ${c}c · ${f}f`;
-    }
-
-    const servingInput = ui.el('input', {
-      type: 'number',
-      className: 'input-servings',
-      value: '1',
-      min: '0.25',
-      step: '0.25',
-      onInput: (e) => {
-        servings = parseFloat(e.target.value) || 1;
-        updatePreview();
-      },
-    });
-
-    updatePreview();
-
-    const label = food.brand ? `${food.name} (${food.brand})` : food.name;
-    modalBody.appendChild(ui.el('div', { className: 'serving-picker' }, [
-      ui.el('h3', { textContent: label }),
-      ui.el('div', { className: 'serving-size-info', textContent: `Serving: ${food.servingSize}${food.servingUnit}` }),
-      ui.el('div', { className: 'serving-input-row' }, [
-        ui.el('label', { textContent: 'Servings:' }),
-        servingInput,
-      ]),
-      preview,
-      ui.el('div', { className: 'serving-actions' }, [
-        ui.el('button', {
-          className: 'btn-secondary',
-          textContent: 'Back',
-          onClick: () => openAddFoodModal(mealType),
-        }),
-        ui.el('button', {
-          className: 'btn-primary',
-          textContent: 'Add',
-          onClick: () => {
-            store.addFoodToMeal(currentDate, mealType, { ...food, servings });
-            fb.pushDay(currentDate, store.getDay(currentDate));
-            closeModal();
-            render();
-          },
-        }),
-      ]),
-    ]));
+    showServingPicker(food, mealType);
   }
 
   // Manual entry section
@@ -783,7 +735,7 @@ function openAddFoodModal(mealType) {
     ? ui.el('div', { className: 'favorites-section' }, [
         ui.el('div', { className: 'divider', textContent: '— favorites —' }),
         ...favs.map(fav =>
-          ui.el('div', { className: 'result-row', onClick: () => selectFood(fav) }, [
+          ui.el('div', { className: 'result-row', onClick: () => showServingPicker(fav, mealType) }, [
             ui.el('div', { className: 'result-info' }, [
               ui.el('span', { className: 'result-name', textContent: fav.name }),
               ui.el('span', {
@@ -811,7 +763,7 @@ function openAddFoodModal(mealType) {
 
   // Assemble modal
   modalBody.appendChild(ui.el('h2', { textContent: `Add to ${ui.capitalize(mealType)}` }));
-  modalBody.appendChild(searchInput);
+  modalBody.appendChild(ui.el('div', { className: 'search-row' }, [searchInput, scanBtn]));
   modalBody.appendChild(resultsList);
   if (favsSection) modalBody.appendChild(favsSection);
   modalBody.appendChild(manualSection);
@@ -825,7 +777,175 @@ function openAddFoodModal(mealType) {
 }
 
 function closeModal() {
+  stopActiveCamera();
   ui.$('#modal').classList.remove('open');
+}
+
+function stopActiveCamera() {
+  if (activeCameraStream) {
+    activeCameraStream.getTracks().forEach(t => t.stop());
+    activeCameraStream = null;
+  }
+}
+
+// ── Serving Picker (shared by text search and barcode scanner) ──
+
+function showServingPicker(food, mealType) {
+  const modalBody = ui.$('#modal-body');
+  modalBody.innerHTML = '';
+  let servings = 1;
+
+  const preview = ui.el('div', { className: 'serving-preview' });
+
+  function updatePreview() {
+    const cals = Math.round(food.calories * servings);
+    const p = Math.round(food.protein * servings);
+    const c = Math.round(food.carbs * servings);
+    const f = Math.round(food.fat * servings);
+    preview.innerHTML = `<strong>${cals} cal</strong> · ${p}p · ${c}c · ${f}f`;
+  }
+
+  const servingInput = ui.el('input', {
+    type: 'number',
+    className: 'input-servings',
+    value: '1',
+    min: '0.25',
+    step: '0.25',
+    onInput: (e) => {
+      servings = parseFloat(e.target.value) || 1;
+      updatePreview();
+    },
+  });
+
+  updatePreview();
+
+  const label = food.brand ? `${food.name} (${food.brand})` : food.name;
+  modalBody.appendChild(ui.el('div', { className: 'serving-picker' }, [
+    ui.el('h3', { textContent: label }),
+    ui.el('div', { className: 'serving-size-info', textContent: `Serving: ${food.servingSize}${food.servingUnit}` }),
+    ui.el('div', { className: 'serving-input-row' }, [
+      ui.el('label', { textContent: 'Servings:' }),
+      servingInput,
+    ]),
+    preview,
+    ui.el('div', { className: 'serving-actions' }, [
+      ui.el('button', {
+        className: 'btn-secondary',
+        textContent: 'Back',
+        onClick: () => openAddFoodModal(mealType),
+      }),
+      ui.el('button', {
+        className: 'btn-primary',
+        textContent: 'Add',
+        onClick: () => {
+          store.addFoodToMeal(currentDate, mealType, { ...food, servings });
+          fb.pushDay(currentDate, store.getDay(currentDate));
+          closeModal();
+          render();
+        },
+      }),
+    ]),
+  ]));
+}
+
+// ── Barcode Scanner ──
+
+async function openBarcodeScanner(mealType) {
+  stopActiveCamera();
+  const modalBody = ui.$('#modal-body');
+  modalBody.innerHTML = '';
+
+  modalBody.appendChild(ui.el('h2', { textContent: `Add to ${ui.capitalize(mealType)}` }));
+
+  const statusEl = ui.el('div', { className: 'scanner-status', textContent: 'Starting camera…' });
+  const video = document.createElement('video');
+  video.setAttribute('autoplay', '');
+  video.setAttribute('muted', '');
+  video.setAttribute('playsinline', '');  // required on iOS
+  video.className = 'scanner-video';
+
+  const container = ui.el('div', { className: 'scanner-container' }, [
+    video,
+    ui.el('div', { className: 'scanner-viewfinder' }),
+    statusEl,
+  ]);
+  modalBody.appendChild(container);
+  modalBody.appendChild(ui.el('button', {
+    className: 'btn-secondary scanner-back',
+    textContent: '← Search instead',
+    onClick: () => { stopActiveCamera(); openAddFoodModal(mealType); },
+  }));
+
+  // Load BarcodeDetector polyfill on first use if not natively available
+  if (!('BarcodeDetector' in window)) {
+    try {
+      await import('https://cdn.jsdelivr.net/npm/barcode-detector@3/dist/es/polyfill.min.js');
+    } catch {
+      statusEl.textContent = 'Barcode scanning not supported on this browser.';
+      return;
+    }
+  }
+
+  let detector;
+  try {
+    detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] });
+  } catch {
+    statusEl.textContent = 'Barcode scanning not supported on this device.';
+    return;
+  }
+
+  // Request rear camera
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } },
+    });
+    activeCameraStream = stream;
+    video.srcObject = stream;
+    await video.play().catch(() => {}); // autoplay may already be playing
+
+    statusEl.textContent = 'Point camera at barcode';
+    statusEl.className = 'scanner-status scanning';
+
+    // Poll every 250ms — gives CPU a break vs rAF
+    const scanInterval = setInterval(async () => {
+      if (!activeCameraStream || video.readyState < 2) return;
+      try {
+        const barcodes = await detector.detect(video);
+        if (!barcodes.length) return;
+
+        const code = barcodes[0].rawValue;
+        clearInterval(scanInterval);
+        if (navigator.vibrate) navigator.vibrate(60);
+
+        statusEl.textContent = `Found ${code} — looking up…`;
+        statusEl.className = 'scanner-status found';
+
+        const food = await lookupBarcode(code);
+        stopActiveCamera();
+
+        if (food) {
+          showServingPicker(food, mealType);
+        } else {
+          statusEl.textContent = `Barcode ${code} not found in database.`;
+          statusEl.className = 'scanner-status error';
+          // Let user fall back to manual search
+          modalBody.appendChild(ui.el('button', {
+            className: 'btn-primary',
+            textContent: 'Search manually',
+            onClick: () => openAddFoodModal(mealType),
+            style: 'margin-top:12px',
+          }));
+        }
+      } catch { /* frame not ready */ }
+    }, 250);
+
+  } catch (err) {
+    const denied = err.name === 'NotAllowedError';
+    statusEl.textContent = denied
+      ? 'Camera access denied — please allow camera in your device settings.'
+      : `Camera unavailable: ${err.message}`;
+    statusEl.className = 'scanner-status error';
+  }
 }
 
 // ── Toast ──
