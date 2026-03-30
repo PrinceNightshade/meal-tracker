@@ -56,7 +56,8 @@
   <script type="module" src="js/app.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/meal-tracker/sw.js');
+      navigator.serviceWorker.register('/meal-tracker/sw.js', { updateViaCache: 'none' })
+        .then(reg => reg.update());
     }
   </script>
 </body>
