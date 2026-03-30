@@ -310,6 +310,32 @@ export function getWeightProjection() {
   };
 }
 
+// ── History Search ──
+
+export function searchHistory(query) {
+  const q = query.toLowerCase();
+  const days = getAllDays();
+  const seen = new Set();
+  const results = [];
+
+  // Walk days newest-first
+  const sortedDates = Object.keys(days).sort().reverse();
+  for (const date of sortedDates) {
+    const day = days[date];
+    for (const mealType of Object.keys(day.meals || {})) {
+      for (const food of day.meals[mealType]) {
+        if (!food.name) continue;
+        const key = food.name.toLowerCase();
+        if (!key.includes(q)) continue;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        results.push({ ...food, source: food.source || 'history' });
+      }
+    }
+  }
+  return results;
+}
+
 // ── Daily Totals ──
 
 export function getDayTotals(dateStr) {

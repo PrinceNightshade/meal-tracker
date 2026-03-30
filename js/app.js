@@ -52,7 +52,7 @@ function renderAuthButton(user) {
         try {
           await fb.signInWithGoogle();
         } catch (e) {
-          showToast('Sign in cancelled');
+          showToast('Sign in failed: ' + (e.code || e.message || 'unknown error'));
         }
       }
     },
@@ -559,7 +559,14 @@ function openAddFoodModal(mealType) {
     }
     resultsList.innerHTML = '<div class="loading">Searching...</div>';
     try {
-      state.results = await searchFoods(query);
+      const [apiResults, historyResults] = await Promise.all([
+        searchFoods(query),
+        Promise.resolve(store.searchHistory(query)),
+      ]);
+      // History/manual foods first, then API results (deduped by name)
+      const seen = new Set(historyResults.map(f => f.name.toLowerCase()));
+      const deduped = apiResults.filter(f => !seen.has(f.name.toLowerCase()));
+      state.results = [...historyResults, ...deduped];
       renderResults();
     } catch (err) {
       resultsList.innerHTML = `<div class="error">${err.message}</div>`;
@@ -572,7 +579,7 @@ function openAddFoodModal(mealType) {
     resultsList.innerHTML = '';
     const modalContent = ui.$('#modal .modal-content');
     modalContent.scrollTop = 0;
-    setTimeout(() => { modalContent.scrollTop = 0; }, 50);
+    setTimeout(() => { modalContent.scrollTop = 0; }, 300);
     if (state.results.length === 0) {
       resultsList.innerHTML = '<div class="no-results">No results found</div>';
       return;
