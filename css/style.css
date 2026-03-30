@@ -69,8 +69,7 @@ body {
 .date-nav {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
+  gap: 6px;
   padding: calc(14px + env(safe-area-inset-top)) 0 10px;
   position: sticky;
   top: 0;
@@ -96,8 +95,9 @@ body {
 #date-display {
   font-weight: 600;
   font-size: 16px;
-  min-width: 180px;
+  flex: 1;
   text-align: center;
+  min-width: 0;
 }
 
 #btn-today {
