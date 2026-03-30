@@ -10,6 +10,8 @@ let currentView = 'daily'; // daily | goals | weight
 // ── Init ──
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Deduplicate favorites that accumulated from the add-without-check bug
+  store.replaceFavorites(store.getFavorites());
   initTheme();
   if (store.isUnderage()) {
     renderAgeGate();

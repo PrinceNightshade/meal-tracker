@@ -202,6 +202,8 @@ export function getFavorites() {
 
 export function addFavorite(food) {
   const favs = getFavorites();
+  // Don't add if already in favorites by name
+  if (favs.some(f => f.name === food.name)) return;
   const fav = { ...food };
   delete fav.id;
   fav.favId = crypto.randomUUID();
@@ -210,12 +212,21 @@ export function addFavorite(food) {
 }
 
 export function removeFavorite(favId) {
-  const favs = getFavorites().filter(f => f.favId !== favId);
+  // Remove by favId, but also clean up any name-duplicates that crept in
+  const name = getFavorites().find(f => f.favId === favId)?.name;
+  const favs = getFavorites().filter(f => f.favId !== favId && f.name !== name);
   write(KEYS.favorites, favs);
 }
 
 export function replaceFavorites(items) {
-  write(KEYS.favorites, items);
+  // Deduplicate by name when loading from cloud
+  const seen = new Set();
+  const deduped = (items || []).filter(f => {
+    if (seen.has(f.name)) return false;
+    seen.add(f.name);
+    return true;
+  });
+  write(KEYS.favorites, deduped);
 }
 
 // ── My Foods (custom food library) ──
