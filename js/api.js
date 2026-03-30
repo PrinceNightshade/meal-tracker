@@ -272,8 +272,18 @@ async function searchOpenFoodFacts(query, pageSize = 15) {
           protein = Math.round((nm.proteins_serving || 0) * 10) / 10;
           carbs = Math.round((nm.carbohydrates_serving || 0) * 10) / 10;
           fat = Math.round((nm.fat_serving || 0) * 10) / 10;
-          servingSize = '';
-          servingUnit = p.serving_size || 'serving';
+          // serving_quantity is a numeric field (may have float precision issues), serving_size is the full label string
+          const qty = parseFloat(p.serving_quantity);
+          if (qty && isFinite(qty)) {
+            // Extract unit from the serving_size label (e.g. "28 g" → "g", "1 oz (28g)" → "oz")
+            const unitMatch = (p.serving_size || '').match(/[a-zA-Z]+/);
+            servingSize = Math.round(qty * 10) / 10;
+            servingUnit = unitMatch ? unitMatch[0] : 'serving';
+          } else {
+            // Fall back to the label as-is but strip float noise from any leading number
+            servingSize = '';
+            servingUnit = (p.serving_size || 'serving').replace(/(\d+\.\d*?[1-9])0+\d*/g, '$1');
+          }
         } else if (hasPer100g) {
           calories = Math.round(nm['energy-kcal_100g'] || 0);
           protein = Math.round((nm.proteins_100g || 0) * 10) / 10;
