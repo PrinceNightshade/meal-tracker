@@ -10,6 +10,7 @@ let currentView = 'daily'; // daily | goals | weight
 // ── Init ──
 
 document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
   if (store.isUnderage()) {
     renderAgeGate();
     return;
@@ -18,6 +19,42 @@ document.addEventListener('DOMContentLoaded', () => {
   bindNav();
   initAuth();
 });
+
+// ── Theme ──
+
+function initTheme() {
+  const saved = localStorage.getItem('mt_theme'); // 'dark' | 'light' | null
+  if (saved) document.documentElement.classList.add(saved);
+
+  const btn = ui.el('button', {
+    className: 'theme-toggle',
+    title: 'Toggle dark/light mode',
+    textContent: getThemeIcon(),
+    onClick: () => {
+      const root = document.documentElement;
+      const isDark = root.classList.contains('dark') ||
+        (!root.classList.contains('light') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      root.classList.remove('dark', 'light');
+      if (isDark) {
+        root.classList.add('light');
+        localStorage.setItem('mt_theme', 'light');
+      } else {
+        root.classList.add('dark');
+        localStorage.setItem('mt_theme', 'dark');
+      }
+      btn.textContent = getThemeIcon();
+    },
+  });
+
+  document.querySelector('.date-nav').prepend(btn);
+}
+
+function getThemeIcon() {
+  const root = document.documentElement;
+  const isDark = root.classList.contains('dark') ||
+    (!root.classList.contains('light') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  return isDark ? '☀️' : '🌙';
+}
 
 // ── Auth ──
 
