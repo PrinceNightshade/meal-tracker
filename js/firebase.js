@@ -28,27 +28,24 @@ export function getCurrentUser() {
   return currentUser;
 }
 
-const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-  || window.navigator.standalone === true;
-
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
-  if (isStandalone) {
-    // PWA standalone: redirect navigates within the PWA's storage context
-    await signInWithRedirect(auth, provider);
-  } else {
-    // Browser: use popup
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (e) {
-      if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
-        throw e;
-      }
+  try {
+    // Popup works in browser and in iOS 16.4+ standalone PWAs.
+    // Redirect is unreliable in standalone mode: iOS reopens the redirect
+    // URL in Safari rather than returning to the PWA window.
+    await signInWithPopup(auth, provider);
+  } catch (e) {
+    if (e.code === 'auth/popup-blocked') {
+      // Last resort: fall back to redirect (Android WebView, etc.)
+      await signInWithRedirect(auth, provider);
+    } else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
+      throw e;
     }
   }
 }
 
-// Call on app init to handle the redirect result after returning from Google
+// Call on app init to collect any pending redirect result (fallback path)
 export async function handleRedirectResult() {
   try {
     await getRedirectResult(auth);
