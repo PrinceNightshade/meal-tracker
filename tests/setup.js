@@ -8,9 +8,12 @@ global.localStorage = {
   clear:      ()    => { Object.keys(_storage).forEach(k => delete _storage[k]); },
 };
 
-global.crypto = {
-  randomUUID: () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`,
-};
+// Node 22 made global.crypto a read-only getter; use defineProperty to override it
+Object.defineProperty(global, 'crypto', {
+  value: { randomUUID: () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}` },
+  writable: true,
+  configurable: true,
+});
 
 // Minimal DOM stub so ui.js can be imported without crashing
 global.document = {
