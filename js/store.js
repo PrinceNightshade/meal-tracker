@@ -3,6 +3,7 @@ const KEYS = {
   days: 'mt_days',
   goals: 'mt_goals',
   favorites: 'mt_favorites',
+  myFoods: 'mt_myfoods',
   weight: 'mt_weight',
   profile: 'mt_profile',
 };
@@ -215,6 +216,34 @@ export function removeFavorite(favId) {
 
 export function replaceFavorites(items) {
   write(KEYS.favorites, items);
+}
+
+// ── My Foods (custom food library) ──
+
+export function getMyFoods() {
+  return read(KEYS.myFoods) || [];
+}
+
+export function saveMyFood(food) {
+  const foods = getMyFoods();
+  const entry = { ...food, myFoodId: crypto.randomUUID(), source: 'myfoods' };
+  delete entry.id;
+  foods.push(entry);
+  write(KEYS.myFoods, foods);
+  return entry;
+}
+
+export function deleteMyFood(myFoodId) {
+  write(KEYS.myFoods, getMyFoods().filter(f => f.myFoodId !== myFoodId));
+}
+
+export function replaceMyFoods(items) {
+  write(KEYS.myFoods, items);
+}
+
+export function searchMyFoods(query) {
+  const q = query.toLowerCase();
+  return getMyFoods().filter(f => f.name && f.name.toLowerCase().includes(q));
 }
 
 export function getAllWeightEntries() {

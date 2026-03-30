@@ -559,14 +559,17 @@ function openAddFoodModal(mealType) {
     }
     resultsList.innerHTML = '<div class="loading">Searching...</div>';
     try {
-      const [apiResults, historyResults] = await Promise.all([
+      const [apiResults, myFoodResults, historyResults] = await Promise.all([
         searchFoods(query),
+        Promise.resolve(store.searchMyFoods(query)),
         Promise.resolve(store.searchHistory(query)),
       ]);
-      // History/manual foods first, then API results (deduped by name)
-      const seen = new Set(historyResults.map(f => f.name.toLowerCase()));
-      const deduped = apiResults.filter(f => !seen.has(f.name.toLowerCase()));
-      state.results = [...historyResults, ...deduped];
+      // Priority: My Foods → history → API (deduped by name)
+      const seen = new Set(myFoodResults.map(f => f.name.toLowerCase()));
+      const historyDeduped = historyResults.filter(f => !seen.has(f.name.toLowerCase()));
+      historyDeduped.forEach(f => seen.add(f.name.toLowerCase()));
+      const apiDeduped = apiResults.filter(f => !seen.has(f.name.toLowerCase()));
+      state.results = [...myFoodResults, ...historyDeduped, ...apiDeduped];
       renderResults();
     } catch (err) {
       resultsList.innerHTML = `<div class="error">${err.message}</div>`;
@@ -585,16 +588,42 @@ function openAddFoodModal(mealType) {
       return;
     }
     for (const food of state.results) {
+      const isMyFood = food.source === 'myfoods';
       const label = food.brand ? `${food.name} (${food.brand})` : food.name;
+      const nameEl = ui.el('span', { className: 'result-name' });
+      nameEl.textContent = label;
+      if (isMyFood) {
+        const badge = ui.el('span', { className: 'my-food-badge', textContent: 'My Food' });
+        nameEl.appendChild(badge);
+      }
+      const actions = isMyFood
+        ? ui.el('div', { className: 'result-actions' }, [
+            ui.el('button', {
+              className: 'btn-icon btn-remove',
+              textContent: '×',
+              title: 'Remove from My Foods',
+              onClick: (e) => {
+                e.stopPropagation();
+                store.deleteMyFood(food.myFoodId);
+                fb.pushMyFoods(store.getMyFoods());
+                doSearch.flush ? doSearch.flush() : renderResults();
+                state.results = state.results.filter(f => f.myFoodId !== food.myFoodId);
+                renderResults();
+              },
+            }),
+            ui.el('button', { className: 'btn-icon', textContent: '+' }),
+          ])
+        : ui.el('button', { className: 'btn-icon', textContent: '+' });
+
       const row = ui.el('div', { className: 'result-row', onClick: () => selectFood(food) }, [
         ui.el('div', { className: 'result-info' }, [
-          ui.el('span', { className: 'result-name', textContent: label }),
+          nameEl,
           ui.el('span', {
             className: 'result-macros',
             textContent: `${food.calories} cal · ${food.protein}p · ${food.carbs}c · ${food.fat}f  per ${food.servingSize}${food.servingUnit}`,
           }),
         ]),
-        ui.el('button', { className: 'btn-icon', textContent: '+' }),
+        actions,
       ]);
       resultsList.appendChild(row);
     }
@@ -662,6 +691,7 @@ function openAddFoodModal(mealType) {
   }
 
   // Manual entry section
+  const saveToLibraryCheckbox = ui.el('input', { type: 'checkbox', id: 'save-to-library' });
   const manualSection = ui.el('div', { className: 'manual-entry' }, [
     ui.el('div', { className: 'divider', textContent: '— or add manually —' }),
     ui.el('input', { type: 'text', className: 'input-manual', placeholder: 'Food name', dataset: { field: 'name' } }),
@@ -671,9 +701,13 @@ function openAddFoodModal(mealType) {
       ui.el('input', { type: 'number', className: 'input-manual', placeholder: 'Carbs', dataset: { field: 'carbs' } }),
       ui.el('input', { type: 'number', className: 'input-manual', placeholder: 'Fat', dataset: { field: 'fat' } }),
     ]),
+    ui.el('label', { className: 'save-to-library-label' }, [
+      saveToLibraryCheckbox,
+      ui.el('span', { textContent: 'Save to My Foods library' }),
+    ]),
     ui.el('button', {
       className: 'btn-primary',
-      textContent: 'Add Manual Entry',
+      textContent: 'Add',
       onClick: () => {
         const fields = {};
         ui.$$('.input-manual', modalBody).forEach(input => {
@@ -684,13 +718,12 @@ function openAddFoodModal(mealType) {
           showToast('Please enter a food name');
           return;
         }
-        store.addFoodToMeal(currentDate, mealType, {
-          ...fields,
-          servingSize: '',
-          servingUnit: '',
-          servings: 1,
-          source: 'manual',
-        });
+        const food = { ...fields, servingSize: '', servingUnit: '', servings: 1, source: 'manual' };
+        if (saveToLibraryCheckbox.checked) {
+          store.saveMyFood(food);
+          fb.pushMyFoods(store.getMyFoods());
+        }
+        store.addFoodToMeal(currentDate, mealType, food);
         fb.pushDay(currentDate, store.getDay(currentDate));
         closeModal();
         render();

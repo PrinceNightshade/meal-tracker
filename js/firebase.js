@@ -79,11 +79,12 @@ function userDoc(path) {
 export async function pullFromCloud(store) {
   if (!currentUser) return;
   try {
-    const [profileSnap, goalsSnap, weightSnap, favSnap] = await Promise.all([
+    const [profileSnap, goalsSnap, weightSnap, favSnap, myFoodsSnap] = await Promise.all([
       getDoc(userDoc('data/profile')),
       getDoc(userDoc('data/goals')),
       getDoc(userDoc('data/weight')),
       getDoc(userDoc('data/favorites')),
+      getDoc(userDoc('data/myfoods')),
     ]);
 
     if (profileSnap.exists()) store.saveProfile(profileSnap.data());
@@ -97,6 +98,10 @@ export async function pullFromCloud(store) {
     if (favSnap.exists()) {
       const { items } = favSnap.data();
       if (items) store.replaceFavorites(items);
+    }
+    if (myFoodsSnap.exists()) {
+      const { items } = myFoodsSnap.data();
+      if (items) store.replaceMyFoods(items);
     }
 
     // Pull days
@@ -127,6 +132,11 @@ export function pushWeight(allEntries) {
 export function pushFavorites(items) {
   if (!currentUser) return;
   setDoc(userDoc('data/favorites'), { items }).catch(() => {});
+}
+
+export function pushMyFoods(items) {
+  if (!currentUser) return;
+  setDoc(userDoc('data/myfoods'), { items }).catch(() => {});
 }
 
 export function pushDay(date, dayData) {
