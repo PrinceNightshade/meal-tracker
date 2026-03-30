@@ -276,7 +276,7 @@ export function saveWeight(dateStr, weight) {
   if (weight === null || weight === undefined || weight === '') {
     delete all[dateStr];
   } else {
-    all[dateStr] = parseFloat(weight);
+    all[dateStr] = weight;
   }
   write(KEYS.weight, all);
 }
