@@ -329,15 +329,42 @@ export async function lookupBarcode(barcode) {
   const p = data.product;
   const nm = p.nutriments || {};
 
+  let calories, protein, carbs, fat, servingSize, servingUnit;
+
+  if (nm['energy-kcal_serving'] != null) {
+    // Prefer per-serving values — calories shown match the package label
+    calories = Math.round(nm['energy-kcal_serving'] || 0);
+    protein  = Math.round((nm.proteins_serving       || 0) * 10) / 10;
+    carbs    = Math.round((nm.carbohydrates_serving  || 0) * 10) / 10;
+    fat      = Math.round((nm.fat_serving            || 0) * 10) / 10;
+    const qty = parseFloat(p.serving_quantity);
+    if (qty && isFinite(qty)) {
+      const unitMatch = (p.serving_size || '').match(/[a-zA-Z]+/);
+      servingSize = Math.round(qty * 10) / 10;
+      servingUnit = unitMatch ? unitMatch[0] : 'g';
+    } else {
+      servingSize = '';
+      servingUnit = (p.serving_size || 'serving').replace(/(\d+\.\d*?[1-9])0+\d*/g, '$1');
+    }
+  } else {
+    // Fall back to per-100g
+    calories = Math.round(nm['energy-kcal_100g'] || nm['energy-kcal'] || 0);
+    protein  = Math.round((nm.proteins_100g      || 0) * 10) / 10;
+    carbs    = Math.round((nm.carbohydrates_100g || 0) * 10) / 10;
+    fat      = Math.round((nm.fat_100g           || 0) * 10) / 10;
+    servingSize = 100;
+    servingUnit = 'g';
+  }
+
   return {
     name: p.product_name || 'Unknown Product',
     brand: p.brands || null,
-    servingSize: parseFloat(p.serving_quantity) || 100,
-    servingUnit: p.serving_quantity ? 'serving' : 'g',
-    calories: Math.round(nm['energy-kcal_100g'] || nm['energy-kcal'] || 0),
-    protein: Math.round((nm.proteins_100g || 0) * 10) / 10,
-    carbs: Math.round((nm.carbohydrates_100g || 0) * 10) / 10,
-    fat: Math.round((nm.fat_100g || 0) * 10) / 10,
+    servingSize,
+    servingUnit,
+    calories,
+    protein,
+    carbs,
+    fat,
     source: 'openfoodfacts',
     barcode,
   };
