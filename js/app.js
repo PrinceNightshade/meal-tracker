@@ -175,9 +175,9 @@ function renderDaily() {
       fb.pushDay(currentDate, store.getDay(currentDate));
       render();
     },
-    onToggleFav: (food, adding) => {
+    onToggleFav: (food, adding, mealType) => {
       if (adding) {
-        store.addFavorite(food);
+        store.addFavorite({ ...food, mealType });
         showToast('Added to favorites');
       } else {
         const fav = store.getFavorites().find(f => f.name === food.name);
@@ -457,42 +457,7 @@ function renderGoals() {
 
   container.appendChild(ui.collapsible('Weight Goal', weightSummary, weightContent, { startOpen: !goals.weightGoal }));
 
-  // ── AI Food Analysis ──
-  const aiKey = localStorage.getItem('mt_openai_key') || '';
-  const aiKeyInput = ui.el('input', {
-    type: 'password',
-    className: 'input-goal ai-key-input',
-    placeholder: 'sk-...',
-    value: aiKey,
-    autocomplete: 'off',
-  });
-  const aiContent = ui.el('div', { className: 'collapsible-content' }, [
-    ui.el('p', { className: 'ai-key-desc', textContent: 'Take a photo of your plate and let GPT-4o estimate the foods and portions. Your key is stored locally on this device only.' }),
-    ui.el('div', { className: 'goal-row' }, [
-      ui.el('label', { textContent: 'OpenAI API key' }),
-      aiKeyInput,
-    ]),
-    ui.el('div', { className: 'ai-key-actions' }, [
-      ui.el('button', {
-        className: 'btn-primary',
-        textContent: 'Save key',
-        onClick: () => {
-          const val = aiKeyInput.value.trim();
-          if (val) { localStorage.setItem('mt_openai_key', val); showToast('API key saved'); }
-          else      { localStorage.removeItem('mt_openai_key'); showToast('API key cleared'); }
-          renderGoals();
-        },
-      }),
-      ui.el('a', {
-        href: 'https://platform.openai.com/api-keys',
-        target: '_blank',
-        rel: 'noopener noreferrer',
-        className: 'ai-key-link',
-        textContent: 'Get a key at platform.openai.com →',
-      }),
-    ]),
-  ]);
-  container.appendChild(ui.collapsible('AI Food Analysis ✨', aiKey ? '✓ Key saved' : 'Not configured', aiContent, { startOpen: !aiKey }));
+  // AI Food Analysis collapsible — paused pending monetization decision
 }
 
 function selectToggle(btn) {
@@ -642,12 +607,7 @@ function openAddFoodModal(mealType) {
     onClick: () => openBarcodeScanner(mealType),
   });
 
-  const analyzeBtn = ui.el('button', {
-    className: 'btn-scan',
-    title: 'Analyze plate with AI',
-    textContent: '📸',
-    onClick: () => openPhotoAnalyzer(mealType),
-  });
+  // const analyzeBtn = ui.el('button', { className: 'btn-scan', title: 'Analyze plate with AI', textContent: '📸', onClick: () => openPhotoAnalyzer(mealType) }); // paused
 
   const resultsList = ui.el('div', { className: 'search-results' });
 
@@ -773,8 +733,8 @@ function openAddFoodModal(mealType) {
     }),
   ]);
 
-  // Favorites section
-  const favs = store.getFavorites();
+  // Favorites section — only show favorites tagged to this meal type (or untagged legacy ones)
+  const favs = store.getFavorites().filter(f => !f.mealType || f.mealType === mealType);
   const favsSection = favs.length > 0
     ? ui.el('div', { className: 'favorites-section' }, [
         ui.el('div', { className: 'divider', textContent: '— favorites —' }),
@@ -807,7 +767,7 @@ function openAddFoodModal(mealType) {
 
   // Assemble modal
   modalBody.appendChild(ui.el('h2', { textContent: `Add to ${ui.capitalize(mealType)}` }));
-  modalBody.appendChild(ui.el('div', { className: 'search-row' }, [searchInput, scanBtn, analyzeBtn]));
+  modalBody.appendChild(ui.el('div', { className: 'search-row' }, [searchInput, scanBtn]));
   modalBody.appendChild(resultsList);
   if (favsSection) modalBody.appendChild(favsSection);
   modalBody.appendChild(manualSection);

@@ -97,7 +97,7 @@ export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFa
         const nowFav = favBtn.classList.toggle('active');
         favBtn.textContent = nowFav ? '★' : '☆';
         favBtn.title = nowFav ? 'Remove from favorites' : 'Add to favorites';
-        onToggleFav(food, nowFav);
+        onToggleFav(food, nowFav, mealType);
       },
     });
 
