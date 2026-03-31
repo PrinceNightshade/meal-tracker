@@ -31,28 +31,23 @@ export function getCurrentUser() {
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
   try {
-    // Popup works in browser and in iOS 16.4+ standalone PWAs.
-    // Redirect is unreliable in standalone mode: iOS reopens the redirect
-    // URL in Safari rather than returning to the PWA window.
+    // Popup works in browser and iOS 16.4+ standalone PWAs.
+    // signInWithRedirect is NOT used — it breaks on iOS Safari due to
+    // storage partitioning (ITP), producing a "missing initial state" error.
     await signInWithPopup(auth, provider);
   } catch (e) {
     if (e.code === 'auth/popup-blocked') {
-      // Last resort: fall back to redirect (Android WebView, etc.)
-      await signInWithRedirect(auth, provider);
+      // Popup was blocked by the browser — surface a clear message rather
+      // than falling back to redirect (which fails on iOS Safari).
+      throw Object.assign(new Error('Please allow popups for this site, then try again.'), { code: 'auth/popup-blocked' });
     } else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
       throw e;
     }
   }
 }
 
-// Call on app init to collect any pending redirect result (fallback path)
-export async function handleRedirectResult() {
-  try {
-    await getRedirectResult(auth);
-  } catch (e) {
-    console.warn('Redirect sign-in error:', e);
-  }
-}
+// No-op kept for API compatibility — redirect flow removed
+export async function handleRedirectResult() {}
 
 export async function signOutUser() {
   await signOut(auth);
