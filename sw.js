@@ -1,5 +1,5 @@
 // Service Worker — Meal Tracker
-const CACHE = 'meal-tracker-v33';
+const CACHE = 'meal-tracker-v34';
 const ASSETS = [
   '/meal-tracker/',
   '/meal-tracker/index.html',
@@ -25,6 +25,10 @@ self.addEventListener('activate', e => {
     )
   );
   self.clients.claim();
+});
+
+self.addEventListener('message', e => {
+  if (e.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', e => {

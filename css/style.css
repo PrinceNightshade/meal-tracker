@@ -1163,6 +1163,46 @@ body {
   font-size: 14px;
 }
 
+/* ── Update Banner ── */
+
+#update-banner {
+  position: fixed;
+  top: -60px;
+  left: 0;
+  right: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: var(--accent);
+  color: #fff;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: top 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+
+#update-banner.show {
+  top: 0;
+}
+
+#update-banner-btn {
+  background: rgba(255,255,255,0.25);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.5);
+  border-radius: 14px;
+  padding: 4px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#update-banner-btn:active {
+  background: rgba(255,255,255,0.4);
+}
+
 /* ── Toast ── */
 
 #toast {

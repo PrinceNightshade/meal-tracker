@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Deduplicate favorites that accumulated from the add-without-check bug
   store.replaceFavorites(store.getFavorites());
   initTheme();
+  initSW();
   if (store.isUnderage()) {
     renderAgeGate();
     return;
@@ -22,6 +23,42 @@ document.addEventListener('DOMContentLoaded', () => {
   bindNav();
   initAuth();
 });
+
+// ── Service Worker update detection ──
+
+function initSW() {
+  if (!('serviceWorker' in navigator)) return;
+
+  // When a new SW takes control, reload once to apply the update
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) { refreshing = true; location.reload(); }
+  });
+
+  navigator.serviceWorker.ready.then(reg => {
+    // A SW may already be waiting (e.g. user opened app with tab still open)
+    if (reg.waiting) { showUpdateBanner(reg.waiting); return; }
+
+    // Watch for a new SW installing during this session
+    reg.addEventListener('updatefound', () => {
+      const newWorker = reg.installing;
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          showUpdateBanner(newWorker);
+        }
+      });
+    });
+  });
+}
+
+function showUpdateBanner(worker) {
+  const banner = ui.$('#update-banner');
+  banner.classList.add('show');
+  ui.$('#update-banner-btn').addEventListener('click', () => {
+    banner.classList.remove('show');
+    worker.postMessage({ type: 'SKIP_WAITING' });
+  });
+}
 
 // ── Theme ──
 
