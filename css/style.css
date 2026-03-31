@@ -1163,6 +1163,16 @@ body {
   font-size: 14px;
 }
 
+/* ── Search hint (background API fetch) ── */
+
+.search-hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 6px 0 2px;
+  opacity: 0.7;
+}
+
 /* ── Update Banner ── */
 
 #update-banner {

@@ -1,6 +1,6 @@
 // app.js — Main entry point
 import * as store from './store.js';
-import { searchFoods, lookupBarcode, analyzePhoto, debounce } from './api.js';
+import { searchCommonFoods, searchFoodsFromAPI, lookupBarcode, analyzePhoto, debounce } from './api.js';
 import * as ui from './ui.js';
 import * as fb from './firebase.js';
 
@@ -648,29 +648,48 @@ function openAddFoodModal(mealType) {
 
   const resultsList = ui.el('div', { className: 'search-results' });
 
-  const doSearch = debounce(async (query) => {
+  let apiSearchToken = 0; // cancels stale API responses when query changes
+
+  const doSearch = debounce((query) => {
     if (query.length < 3) {
       resultsList.innerHTML = '';
+      state.results = [];
       return;
     }
-    resultsList.innerHTML = '<div class="loading">Searching...</div>';
-    try {
-      const [apiResults, myFoodResults, historyResults] = await Promise.all([
-        searchFoods(query),
-        Promise.resolve(store.searchMyFoods(query)),
-        Promise.resolve(store.searchHistory(query)),
-      ]);
-      // Priority: My Foods → history → API (deduped by name)
-      const seen = new Set(myFoodResults.map(f => f.name.toLowerCase()));
-      const historyDeduped = historyResults.filter(f => !seen.has(f.name.toLowerCase()));
-      historyDeduped.forEach(f => seen.add(f.name.toLowerCase()));
-      const apiDeduped = apiResults.filter(f => !seen.has(f.name.toLowerCase()));
-      state.results = [...myFoodResults, ...historyDeduped, ...apiDeduped];
+
+    // ── Phase 1: instant local results ──
+    const myFoodResults = store.searchMyFoods(query);
+    const historyResults = store.searchHistory(query);
+    const commonResults = searchCommonFoods(query);
+
+    const seen = new Set(myFoodResults.map(f => f.name.toLowerCase()));
+    const historyDeduped = historyResults.filter(f => !seen.has(f.name.toLowerCase()));
+    historyDeduped.forEach(f => seen.add(f.name.toLowerCase()));
+    const commonDeduped = commonResults.filter(f => !seen.has(f.name.toLowerCase()));
+    commonDeduped.forEach(f => seen.add(f.name.toLowerCase()));
+
+    state.results = [...myFoodResults, ...historyDeduped, ...commonDeduped];
+    renderResults();
+
+    // ── Phase 2: augment with API results in the background ──
+    // Skip API entirely if we already have plenty of local matches
+    if (state.results.length >= 8) return;
+
+    const token = ++apiSearchToken;
+    // Small indicator that more results may be coming
+    const hint = ui.el('div', { className: 'search-hint', textContent: 'Searching online…' });
+    resultsList.appendChild(hint);
+
+    searchFoodsFromAPI(query, 15, seen).then(apiResults => {
+      if (token !== apiSearchToken) return; // query changed, discard
+      hint.remove();
+      if (apiResults.length === 0) return;
+      state.results = [...state.results, ...apiResults];
       renderResults();
-    } catch (err) {
-      resultsList.innerHTML = `<div class="error">${err.message}</div>`;
-    }
-  }, 500);
+    }).catch(() => {
+      if (token === apiSearchToken) hint.remove();
+    });
+  }, 300);
 
   searchInput.addEventListener('input', () => doSearch(searchInput.value.trim()));
 

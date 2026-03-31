@@ -732,7 +732,7 @@ const COMMON_FOODS = [
   { name: 'Broccoli Cheddar Soup', servingSize: 1, servingUnit: 'cup (248g)', calories: 240, protein: 9, carbs: 18, fat: 15, source: 'common', tags: 'broccoli cheddar soup cheese panera' },
 ];
 
-function searchCommonFoods(query) {
+export function searchCommonFoods(query) {
   const queryLower = query.toLowerCase();
   const queryWords = queryLower.split(/\s+/);
   return COMMON_FOODS
@@ -742,27 +742,21 @@ function searchCommonFoods(query) {
 
 // ── USDA FoodData Central ──
 
-export async function searchFoods(query, pageSize = 15) {
+// Fetch results from USDA + Open Food Facts only (no local data).
+// Returns deduped list ordered: USDA generic → OFF branded → USDA branded.
+export async function searchFoodsFromAPI(query, pageSize = 15, alreadySeen = new Set()) {
   if (!query || query.trim().length < 2) return [];
 
-  // Check built-in common foods first
-  const commonResults = searchCommonFoods(query);
-
-  // Query USDA and Open Food Facts in parallel
   const [usdaResults, offResults] = await Promise.all([
     searchUSDA(query, pageSize),
     searchOpenFoodFacts(query, pageSize),
   ]);
 
-  // Split USDA into generic (Foundation/SR Legacy — whole foods, ingredients)
-  // and branded (packaged products)
-  const usdaGeneric   = usdaResults.filter(f => f._dataType !== 'Branded');
-  const usdaBranded   = usdaResults.filter(f => f._dataType === 'Branded');
+  const usdaGeneric = usdaResults.filter(f => f._dataType !== 'Branded');
+  const usdaBranded = usdaResults.filter(f => f._dataType === 'Branded');
 
-  // Merge order: common → USDA generic → OFF branded → USDA branded
-  // Generic whole foods surface first; branded/packaged come after
-  const seen = new Set(commonResults.map(f => f.name.toLowerCase()));
-  const merged = [...commonResults];
+  const seen = new Set(alreadySeen);
+  const merged = [];
 
   function addAll(list) {
     for (const { _dataType, ...food } of list) {
@@ -776,6 +770,15 @@ export async function searchFoods(query, pageSize = 15) {
   addAll(usdaBranded);
 
   return merged.slice(0, pageSize);
+}
+
+// Legacy combined search — kept for any future use
+export async function searchFoods(query, pageSize = 15) {
+  if (!query || query.trim().length < 2) return [];
+  const commonResults = searchCommonFoods(query);
+  const seen = new Set(commonResults.map(f => f.name.toLowerCase()));
+  const apiResults = await searchFoodsFromAPI(query, pageSize, seen);
+  return [...commonResults, ...apiResults].slice(0, pageSize);
 }
 
 async function searchUSDA(query, pageSize = 15) {
