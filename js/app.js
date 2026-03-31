@@ -49,9 +49,9 @@ function showUpdateBanner(worker) {
   const banner = ui.$('#update-banner');
   banner.classList.add('show');
   ui.$('#update-banner-btn').addEventListener('click', () => {
-    // Tell the waiting SW to take over, then reload once it does
-    navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
+    // Tell the waiting SW to take over, then reload to pick up new assets
     worker.postMessage({ type: 'SKIP_WAITING' });
+    setTimeout(() => location.reload(), 250);
   });
 }
 
