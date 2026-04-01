@@ -30,7 +30,7 @@ export function el(tag, attrs = {}, children = []) {
 export function renderRing(current, goal, label, unit = '', size = 100, stroke = 8) {
   const pct = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
   const over = current > goal;
-  const color = over ? 'var(--over)' : pct > 85 ? 'var(--near)' : 'var(--good)';
+  const color = over ? 'var(--over)' : pct >= 85 ? 'var(--good)' : pct >= 50 ? 'var(--near)' : 'var(--over)';
 
   const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
