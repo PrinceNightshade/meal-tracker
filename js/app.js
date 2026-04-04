@@ -843,6 +843,43 @@ function stopActiveCamera() {
   }
 }
 
+// ── Food Details Modal (edit quantity and view nutrition) ──
+
+function openFoodDetailsModal(mealType, food) {
+  const modal = ui.$('#modal');
+  const modalBody = ui.$('#modal-body');
+  const goals = store.getGoals();
+
+  modalBody.innerHTML = '';
+
+  const foodModal = ui.renderFoodModal(food, goals, {
+    onSave: (newServings) => {
+      store.updateFoodQuantity(currentDate, mealType, food.id, newServings);
+      fb.pushDay(currentDate, store.getDay(currentDate));
+      closeModal();
+      render();
+    },
+    onDelete: () => {
+      store.removeFoodFromMeal(currentDate, mealType, food.id);
+      fb.pushDay(currentDate, store.getDay(currentDate));
+      closeModal();
+      render();
+    },
+  });
+
+  modalBody.appendChild(foodModal);
+  modal.classList.add('open');
+
+  // Close handlers
+  ui.$('#modal-close').onclick = closeModal;
+  modal.onclick = (e) => { if (e.target === modal) closeModal(); };
+}
+
+// Set up global food item click handler
+window.foodItemClickHandler = (mealType, food) => {
+  openFoodDetailsModal(mealType, food);
+};
+
 // ── Serving Picker (shared by text search and barcode scanner) ──
 
 function showServingPicker(food, mealType) {

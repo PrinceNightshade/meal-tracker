@@ -1331,6 +1331,119 @@ body {
   font-style: italic;
 }
 
+/* ── Food Details Modal ── */
+
+.food-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.food-modal-header {
+  margin-bottom: 8px;
+}
+
+.food-modal-header h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.food-modal-serving {
+  display: block;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.food-modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.food-modal-section label {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.food-modal-section h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.input-quantity {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.nutrition-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nutrition-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  background: var(--bg);
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.nutrition-row span:first-child {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.nutrition-value {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.food-modal-actions {
+  display: flex;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+.btn-primary,
+.btn-delete {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-delete {
+  background: var(--over);
+  color: white;
+}
+
+.btn-delete:hover {
+  opacity: 0.9;
+}
+
 /* ── Responsive ── */
 
 @media (max-width: 360px) {

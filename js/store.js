@@ -195,6 +195,10 @@ export function updateFoodInMeal(dateStr, mealType, foodId, updates) {
   saveDay(dateStr, day);
 }
 
+export function updateFoodQuantity(dateStr, mealType, foodId, newServings) {
+  updateFoodInMeal(dateStr, mealType, foodId, { servings: newServings });
+}
+
 // ── Favorites ──
 
 export function getFavorites() {

@@ -128,7 +128,7 @@ export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFa
       },
     });
 
-    return el('div', { className: 'food-item' }, [
+    const foodItemEl = el('div', { className: 'food-item' }, [
       el('div', { className: 'food-info' }, [
         el('span', { className: 'food-name', textContent: food.name }),
         el('span', { className: 'food-detail', textContent: `${servLabel} — ${cals} cal` }),
@@ -138,10 +138,22 @@ export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFa
         el('button', {
           className: 'btn-icon btn-remove',
           textContent: '×',
-          onClick: () => onRemove(mealType, food.id),
+          onClick: (e) => {
+            e.stopPropagation();
+            onRemove(mealType, food.id);
+          },
         }),
       ]),
     ]);
+
+    // Make the food item clickable (excluding action buttons)
+    foodItemEl.addEventListener('click', () => {
+      if (window.foodItemClickHandler) {
+        window.foodItemClickHandler(mealType, food);
+      }
+    });
+
+    return foodItemEl;
   });
 
   const emptyMsg = foods.length === 0
@@ -233,6 +245,96 @@ export function collapsible(title, summary, content, { startOpen = true } = {}) 
   });
 
   return wrapper;
+}
+
+// ── Food Details Modal ──
+
+export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
+  const currentCals = Math.round((food.calories || 0) * (food.servings || 1));
+  const currentProtein = Math.round((food.protein || 0) * (food.servings || 1));
+  const currentCarbs = Math.round((food.carbs || 0) * (food.servings || 1));
+  const currentFat = Math.round((food.fat || 0) * (food.servings || 1));
+  const currentSugars = Math.round((food.addedSugars || 0) * (food.servings || 1));
+
+  const getPercent = (val, goal) => goal > 0 ? Math.round((val / goal) * 100) : 0;
+  const calPct = getPercent(currentCals, goals.calories);
+  const proteinPct = getPercent(currentProtein, goals.protein);
+  const carbsPct = getPercent(currentCarbs, goals.carbs);
+  const fatPct = getPercent(currentFat, goals.fat);
+  const sugarsPct = getPercent(currentSugars, goals.addedSugars);
+
+  const servLabel = `${food.servingSize || ''}${food.servingUnit || ''}`;
+
+  const modal = el('div', { className: 'food-modal' }, [
+    el('div', { className: 'food-modal-header' }, [
+      el('div', {}, [
+        el('h2', { textContent: food.name }),
+        el('span', { className: 'food-modal-serving', textContent: servLabel }),
+      ]),
+    ]),
+
+    el('div', { className: 'food-modal-section' }, [
+      el('label', { textContent: 'Quantity (servings)' }),
+      el('input', {
+        type: 'number',
+        className: 'input-quantity',
+        value: String(food.servings || 1),
+        step: '0.5',
+        min: '0.1',
+      }),
+    ]),
+
+    el('div', { className: 'food-modal-section' }, [
+      el('h3', { textContent: 'Nutritional Breakdown' }),
+      el('div', { className: 'nutrition-breakdown' }, [
+        el('div', { className: 'nutrition-row' }, [
+          el('span', { textContent: 'Calories' }),
+          el('span', { className: 'nutrition-value', textContent: `${currentCals} / ${goals.calories} (${calPct}%)` }),
+        ]),
+        el('div', { className: 'nutrition-row' }, [
+          el('span', { textContent: 'Protein' }),
+          el('span', { className: 'nutrition-value', textContent: `${currentProtein}g / ${goals.protein}g (${proteinPct}%)` }),
+        ]),
+        el('div', { className: 'nutrition-row' }, [
+          el('span', { textContent: 'Carbs' }),
+          el('span', { className: 'nutrition-value', textContent: `${currentCarbs}g / ${goals.carbs}g (${carbsPct}%)` }),
+        ]),
+        el('div', { className: 'nutrition-row' }, [
+          el('span', { textContent: 'Fat' }),
+          el('span', { className: 'nutrition-value', textContent: `${currentFat}g / ${goals.fat}g (${fatPct}%)` }),
+        ]),
+        ...(goals.addedSugars && goals.addedSugars > 0 ? [
+          el('div', { className: 'nutrition-row' }, [
+            el('span', { textContent: 'Added Sugar' }),
+            el('span', { className: 'nutrition-value', textContent: `${currentSugars}g / ${goals.addedSugars}g (${sugarsPct}%)` }),
+          ]),
+        ] : []),
+      ]),
+    ]),
+
+    el('div', { className: 'food-modal-actions' }, [
+      el('button', {
+        className: 'btn-primary btn-save',
+        textContent: 'Save',
+        onClick: () => {
+          const quantityInput = modal.querySelector('.input-quantity');
+          const newServings = parseFloat(quantityInput.value) || 1;
+          onSave?.(newServings);
+        },
+      }),
+      el('button', {
+        className: 'btn-delete',
+        textContent: 'Delete',
+        onClick: () => {
+          if (window.confirm(`Are you sure you want to delete "${food.name}"?`)) {
+            onDelete?.();
+          }
+        },
+      }),
+    ]),
+  ]);
+
+  return modal;
 }
 
 // ── Helpers ──
