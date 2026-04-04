@@ -218,6 +218,7 @@ function renderDaily() {
       }
       fb.pushFavorites(store.getFavorites());
     },
+    onFoodClick: (mealType, food) => openFoodDetailsModal(mealType, food),
   };
 
   for (const mealType of ['breakfast', 'lunch', 'dinner', 'snacks']) {
@@ -874,11 +875,6 @@ function openFoodDetailsModal(mealType, food) {
   ui.$('#modal-close').onclick = closeModal;
   modal.onclick = (e) => { if (e.target === modal) closeModal(); };
 }
-
-// Set up global food item click handler
-window.foodItemClickHandler = (mealType, food) => {
-  openFoodDetailsModal(mealType, food);
-};
 
 // ── Serving Picker (shared by text search and barcode scanner) ──
 

@@ -105,7 +105,7 @@ export function renderDailySummaryRings(totals, goals) {
 
 // ── Meal Section ──
 
-export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFav }, favorites = []) {
+export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFav, onFoodClick }, favorites = []) {
   const icons = { breakfast: '☀', lunch: '☼', dinner: '☾', snacks: '○' };
   const mealCals = foods.reduce((sum, f) => sum + (f.calories || 0) * (f.servings || 1), 0);
 
@@ -148,8 +148,8 @@ export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFa
 
     // Make the food item clickable (excluding action buttons)
     foodItemEl.addEventListener('click', () => {
-      if (window.foodItemClickHandler) {
-        window.foodItemClickHandler(mealType, food);
+      if (onFoodClick) {
+        onFoodClick(mealType, food);
       }
     });
 
