@@ -73,6 +73,14 @@ export function renderDailySummaryRings(totals, goals) {
   ]);
   container.appendChild(macros);
 
+  // Added sugar ring (micro-nutrient)
+  if (goals.addedSugars && goals.addedSugars > 0) {
+    const sugars = el('div', { className: 'micro-rings' }, [
+      renderRing(totals.addedSugars || 0, goals.addedSugars, 'Added Sugar', 'g', 70, 5),
+    ]);
+    container.appendChild(sugars);
+  }
+
   return container;
 }
 

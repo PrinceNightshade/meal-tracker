@@ -259,6 +259,25 @@ body {
   font-size: 8px;
 }
 
+.micro-rings {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.micro-rings .ring-current {
+  font-size: 11px;
+}
+
+.micro-rings .ring-goal {
+  font-size: 7px;
+}
+
+.micro-rings .ring-name {
+  font-size: 7px;
+}
+
 /* ── Weight Footer (daily view) ── */
 
 .weight-footer {

@@ -50,34 +50,51 @@ function extractNutrients(foodNutrients) {
   return result;
 }
 
+// Extract added sugars from Open Food Facts data
+function extractAddedSugarsFromOFF(product) {
+  // Look for added_sugars_100g or sugars_100g field
+  if (product.sugars_100g && product.sugars_100g > 0) {
+    // For now, use total sugars as a proxy if no added sugar is explicitly marked
+    // A better source would be the NOVA classification, but OFF's added_sugars field is unreliable
+    return Math.round(product.sugars_100g * 10) / 10;
+  }
+  return null;
+}
+
 // ── Common foods — curated whole-food entries that always surface first ──
 const COMMON_FOODS = [
 
   // ── Coffee & Hot Drinks ──
-  { name: 'Black Coffee', servingSize: 8, servingUnit: 'fl oz', calories: 2, protein: 0, carbs: 0, fat: 0, source: 'common', tags: 'coffee black brewed drip filter' },
-  { name: 'Espresso (single shot)', servingSize: 1, servingUnit: 'fl oz', calories: 3, protein: 0, carbs: 0.5, fat: 0, source: 'common', tags: 'espresso coffee shot single' },
-  { name: 'Espresso (double shot)', servingSize: 2, servingUnit: 'fl oz', calories: 6, protein: 0, carbs: 1, fat: 0, source: 'common', tags: 'espresso coffee shot double' },
-  { name: 'Americano', servingSize: 12, servingUnit: 'fl oz', calories: 10, protein: 0, carbs: 1, fat: 0, source: 'common', tags: 'americano coffee espresso water' },
-  { name: 'Cappuccino', servingSize: 8, servingUnit: 'fl oz', calories: 80, protein: 4, carbs: 6, fat: 4, source: 'common', tags: 'cappuccino coffee espresso latte milk' },
-  { name: 'Cappuccino (large, 16oz)', servingSize: 16, servingUnit: 'fl oz', calories: 160, protein: 8, carbs: 12, fat: 8, source: 'common', tags: 'cappuccino coffee espresso latte milk large' },
-  { name: 'Latte', servingSize: 12, servingUnit: 'fl oz', calories: 150, protein: 8, carbs: 12, fat: 6, source: 'common', tags: 'latte coffee espresso milk' },
-  { name: 'Latte (large, 16oz)', servingSize: 16, servingUnit: 'fl oz', calories: 200, protein: 10, carbs: 16, fat: 8, source: 'common', tags: 'latte coffee espresso milk large' },
-  { name: 'Flat White', servingSize: 8, servingUnit: 'fl oz', calories: 120, protein: 6, carbs: 9, fat: 6, source: 'common', tags: 'flat white coffee espresso milk' },
-  { name: 'Mocha', servingSize: 12, servingUnit: 'fl oz', calories: 290, protein: 8, carbs: 35, fat: 12, source: 'common', tags: 'mocha coffee espresso chocolate milk' },
-  { name: 'Cold Brew Coffee', servingSize: 12, servingUnit: 'fl oz', calories: 5, protein: 0, carbs: 1, fat: 0, source: 'common', tags: 'cold brew coffee black iced' },
-  { name: 'Green Tea', servingSize: 8, servingUnit: 'fl oz', calories: 2, protein: 0, carbs: 0, fat: 0, source: 'common', tags: 'green tea hot drink' },
-  { name: 'Black Tea', servingSize: 8, servingUnit: 'fl oz', calories: 2, protein: 0, carbs: 0, fat: 0, source: 'common', tags: 'black tea hot drink' },
+  { name: 'Black Coffee', servingSize: 8, servingUnit: 'fl oz', calories: 2, protein: 0, carbs: 0, fat: 0, addedSugars: 0, source: 'common', tags: 'coffee black brewed drip filter' },
+  { name: 'Espresso (single shot)', servingSize: 1, servingUnit: 'fl oz', calories: 3, protein: 0, carbs: 0.5, fat: 0, addedSugars: 0, source: 'common', tags: 'espresso coffee shot single' },
+  { name: 'Espresso (double shot)', servingSize: 2, servingUnit: 'fl oz', calories: 6, protein: 0, carbs: 1, fat: 0, addedSugars: 0, source: 'common', tags: 'espresso coffee shot double' },
+  { name: 'Americano', servingSize: 12, servingUnit: 'fl oz', calories: 10, protein: 0, carbs: 1, fat: 0, addedSugars: 0, source: 'common', tags: 'americano coffee espresso water' },
+  { name: 'Cappuccino', servingSize: 8, servingUnit: 'fl oz', calories: 80, protein: 4, carbs: 6, fat: 4, addedSugars: 0, source: 'common', tags: 'cappuccino coffee espresso latte milk' },
+  { name: 'Cappuccino (large, 16oz)', servingSize: 16, servingUnit: 'fl oz', calories: 160, protein: 8, carbs: 12, fat: 8, addedSugars: 0, source: 'common', tags: 'cappuccino coffee espresso latte milk large' },
+  { name: 'Latte', servingSize: 12, servingUnit: 'fl oz', calories: 150, protein: 8, carbs: 12, fat: 6, addedSugars: 0, source: 'common', tags: 'latte coffee espresso milk' },
+  { name: 'Latte (large, 16oz)', servingSize: 16, servingUnit: 'fl oz', calories: 200, protein: 10, carbs: 16, fat: 8, addedSugars: 0, source: 'common', tags: 'latte coffee espresso milk large' },
+  { name: 'Flat White', servingSize: 8, servingUnit: 'fl oz', calories: 120, protein: 6, carbs: 9, fat: 6, addedSugars: 0, source: 'common', tags: 'flat white coffee espresso milk' },
+  { name: 'Mocha', servingSize: 12, servingUnit: 'fl oz', calories: 290, protein: 8, carbs: 35, fat: 12, addedSugars: 17, source: 'common', tags: 'mocha coffee espresso chocolate milk' },
+  { name: 'Cold Brew Coffee', servingSize: 12, servingUnit: 'fl oz', calories: 5, protein: 0, carbs: 1, fat: 0, addedSugars: 0, source: 'common', tags: 'cold brew coffee black iced' },
+  { name: 'Green Tea', servingSize: 8, servingUnit: 'fl oz', calories: 2, protein: 0, carbs: 0, fat: 0, addedSugars: 0, source: 'common', tags: 'green tea hot drink' },
+  { name: 'Black Tea', servingSize: 8, servingUnit: 'fl oz', calories: 2, protein: 0, carbs: 0, fat: 0, addedSugars: 0, source: 'common', tags: 'black tea hot drink' },
 
   // ── Beverages ──
-  { name: 'Whole Milk', servingSize: 1, servingUnit: 'cup (244ml)', calories: 149, protein: 8, carbs: 12, fat: 8, source: 'common', tags: 'whole milk dairy drink' },
-  { name: '2% Milk', servingSize: 1, servingUnit: 'cup (244ml)', calories: 122, protein: 8, carbs: 12, fat: 5, source: 'common', tags: '2% milk reduced fat dairy drink' },
-  { name: 'Skim Milk', servingSize: 1, servingUnit: 'cup (244ml)', calories: 83, protein: 8, carbs: 12, fat: 0, source: 'common', tags: 'skim nonfat milk dairy drink' },
-  { name: 'Oat Milk', servingSize: 1, servingUnit: 'cup (240ml)', calories: 120, protein: 3, carbs: 16, fat: 5, source: 'common', tags: 'oat milk plant based dairy free drink' },
-  { name: 'Almond Milk (unsweetened)', servingSize: 1, servingUnit: 'cup (240ml)', calories: 30, protein: 1, carbs: 1, fat: 3, source: 'common', tags: 'almond milk unsweetened plant based dairy free drink' },
-  { name: 'Orange Juice', servingSize: 8, servingUnit: 'fl oz', calories: 110, protein: 2, carbs: 26, fat: 0, source: 'common', tags: 'orange juice oj drink' },
-  { name: 'Apple Juice', servingSize: 8, servingUnit: 'fl oz', calories: 115, protein: 0, carbs: 28, fat: 0, source: 'common', tags: 'apple juice drink' },
-  { name: 'Protein Shake (whey, water)', servingSize: 1, servingUnit: 'scoop (30g)', calories: 120, protein: 24, carbs: 3, fat: 2, source: 'common', tags: 'protein shake whey powder supplement' },
-  { name: 'Protein Shake (whey, milk)', servingSize: 1, servingUnit: 'serving', calories: 270, protein: 32, carbs: 15, fat: 7, source: 'common', tags: 'protein shake whey milk supplement' },
+  { name: 'Whole Milk', servingSize: 1, servingUnit: 'cup (244ml)', calories: 149, protein: 8, carbs: 12, fat: 8, addedSugars: 0, source: 'common', tags: 'whole milk dairy drink' },
+  { name: '2% Milk', servingSize: 1, servingUnit: 'cup (244ml)', calories: 122, protein: 8, carbs: 12, fat: 5, addedSugars: 0, source: 'common', tags: '2% milk reduced fat dairy drink' },
+  { name: 'Skim Milk', servingSize: 1, servingUnit: 'cup (244ml)', calories: 83, protein: 8, carbs: 12, fat: 0, addedSugars: 0, source: 'common', tags: 'skim nonfat milk dairy drink' },
+  { name: 'Oat Milk', servingSize: 1, servingUnit: 'cup (240ml)', calories: 120, protein: 3, carbs: 16, fat: 5, addedSugars: 7, source: 'common', tags: 'oat milk plant based dairy free drink' },
+  { name: 'Almond Milk (unsweetened)', servingSize: 1, servingUnit: 'cup (240ml)', calories: 30, protein: 1, carbs: 1, fat: 3, addedSugars: 0, source: 'common', tags: 'almond milk unsweetened plant based dairy free drink' },
+  { name: 'Orange Juice', servingSize: 8, servingUnit: 'fl oz', calories: 110, protein: 2, carbs: 26, fat: 0, addedSugars: 0, source: 'common', tags: 'orange juice oj drink' },
+  { name: 'Apple Juice', servingSize: 8, servingUnit: 'fl oz', calories: 115, protein: 0, carbs: 28, fat: 0, addedSugars: 0, source: 'common', tags: 'apple juice drink' },
+  { name: 'Protein Shake (whey, water)', servingSize: 1, servingUnit: 'scoop (30g)', calories: 120, protein: 24, carbs: 3, fat: 2, addedSugars: 1, source: 'common', tags: 'protein shake whey powder supplement' },
+  { name: 'Protein Shake (whey, milk)', servingSize: 1, servingUnit: 'serving', calories: 270, protein: 32, carbs: 15, fat: 7, addedSugars: 2, source: 'common', tags: 'protein shake whey milk supplement' },
+  { name: 'Coke (12 oz can)', servingSize: 1, servingUnit: 'can (355ml)', calories: 140, protein: 0, carbs: 39, fat: 0, addedSugars: 39, source: 'common', tags: 'coke cola soda soft drink' },
+  { name: 'Sprite (12 oz can)', servingSize: 1, servingUnit: 'can (355ml)', calories: 140, protein: 0, carbs: 38, fat: 0, addedSugars: 38, source: 'common', tags: 'sprite soda soft drink lemon lime' },
+  { name: 'Gatorade (20 oz bottle)', servingSize: 1, servingUnit: 'bottle (591ml)', calories: 130, protein: 0, carbs: 34, fat: 0, addedSugars: 34, source: 'common', tags: 'gatorade sports drink electrolyte' },
+  { name: 'Lemonade (homemade)', servingSize: 1, servingUnit: 'cup (240ml)', calories: 99, protein: 0, carbs: 26, fat: 0, addedSugars: 26, source: 'common', tags: 'lemonade drink' },
+  { name: 'Iced Coffee (Starbucks-style, unsweetened)', servingSize: 1, servingUnit: 'grande (16oz)', calories: 5, protein: 0, carbs: 1, fat: 0, addedSugars: 0, source: 'common', tags: 'iced coffee cold brew coffee espresso' },
+  { name: 'Iced Caramel Latte (sweetened)', servingSize: 1, servingUnit: 'grande (16oz)', calories: 240, protein: 9, carbs: 33, fat: 10, addedSugars: 30, source: 'common', tags: 'iced caramel latte coffee syrup sweetened' },
 
   // ── Eggs ──
   { name: 'Egg (whole, large)', servingSize: 1, servingUnit: 'large egg', calories: 72, protein: 6, carbs: 0, fat: 5, source: 'common', tags: 'egg whole large raw boiled' },
@@ -388,8 +405,8 @@ const COMMON_FOODS = [
   { name: 'Apple with Peanut Butter', servingSize: 1, servingUnit: 'medium apple + 1 tbsp PB', calories: 190, protein: 4, carbs: 30, fat: 8, source: 'common', tags: 'apple peanut butter snack' },
   { name: 'Trail Mix', servingSize: 0.25, servingUnit: 'cup (38g)', calories: 175, protein: 5, carbs: 17, fat: 11, source: 'common', tags: 'trail mix nuts dried fruit snack' },
   { name: 'Protein Bar (generic)', servingSize: 1, servingUnit: 'bar (60g)', calories: 210, protein: 20, carbs: 23, fat: 7, source: 'common', tags: 'protein bar snack supplement' },
-  { name: 'Granola Bar', servingSize: 1, servingUnit: 'bar (47g)', calories: 190, protein: 4, carbs: 29, fat: 7, source: 'common', tags: 'granola bar snack oats' },
-  { name: 'Dark Chocolate (70%+)', servingSize: 1, servingUnit: 'oz (28g)', calories: 170, protein: 2, carbs: 13, fat: 12, source: 'common', tags: 'dark chocolate 70 snack dessert' },
+  { name: 'Granola Bar', servingSize: 1, servingUnit: 'bar (47g)', calories: 190, protein: 4, carbs: 29, fat: 7, addedSugars: 10, source: 'common', tags: 'granola bar snack oats' },
+  { name: 'Dark Chocolate (70%+)', servingSize: 1, servingUnit: 'oz (28g)', calories: 170, protein: 2, carbs: 13, fat: 12, addedSugars: 5, source: 'common', tags: 'dark chocolate 70 snack dessert' },
 
   // ── Deli & Lunch Meats ──
   { name: 'Roast Beef (deli)', servingSize: 4, servingUnit: 'slices (57g)', calories: 80, protein: 13, carbs: 1, fat: 3, source: 'common', tags: 'roast beef deli sliced lunch meat' },
@@ -460,16 +477,16 @@ const COMMON_FOODS = [
   { name: 'Black Bean Soup', servingSize: 1, servingUnit: 'cup (247g)', calories: 218, protein: 14, carbs: 40, fat: 1, source: 'common', tags: 'black bean soup legumes' },
 
   // ── Desserts ──
-  { name: 'Ice Cream (vanilla)', servingSize: 0.5, servingUnit: 'cup (66g)', calories: 137, protein: 2, carbs: 16, fat: 7, source: 'common', tags: 'ice cream vanilla dessert' },
-  { name: 'Ice Cream (chocolate)', servingSize: 0.5, servingUnit: 'cup (66g)', calories: 143, protein: 3, carbs: 19, fat: 7, source: 'common', tags: 'ice cream chocolate dessert' },
-  { name: 'Frozen Yogurt', servingSize: 0.5, servingUnit: 'cup (113g)', calories: 115, protein: 3, carbs: 24, fat: 1, source: 'common', tags: 'frozen yogurt froyo dessert' },
-  { name: 'Chocolate Chip Cookie', servingSize: 1, servingUnit: 'medium cookie (40g)', calories: 178, protein: 2, carbs: 24, fat: 9, source: 'common', tags: 'chocolate chip cookie dessert baked' },
-  { name: 'Brownie', servingSize: 1, servingUnit: 'square (56g)', calories: 243, protein: 3, carbs: 36, fat: 11, source: 'common', tags: 'brownie chocolate dessert baked' },
-  { name: 'Cheesecake (1 slice)', servingSize: 1, servingUnit: 'slice (125g)', calories: 400, protein: 6, carbs: 37, fat: 26, source: 'common', tags: 'cheesecake dessert slice' },
-  { name: 'Apple Pie (1 slice)', servingSize: 1, servingUnit: 'slice (125g)', calories: 296, protein: 2, carbs: 43, fat: 14, source: 'common', tags: 'apple pie dessert slice' },
-  { name: 'Dark Chocolate Bar', servingSize: 1, servingUnit: 'oz (28g)', calories: 170, protein: 2, carbs: 13, fat: 12, source: 'common', tags: 'dark chocolate bar dessert snack 70' },
-  { name: 'Milk Chocolate', servingSize: 1, servingUnit: 'oz (28g)', calories: 153, protein: 2, carbs: 17, fat: 9, source: 'common', tags: 'milk chocolate dessert snack' },
-  { name: 'Donut (glazed)', servingSize: 1, servingUnit: 'donut (60g)', calories: 253, protein: 3, carbs: 30, fat: 14, source: 'common', tags: 'donut glazed breakfast dessert' },
+  { name: 'Ice Cream (vanilla)', servingSize: 0.5, servingUnit: 'cup (66g)', calories: 137, protein: 2, carbs: 16, fat: 7, addedSugars: 13, source: 'common', tags: 'ice cream vanilla dessert' },
+  { name: 'Ice Cream (chocolate)', servingSize: 0.5, servingUnit: 'cup (66g)', calories: 143, protein: 3, carbs: 19, fat: 7, addedSugars: 15, source: 'common', tags: 'ice cream chocolate dessert' },
+  { name: 'Frozen Yogurt', servingSize: 0.5, servingUnit: 'cup (113g)', calories: 115, protein: 3, carbs: 24, fat: 1, addedSugars: 18, source: 'common', tags: 'frozen yogurt froyo dessert' },
+  { name: 'Chocolate Chip Cookie', servingSize: 1, servingUnit: 'medium cookie (40g)', calories: 178, protein: 2, carbs: 24, fat: 9, addedSugars: 14, source: 'common', tags: 'chocolate chip cookie dessert baked' },
+  { name: 'Brownie', servingSize: 1, servingUnit: 'square (56g)', calories: 243, protein: 3, carbs: 36, fat: 11, addedSugars: 20, source: 'common', tags: 'brownie chocolate dessert baked' },
+  { name: 'Cheesecake (1 slice)', servingSize: 1, servingUnit: 'slice (125g)', calories: 400, protein: 6, carbs: 37, fat: 26, addedSugars: 27, source: 'common', tags: 'cheesecake dessert slice' },
+  { name: 'Apple Pie (1 slice)', servingSize: 1, servingUnit: 'slice (125g)', calories: 296, protein: 2, carbs: 43, fat: 14, addedSugars: 25, source: 'common', tags: 'apple pie dessert slice' },
+  { name: 'Dark Chocolate Bar', servingSize: 1, servingUnit: 'oz (28g)', calories: 170, protein: 2, carbs: 13, fat: 12, addedSugars: 8, source: 'common', tags: 'dark chocolate bar dessert snack 70' },
+  { name: 'Milk Chocolate', servingSize: 1, servingUnit: 'oz (28g)', calories: 153, protein: 2, carbs: 17, fat: 9, addedSugars: 16, source: 'common', tags: 'milk chocolate dessert snack' },
+  { name: 'Donut (glazed)', servingSize: 1, servingUnit: 'donut (60g)', calories: 253, protein: 3, carbs: 30, fat: 14, addedSugars: 22, source: 'common', tags: 'donut glazed breakfast dessert' },
 
   // ── Protein & Health Foods ──
   { name: 'Whey Protein Powder', servingSize: 1, servingUnit: 'scoop (31g)', calories: 120, protein: 25, carbs: 3, fat: 1, source: 'common', tags: 'whey protein powder supplement' },
@@ -505,17 +522,17 @@ const COMMON_FOODS = [
   { name: 'Skyr (Icelandic yogurt)', servingSize: 1, servingUnit: 'cup (227g)', calories: 100, protein: 17, carbs: 6, fat: 0, source: 'common', tags: 'skyr icelandic yogurt dairy protein' },
 
   // ── More Beverages ──
-  { name: 'Coconut Water', servingSize: 1, servingUnit: 'cup (240ml)', calories: 46, protein: 2, carbs: 9, fat: 0, source: 'common', tags: 'coconut water electrolytes drink' },
-  { name: 'Kombucha', servingSize: 1, servingUnit: '16 fl oz bottle', calories: 60, protein: 0, carbs: 14, fat: 0, source: 'common', tags: 'kombucha fermented tea probiotic drink' },
-  { name: 'Sports Drink (Gatorade)', servingSize: 1, servingUnit: '20 fl oz bottle', calories: 140, protein: 0, carbs: 36, fat: 0, source: 'common', tags: 'gatorade sports drink electrolytes' },
-  { name: 'Energy Drink (Red Bull)', servingSize: 1, servingUnit: '8.4 fl oz can', calories: 110, protein: 1, carbs: 27, fat: 0, source: 'common', tags: 'red bull energy drink caffeine' },
-  { name: 'Sparkling Water', servingSize: 12, servingUnit: 'fl oz', calories: 0, protein: 0, carbs: 0, fat: 0, source: 'common', tags: 'sparkling water seltzer carbonated drink' },
-  { name: 'Soda (cola, 12 oz)', servingSize: 12, servingUnit: 'fl oz', calories: 150, protein: 0, carbs: 39, fat: 0, source: 'common', tags: 'soda cola coke pepsi carbonated drink' },
-  { name: 'Diet Soda', servingSize: 12, servingUnit: 'fl oz', calories: 0, protein: 0, carbs: 0, fat: 0, source: 'common', tags: 'diet soda cola zero sugar drink' },
-  { name: 'Whole Milk Latte (homemade)', servingSize: 12, servingUnit: 'fl oz', calories: 200, protein: 10, carbs: 16, fat: 8, source: 'common', tags: 'latte whole milk homemade coffee' },
-  { name: 'Matcha Latte', servingSize: 12, servingUnit: 'fl oz', calories: 160, protein: 8, carbs: 16, fat: 7, source: 'common', tags: 'matcha latte green tea milk drink' },
-  { name: 'Hot Chocolate', servingSize: 8, servingUnit: 'fl oz', calories: 195, protein: 8, carbs: 27, fat: 6, source: 'common', tags: 'hot chocolate cocoa milk drink' },
-  { name: 'Protein Shake (ready to drink)', servingSize: 1, servingUnit: '11 fl oz bottle', calories: 160, protein: 30, carbs: 6, fat: 3, source: 'common', tags: 'protein shake ready to drink fairlife premier' },
+  { name: 'Coconut Water', servingSize: 1, servingUnit: 'cup (240ml)', calories: 46, protein: 2, carbs: 9, fat: 0, addedSugars: 0, source: 'common', tags: 'coconut water electrolytes drink' },
+  { name: 'Kombucha', servingSize: 1, servingUnit: '16 fl oz bottle', calories: 60, protein: 0, carbs: 14, fat: 0, addedSugars: 6, source: 'common', tags: 'kombucha fermented tea probiotic drink' },
+  { name: 'Sports Drink (Gatorade)', servingSize: 1, servingUnit: '20 fl oz bottle', calories: 140, protein: 0, carbs: 36, fat: 0, addedSugars: 36, source: 'common', tags: 'gatorade sports drink electrolytes' },
+  { name: 'Energy Drink (Red Bull)', servingSize: 1, servingUnit: '8.4 fl oz can', calories: 110, protein: 1, carbs: 27, fat: 0, addedSugars: 27, source: 'common', tags: 'red bull energy drink caffeine' },
+  { name: 'Sparkling Water', servingSize: 12, servingUnit: 'fl oz', calories: 0, protein: 0, carbs: 0, fat: 0, addedSugars: 0, source: 'common', tags: 'sparkling water seltzer carbonated drink' },
+  { name: 'Soda (cola, 12 oz)', servingSize: 12, servingUnit: 'fl oz', calories: 150, protein: 0, carbs: 39, fat: 0, addedSugars: 39, source: 'common', tags: 'soda cola coke pepsi carbonated drink' },
+  { name: 'Diet Soda', servingSize: 12, servingUnit: 'fl oz', calories: 0, protein: 0, carbs: 0, fat: 0, addedSugars: 0, source: 'common', tags: 'diet soda cola zero sugar drink' },
+  { name: 'Whole Milk Latte (homemade)', servingSize: 12, servingUnit: 'fl oz', calories: 200, protein: 10, carbs: 16, fat: 8, addedSugars: 0, source: 'common', tags: 'latte whole milk homemade coffee' },
+  { name: 'Matcha Latte', servingSize: 12, servingUnit: 'fl oz', calories: 160, protein: 8, carbs: 16, fat: 7, addedSugars: 10, source: 'common', tags: 'matcha latte green tea milk drink' },
+  { name: 'Hot Chocolate', servingSize: 8, servingUnit: 'fl oz', calories: 195, protein: 8, carbs: 27, fat: 6, addedSugars: 20, source: 'common', tags: 'hot chocolate cocoa milk drink' },
+  { name: 'Protein Shake (ready to drink)', servingSize: 1, servingUnit: '11 fl oz bottle', calories: 160, protein: 30, carbs: 6, fat: 3, addedSugars: 1, source: 'common', tags: 'protein shake ready to drink fairlife premier' },
 
   // ── Lamb, Venison & Other Proteins ──
   { name: 'Lamb Chop (grilled)', servingSize: 3, servingUnit: 'oz (85g)', calories: 250, protein: 22, carbs: 0, fat: 17, source: 'common', tags: 'lamb chop grilled meat' },
