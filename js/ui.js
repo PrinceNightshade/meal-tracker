@@ -59,6 +59,28 @@ export function renderRing(current, goal, label, unit = '', size = 100, stroke =
   return wrapper;
 }
 
+// ── Progress Bar ──
+
+export function renderProgressBar(current, goal, label, unit = '') {
+  const pct = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
+  const over = current > goal;
+  const color = over ? 'var(--over)' : pct >= 85 ? 'var(--good)' : pct >= 50 ? 'var(--near)' : 'var(--over)';
+
+  const wrapper = el('div', { className: 'progress-bar-wrapper' }, [
+    el('div', { className: 'progress-bar-header' }, [
+      el('span', { className: 'progress-bar-label', textContent: label }),
+      el('span', { className: 'progress-bar-value', textContent: `${current} / ${goal}${unit}` }),
+    ]),
+    el('div', { className: 'progress-bar-track' }, [
+      el('div', {
+        className: 'progress-bar-fill',
+        style: `width: ${pct}%; background-color: ${color};`,
+      }),
+    ]),
+  ]);
+  return wrapper;
+}
+
 export function renderDailySummaryRings(totals, goals) {
   const container = el('div', { className: 'rings-container' });
 
@@ -73,12 +95,9 @@ export function renderDailySummaryRings(totals, goals) {
   ]);
   container.appendChild(macros);
 
-  // Added sugar ring (micro-nutrient)
+  // Added sugar progress bar
   if (goals.addedSugars && goals.addedSugars > 0) {
-    const sugars = el('div', { className: 'micro-rings' }, [
-      renderRing(totals.addedSugars || 0, goals.addedSugars, 'Added Sugar', 'g', 70, 5),
-    ]);
-    container.appendChild(sugars);
+    container.appendChild(renderProgressBar(totals.addedSugars || 0, goals.addedSugars, 'Added Sugar', 'g'));
   }
 
   return container;
