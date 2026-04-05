@@ -7,6 +7,52 @@ on:
     branches: [main]
 
 jobs:
+  validate:
+    name: Validate code syntax and structure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Check JavaScript syntax
+        run: |
+          echo "Checking JavaScript syntax..."
+          for file in js/*.js; do
+            if [[ -f "$file" ]]; then
+              echo "Validating $file..."
+              node -c "$file" 2>&1 || exit 1
+            fi
+          done
+          echo "✓ All JavaScript files have valid syntax"
+
+      - name: Validate Service Worker
+        run: |
+          echo "Checking Service Worker..."
+          if ! grep -q "self.addEventListener.*install" sw.js; then
+            echo "❌ Service Worker missing install event"
+            exit 1
+          fi
+          if ! grep -q "self.addEventListener.*activate" sw.js; then
+            echo "❌ Service Worker missing activate event"
+            exit 1
+          fi
+          if ! grep -q "const CACHE = " sw.js; then
+            echo "❌ Service Worker missing CACHE version"
+            exit 1
+          fi
+          echo "✓ Service Worker structure valid"
+
+      - name: Check for debug artifacts
+        run: |
+          echo "Checking for debug code..."
+          if grep -r "console\.log\|console\.error\|debugger" js/*.js 2>/dev/null | grep -v "^ *//"; then
+            echo "⚠️  Found console statements - consider removing before merge"
+          fi
+          echo "✓ Debug artifact check complete"
+
   test:
     name: Run tests
     runs-on: ubuntu-latest
@@ -60,7 +106,7 @@ jobs:
 
   deploy:
     name: Deploy to GitHub Pages
-    needs: test
+    needs: [test, validate]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
