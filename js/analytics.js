@@ -1,9 +1,8 @@
-// analytics.js — Food history pattern detection and insight generation
+// analytics.js - Food history pattern detection and insight generation
 import * as store from './store.js';
 import { todayStr } from './ui.js';
 
-// ── Callout Library ──
-// Map of patterns to personality-driven messages (cycle through on repeated views)
+// Callout library - personality-driven messages
 const CALLOUT_LIBRARY = {
   vegetable_intake: [
     'You afraid of veggies, bruh?',
@@ -36,7 +35,7 @@ const CALLOUT_LIBRARY = {
   calorie_consistency: [
     'Your calories are all over the place',
     'Stable intake makes stable progress',
-    'Some days you're a squirrel, some days a bird',
+    'Some days youre a squirrel, some days a bird',
   ],
   whole_grains: [
     'Ever tried a whole grain?',
@@ -45,8 +44,7 @@ const CALLOUT_LIBRARY = {
   ],
 };
 
-// ── Pattern Detectors ──
-
+// Pattern detectors
 function detectVegetableIntake(foods, days) {
   if (foods.length === 0) {
     return {
@@ -54,7 +52,7 @@ function detectVegetableIntake(foods, days) {
       severity: 'high',
       callout: 'You afraid of veggies, bruh?',
       recommendation: 'Aim for 2-3 servings daily. Add a side salad or roasted veggies to your next meal.',
-      stats: { actual: 0, daily_goal: 2.5, metric: 'vegetable servings', period: `${days} days` },
+      stats: { actual: 0, daily_goal: 2.5, metric: 'vegetable servings', period: days + ' days' },
     };
   }
 
@@ -69,7 +67,7 @@ function detectVegetableIntake(foods, days) {
 
   const actual = Math.round(servings * 10) / 10;
   const daily_goal = 2.5;
-  const threshold = daily_goal * days * 0.5; // less than half goal over period
+  const threshold = daily_goal * days * 0.5;
 
   if (actual < threshold) {
     return {
@@ -77,7 +75,7 @@ function detectVegetableIntake(foods, days) {
       severity: actual === 0 ? 'high' : 'medium',
       callout: CALLOUT_LIBRARY.vegetable_intake[Math.floor(Math.random() * CALLOUT_LIBRARY.vegetable_intake.length)],
       recommendation: 'Aim for 2-3 servings daily. Add a side salad or roasted veggies to your next meal.',
-      stats: { actual, daily_goal, metric: 'vegetable servings', period: `${days} days` },
+      stats: { actual, daily_goal, metric: 'vegetable servings', period: days + ' days' },
     };
   }
   return null;
@@ -87,7 +85,7 @@ function detectProteinSources(foods) {
   if (foods.length === 0) return null;
 
   const fishKeywords = ['salmon', 'tuna', 'fish', 'cod', 'shrimp', 'crab', 'lobster', 'halibut', 'bass', 'mahi'];
-  const poultrKeywords = ['chicken', 'turkey', 'duck', 'poultry'];
+  const poultryKeywords = ['chicken', 'turkey', 'duck', 'poultry'];
   const legumeKeywords = ['bean', 'lentil', 'chickpea', 'tofu', 'tempeh', 'pea'];
 
   let hasFish = false, hasPoultry = false, hasLegume = false;
@@ -95,7 +93,7 @@ function detectProteinSources(foods) {
   for (const food of foods) {
     const name = food.name.toLowerCase();
     if (fishKeywords.some(k => name.includes(k))) hasFish = true;
-    if (poultrKeywords.some(k => name.includes(k))) hasPoultry = true;
+    if (poultryKeywords.some(k => name.includes(k))) hasPoultry = true;
     if (legumeKeywords.some(k => name.includes(k))) hasLegume = true;
   }
 
@@ -116,7 +114,6 @@ function detectFoodVariety(foods) {
   if (foods.length === 0) return null;
 
   const uniqueFoods = new Set(foods.map(f => f.name.toLowerCase())).size;
-  const avgPerDay = uniqueFoods / (foods.length > 0 ? Math.ceil(foods.length / 4) : 1); // rough estimate
 
   if (uniqueFoods < 10) {
     return {
@@ -134,8 +131,8 @@ function detectAddedSugarTrend(totals, days) {
   if (!totals || totals.length === 0) return null;
 
   const avgSugar = totals.reduce((sum, t) => sum + t.addedSugars, 0) / totals.length;
-  const dailyGoal = 25; // WHO recommendation
-  const threshold = dailyGoal * 1.2; // 20% over goal
+  const dailyGoal = 25;
+  const threshold = dailyGoal * 1.2;
 
   if (avgSugar > threshold) {
     return {
@@ -143,7 +140,7 @@ function detectAddedSugarTrend(totals, days) {
       severity: avgSugar > dailyGoal * 1.5 ? 'high' : 'medium',
       callout: CALLOUT_LIBRARY.sugar_trend[Math.floor(Math.random() * CALLOUT_LIBRARY.sugar_trend.length)],
       recommendation: 'Keep added sugars under 25g/day. Watch out for sugary drinks and sauces.',
-      stats: { actual: Math.round(avgSugar * 10) / 10, daily_goal: dailyGoal, metric: 'g added sugar/day', period: `${days} days` },
+      stats: { actual: Math.round(avgSugar * 10) / 10, daily_goal: dailyGoal, metric: 'g added sugar/day', period: days + ' days' },
     };
   }
   return null;
@@ -156,14 +153,14 @@ function detectCalorieConsistency(totals, days) {
   const avg = calories.reduce((s, c) => s + c, 0) / calories.length;
   const variance = calories.reduce((s, c) => s + Math.pow(c - avg, 2), 0) / calories.length;
   const stdDev = Math.sqrt(variance);
-  const coefficient = stdDev / avg; // coefficient of variation
+  const coefficient = stdDev / avg;
 
-  if (coefficient > 0.35) { // >35% variation
+  if (coefficient > 0.35) {
     return {
       pattern: 'calorie_consistency',
       severity: coefficient > 0.5 ? 'medium' : 'low',
       callout: CALLOUT_LIBRARY.calorie_consistency[Math.floor(Math.random() * CALLOUT_LIBRARY.calorie_consistency.length)],
-      recommendation: 'Aim for consistent daily intake (±200 cal). Steady eating helps metabolism.',
+      recommendation: 'Aim for consistent daily intake (plus or minus 200 cal). Steady eating helps metabolism.',
       stats: { actual: Math.round(avg), variance: Math.round(stdDev), metric: 'calorie variance' },
     };
   }
@@ -195,23 +192,18 @@ function detectRefinedVsWhole(foods) {
   return null;
 }
 
-// ── Main Analytics Function ──
+// Main analytics function
+export function analyzeFoodHistory(days, fromDate) {
+  if (!days) days = 7;
+  if (!fromDate) fromDate = todayStr();
 
-export function analyzeFoodHistory(days = 7, fromDate = null) {
-  if (fromDate === null || fromDate === undefined) {
-    fromDate = todayStr();
-  }
-
-  // Get date range
   const dateRange = store.getLast7Days(fromDate).slice(0, days);
   const startDate = dateRange[0];
   const endDate = dateRange[dateRange.length - 1];
 
-  // Get foods and totals for range
   const foods = store.getFoodsForRange(startDate, endDate);
   const totalsArray = dateRange.map(date => store.getDayTotals(date));
 
-  // Run all detectors
   const insights = [];
 
   const vegInsight = detectVegetableIntake(foods, days);
@@ -232,17 +224,16 @@ export function analyzeFoodHistory(days = 7, fromDate = null) {
   const wholeGrainInsight = detectRefinedVsWhole(foods);
   if (wholeGrainInsight) insights.push(wholeGrainInsight);
 
-  // Sort by severity (high > medium > low)
   const severityRank = { high: 3, medium: 2, low: 1 };
   insights.sort((a, b) => (severityRank[b.severity] || 0) - (severityRank[a.severity] || 0));
 
-  // If no insights, return a default encouraging message
   if (insights.length === 0) {
     return [{
       pattern: 'doing_great',
       severity: 'low',
-      callout: 'Keep it up! You\'re nailing it.',
-      stats: { message: 'No obvious areas to improve — great job!' },
+      callout: 'Keep it up! You are nailing it.',
+      recommendation: 'No obvious areas to improve - great job!',
+      stats: { message: 'No obvious areas to improve - great job!' },
     }];
   }
 

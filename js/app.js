@@ -3,7 +3,7 @@ import * as store from './store.js';
 import { searchCommonFoods, searchFoodsFromAPI, lookupBarcode, analyzePhoto, debounce } from './api.js';
 import * as ui from './ui.js';
 import * as fb from './firebase.js';
-// import * as analytics from './analytics.js'; // TODO: Fix syntax error
+import * as analytics from './analytics.js';
 
 let currentDate = ui.todayStr();
 let currentView = 'daily'; // daily | goals | weight
@@ -194,11 +194,17 @@ function renderDaily() {
   const totals = store.getDayTotals(currentDate);
   const day = store.getDay(currentDate);
 
-  // Summary rings (carousel disabled until analytics.js syntax error fixed)
+  // Get insights for analytics carousel
+  const insights = analytics.analyzeFoodHistory(7, currentDate);
+
+  // Summary carousel (rings + analytics)
   const summary = ui.el('div', { className: 'daily-summary' }, [
-    ui.renderDailySummaryRings(totals, goals),
+    ui.renderDailySummaryCarousel(totals, goals, insights, currentInsightIndex),
   ]);
   container.appendChild(summary);
+
+  // Increment insight index for next view (cycle through insights)
+  currentInsightIndex = (currentInsightIndex + 1) % Math.max(insights.length, 1);
 
   // Meals
   const favorites = store.getFavorites();
