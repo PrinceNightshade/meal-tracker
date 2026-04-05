@@ -267,7 +267,6 @@ export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFa
 
     // Make the food item clickable (excluding action buttons)
     foodItemEl.addEventListener('click', () => {
-      console.log('FOOD CLICK', onFoodClick, mealType, food);
       if (onFoodClick) {
         onFoodClick(mealType, food);
       }

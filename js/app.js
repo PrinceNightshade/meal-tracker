@@ -234,7 +234,6 @@ function renderDaily() {
     onFoodClick: (mealType, food) => openFoodDetailsModal(mealType, food),
   };
 
-  console.log('mealCallbacks:', mealCallbacks);
   for (const mealType of ['breakfast', 'lunch', 'dinner', 'snacks']) {
     container.appendChild(ui.renderMealSection(mealType, day.meals[mealType], mealCallbacks, favorites));
   }
