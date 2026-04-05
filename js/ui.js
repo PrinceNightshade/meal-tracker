@@ -103,6 +103,98 @@ export function renderDailySummaryRings(totals, goals) {
   return container;
 }
 
+export function renderDailySummaryCarousel(totals, goals, insights = [], currentInsightIndex = 0) {
+  const carousel = el('div', { className: 'daily-carousel' });
+
+  // Card 1: Macro rings
+  const ringsCard = el('div', { className: 'carousel-card carousel-card-rings' }, [
+    renderDailySummaryRings(totals, goals),
+  ]);
+  carousel.appendChild(ringsCard);
+
+  // Card 2: Analytics
+  // Render analytics insight inline to avoid circular imports
+  const safeIndex = insights.length > 0 ? currentInsightIndex % insights.length : 0;
+  const insight = insights[safeIndex];
+
+  let insightContent = [];
+  if (!insights || insights.length === 0) {
+    insightContent = [el('div', { className: 'analytics-empty', textContent: 'Log some meals to see insights!' })];
+  } else {
+    const { callout, stats } = insight;
+    // Build stats lines
+    const statsLines = [];
+    if (stats.message) {
+      statsLines.push(stats.message);
+    } else {
+      if (stats.actual !== undefined && stats.goal !== undefined && stats.metric) {
+        statsLines.push(`${stats.actual} / ${stats.goal} ${stats.metric}`);
+      } else if (stats.actual !== undefined && stats.daily_goal !== undefined && stats.metric) {
+        statsLines.push(`${stats.actual} ${stats.metric} (goal: ${stats.daily_goal}${stats.period ? ` / ${stats.period}` : ''})`);
+      } else if (stats.refined !== undefined && stats.whole !== undefined) {
+        statsLines.push(`Refined: ${stats.refined} | Whole: ${stats.whole} (${stats.metric})`);
+      } else if (stats.actual !== undefined && stats.variance !== undefined) {
+        statsLines.push(`Avg: ${stats.actual} cal | Variance: ±${stats.variance} cal`);
+      }
+    }
+
+    insightContent = [
+      el('div', { className: 'analytics-insight' }, [
+        el('div', { className: 'insight-callout', textContent: callout }),
+        el('div', { className: 'insight-stats' }, statsLines.map(line =>
+          el('div', { className: 'stat-line', textContent: line })
+        )),
+      ]),
+      el('div', { className: 'insight-indicator' }, [
+        el('span', { textContent: insights.length > 0 ? `${safeIndex + 1} / ${insights.length}` : '—' }),
+      ]),
+    ];
+  }
+
+  const analyticsCard = el('div', { className: 'carousel-card carousel-card-analytics' }, [
+    el('div', { className: 'analytics-card-wrapper' }, [
+      el('div', { className: 'analytics-card' }, insightContent),
+    ]),
+  ]);
+  carousel.appendChild(analyticsCard);
+
+  // Add touch/swipe detection for smooth scrolling
+  let touchStartX = 0;
+  let touchEndX = 0;
+
+  carousel.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].clientX;
+  }, false);
+
+  carousel.addEventListener('touchend', (e) => {
+    touchEndX = e.changedTouches[0].clientX;
+    handleSwipe();
+  }, false);
+
+  function handleSwipe() {
+    const swipeThreshold = 50; // minimum swipe distance
+    const diff = touchStartX - touchEndX;
+
+    if (Math.abs(diff) > swipeThreshold) {
+      if (diff > 0) {
+        // Swiped left — scroll to next card
+        const nextCard = carousel.children[1];
+        if (nextCard) {
+          nextCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+        }
+      } else {
+        // Swiped right — scroll to previous card
+        const prevCard = carousel.children[0];
+        if (prevCard) {
+          prevCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+        }
+      }
+    }
+  }
+
+  return carousel;
+}
+
 // ── Meal Section ──
 
 export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFav, onFoodClick }, favorites = []) {

@@ -1,4 +1,6 @@
 // store.js — localStorage data layer
+import { shiftDate, todayStr } from './ui.js';
+
 const KEYS = {
   days: 'mt_days',
   goals: 'mt_goals',
@@ -402,4 +404,73 @@ export function getDayTotals(dateStr) {
   totals.fat = Math.round(totals.fat);
   totals.addedSugars = Math.round(totals.addedSugars);
   return totals;
+}
+
+// ── Multi-day Analytics ──
+
+export function getLast7Days(fromDate = null) {
+  if (fromDate === null || fromDate === undefined) {
+    fromDate = todayStr();
+  }
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    days.unshift(shiftDate(fromDate, -i));
+  }
+  return days;
+}
+
+export function getTotalsForRange(startDate, endDate) {
+  const totals = { calories: 0, protein: 0, carbs: 0, fat: 0, addedSugars: 0 };
+
+  // Iterate through all dates between startDate and endDate
+  const current = new Date(startDate + 'T12:00:00');
+  const end = new Date(endDate + 'T12:00:00');
+
+  while (current <= end) {
+    const y = current.getFullYear();
+    const m = String(current.getMonth() + 1).padStart(2, '0');
+    const day = String(current.getDate()).padStart(2, '0');
+    const dateStr = `${y}-${m}-${day}`;
+
+    const dayTotals = getDayTotals(dateStr);
+    totals.calories += dayTotals.calories;
+    totals.protein += dayTotals.protein;
+    totals.carbs += dayTotals.carbs;
+    totals.fat += dayTotals.fat;
+    totals.addedSugars += dayTotals.addedSugars;
+
+    current.setDate(current.getDate() + 1);
+  }
+
+  return totals;
+}
+
+export function getFoodsForRange(startDate, endDate) {
+  const foods = [];
+
+  // Iterate through all dates between startDate and endDate
+  const current = new Date(startDate + 'T12:00:00');
+  const end = new Date(endDate + 'T12:00:00');
+
+  while (current <= end) {
+    const y = current.getFullYear();
+    const m = String(current.getMonth() + 1).padStart(2, '0');
+    const day = String(current.getDate()).padStart(2, '0');
+    const dateStr = `${y}-${m}-${day}`;
+
+    const dayData = getDay(dateStr);
+    for (const mealType of Object.keys(dayData.meals || {})) {
+      for (const food of dayData.meals[mealType]) {
+        foods.push({
+          ...food,
+          date: dateStr,
+          mealType: mealType,
+        });
+      }
+    }
+
+    current.setDate(current.getDate() + 1);
+  }
+
+  return foods;
 }
