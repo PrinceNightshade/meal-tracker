@@ -68,34 +68,81 @@ Haiku should write a tight, self-contained prompt that includes:
 
 ---
 
-## Regression Testing Checklist
+## Testing Strategy
 
-Before every deployment, verify:
+### Pre-Commit: Local Validation (Before Any Commit)
 
-**Core Functionality**
-- [ ] App loads (cold start, no cache)
+**Syntax & Imports**
+- [ ] No console errors when loading locally
+- [ ] All new imports resolve (check console for 404s)
+- [ ] Service worker loads without errors
+- [ ] No unused imports or variables (check console/devtools)
+
+**Critical Paths**
+- [ ] Main feature works end-to-end
+- [ ] Existing features still work (smoke test)
+- [ ] If touching SW: verify cache version is bumped
+
+**Code Quality**
+- [ ] No hardcoded test values left in code
+- [ ] No console.log() spam (remove debug logs before commit)
+- [ ] Commit message is clear and references what changed
+
+### Pre-Deploy: Browser Testing (Before Push to Main)
+
+Run through these checks in the live preview server or on deployed staging:
+
+**App Shell**
+- [ ] App loads without errors (cold start, private mode)
 - [ ] All three nav tabs work (Daily, Weight, Goals)
-- [ ] Date navigation works (prev/next/today buttons)
-- [ ] Can add food to a meal
-- [ ] Can remove food from a meal
-- [ ] Can edit food quantity/servings
-- [ ] Favorites system works (star/unstar)
+- [ ] Date navigation works (prev/next/today)
+- [ ] Theme switching works (light/dark/purple)
 
-**Daily View**
-- [ ] Calorie ring displays and updates
-- [ ] Macro rings (protein/carbs/fat) display
-- [ ] Added sugar progress bar displays
-- [ ] Carousel swipes horizontally (mobile) or scrolls (desktop)
-- [ ] Analytics card shows insight + recommendation + stats
+**Core User Flows**
+- [ ] Add food to a meal
+- [ ] Edit food quantity
+- [ ] Remove food from a meal
+- [ ] Star/unstar favorites
+- [ ] Navigate between days
 
-**Data Persistence**
-- [ ] Changes sync to Firebase (if online)
-- [ ] Service worker updates work (update banner)
+**Data Display**
+- [ ] Calorie ring renders and updates
+- [ ] Macro rings (protein/carbs/fat) render
+- [ ] Added sugar progress bar displays (if goals set)
+- [ ] Carousel/swipe functionality works (if present)
+- [ ] All text renders without overflow or truncation
+
+**Service Worker & Updates**
+- [ ] SW registers without errors (DevTools > Application > Service Workers)
 - [ ] App works offline after first load
+- [ ] If SW changed: verify cache version bumped in sw.js
+- [ ] Test update banner: deploy a dummy change, reload, check for "Update Available"
 
-**New Feature Tests (if changed)**
-- [ ] Run all related features end-to-end
-- [ ] Test edge cases (empty data, no goals set, etc)
+**Edge Cases**
+- [ ] App works with no logged foods (empty state)
+- [ ] App works with no user goals set
+- [ ] Long food names don't break layout
+- [ ] Numbers with decimals display correctly
+
+### Post-Deploy: Live Site Verification (After Pushing to Main)
+
+- [ ] Visit live URL, hard refresh (Cmd+Shift+R)
+- [ ] Run pre-deploy checklist on production
+- [ ] Check on mobile device (different screen size, touchscreen)
+- [ ] If PWA: test PWA version (add to home screen, test offline)
+
+### Critical Issue Patterns to Catch
+
+**Recent bugs we missed:**
+- Analytics.js syntax error (hidden characters, encoding issues) → Solution: Test all imports load correctly
+- Service worker skipWaiting() bypass → Solution: Review SW event handlers before commit
+- Added sugar bar not displaying → Solution: Test with foods that have new fields
+
+**Red flags to investigate:**
+- Blank white/black screen → Likely JS error, check console
+- Missing UI elements → CSS not loaded or JS didn't render, check network tab
+- Stale data after reload → Service worker caching issue
+- Update banner never appears → SW update detection broken, check sw.js and app.js update listener
 
 ---
 
