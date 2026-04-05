@@ -747,6 +747,16 @@ const COMMON_FOODS = [
   { name: 'Split Pea Soup', servingSize: 1, servingUnit: 'cup (253g)', calories: 190, protein: 11, carbs: 32, fat: 3, source: 'common', tags: 'split pea soup ham hearty' },
   { name: 'Black Bean Soup', servingSize: 1, servingUnit: 'cup (243g)', calories: 200, protein: 12, carbs: 34, fat: 3, source: 'common', tags: 'black bean soup vegetarian latin' },
   { name: 'Broccoli Cheddar Soup', servingSize: 1, servingUnit: 'cup (248g)', calories: 240, protein: 9, carbs: 18, fat: 15, source: 'common', tags: 'broccoli cheddar soup cheese panera' },
+
+  // ── Persian Dishes ──
+  { name: 'Ghormeh Sabzi', servingSize: 1, servingUnit: 'cup (250g)', calories: 320, protein: 25, carbs: 23, fat: 15, source: 'common', tags: 'ghormeh sabzi persian herb stew kidney bean kidney bean' },
+  { name: 'Fesenjan (Pomegranate Walnut Stew)', servingSize: 1.5, servingUnit: 'cups (350g)', calories: 450, protein: 28, carbs: 24, fat: 30, source: 'common', tags: 'fesenjan pomegranate walnut persian stew chicken duck' },
+  { name: 'Tahdig (Crispy Rice)', servingSize: 1.5, servingUnit: 'cups (300g)', calories: 330, protein: 5, carbs: 48, fat: 11, source: 'common', tags: 'tahdig crispy rice persian bottom rice crust' },
+  { name: 'Zereshk Polo (Barberry Rice)', servingSize: 1, servingUnit: 'cup (210g)', calories: 420, protein: 12, carbs: 53, fat: 16, source: 'common', tags: 'zereshk polo barberry rice persian saffron barberry' },
+  { name: 'Ash Reshteh (Persian Noodle Soup)', servingSize: 1.5, servingUnit: 'cups (350g)', calories: 400, protein: 12, carbs: 52, fat: 12, source: 'common', tags: 'ash reshteh persian noodle soup herbs kidney bean' },
+  { name: 'Kabab Koobideh', servingSize: 2, servingUnit: 'skewers (150g)', calories: 380, protein: 42, carbs: 2, fat: 20, source: 'common', tags: 'kabab koobideh persian kebab ground lamb beef' },
+  { name: 'Loubia Polo (Bean Rice)', servingSize: 1.5, servingUnit: 'cups (330g)', calories: 420, protein: 18, carbs: 52, fat: 15, source: 'common', tags: 'loubia polo persian bean rice kidney bean kidney bean' },
+  { name: 'Khoresht Gharch (Mushroom Stew)', servingSize: 1.5, servingUnit: 'cups (350g)', calories: 300, protein: 9, carbs: 35, fat: 13, source: 'common', tags: 'khoresht gharch persian mushroom stew herb stew' },
 ];
 
 export function searchCommonFoods(query) {
