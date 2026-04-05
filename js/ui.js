@@ -104,6 +104,7 @@ export function renderDailySummaryRings(totals, goals) {
 }
 
 export function renderDailySummaryCarousel(totals, goals, insights = [], currentInsightIndex = 0) {
+  const carouselWrapper = el('div', { className: 'carousel-wrapper' });
   const carousel = el('div', { className: 'daily-carousel' });
 
   // Card 1: Macro rings
@@ -159,6 +160,30 @@ export function renderDailySummaryCarousel(totals, goals, insights = [], current
   ]);
   carousel.appendChild(analyticsCard);
 
+  // Page indicator dots
+  const dotsContainer = el('div', { className: 'carousel-dots' }, [
+    el('div', { className: 'dot active' }),
+    el('div', { className: 'dot' }),
+  ]);
+
+  // Update dots on scroll
+  carousel.addEventListener('scroll', () => {
+    const scrollLeft = carousel.scrollLeft;
+    const cardWidth = carousel.offsetWidth;
+    const currentCard = Math.round(scrollLeft / cardWidth);
+    const dots = dotsContainer.querySelectorAll('.dot');
+    dots.forEach((dot, idx) => {
+      if (idx === currentCard) {
+        dot.classList.add('active');
+      } else {
+        dot.classList.remove('active');
+      }
+    });
+  });
+
+  carouselWrapper.appendChild(carousel);
+  carouselWrapper.appendChild(dotsContainer);
+
   // Add touch/swipe detection for smooth scrolling
   let touchStartX = 0;
   let touchEndX = 0;
@@ -193,7 +218,7 @@ export function renderDailySummaryCarousel(totals, goals, insights = [], current
     }
   }
 
-  return carousel;
+  return carouselWrapper;
 }
 
 // ── Meal Section ──

@@ -363,6 +363,37 @@ body {
   padding: 20px 14px;
 }
 
+/* ── Carousel Wrapper (includes dots) ── */
+
+.carousel-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.carousel-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.dot.active {
+  background: var(--accent);
+  width: 8px;
+  height: 8px;
+}
+
 /* ── Analytics Card ── */
 
 .analytics-card-wrapper {

@@ -195,7 +195,12 @@ function renderDaily() {
   const day = store.getDay(currentDate);
 
   // Get insights for analytics carousel
-  const insights = analytics.analyzeFoodHistory(7, currentDate);
+  let insights = [];
+  try {
+    insights = analytics.analyzeFoodHistory(7, currentDate);
+  } catch (e) {
+    console.error('Analytics error:', e);
+  }
 
   // Summary carousel (rings + analytics)
   const summary = ui.el('div', { className: 'daily-summary' }, [
