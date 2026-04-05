@@ -68,6 +68,37 @@ Haiku should write a tight, self-contained prompt that includes:
 
 ---
 
+## Regression Testing Checklist
+
+Before every deployment, verify:
+
+**Core Functionality**
+- [ ] App loads (cold start, no cache)
+- [ ] All three nav tabs work (Daily, Weight, Goals)
+- [ ] Date navigation works (prev/next/today buttons)
+- [ ] Can add food to a meal
+- [ ] Can remove food from a meal
+- [ ] Can edit food quantity/servings
+- [ ] Favorites system works (star/unstar)
+
+**Daily View**
+- [ ] Calorie ring displays and updates
+- [ ] Macro rings (protein/carbs/fat) display
+- [ ] Added sugar progress bar displays
+- [ ] Carousel swipes horizontally (mobile) or scrolls (desktop)
+- [ ] Analytics card shows insight + recommendation + stats
+
+**Data Persistence**
+- [ ] Changes sync to Firebase (if online)
+- [ ] Service worker updates work (update banner)
+- [ ] App works offline after first load
+
+**New Feature Tests (if changed)**
+- [ ] Run all related features end-to-end
+- [ ] Test edge cases (empty data, no goals set, etc)
+
+---
+
 ## Feature backlog
 
 ### High priority
