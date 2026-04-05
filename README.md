@@ -7,15 +7,19 @@ A lightweight, mindful eating PWA built to replace MyFitnessPal. No ads, no subs
 ## Features
 
 - **Daily food log** — search USDA FoodData Central + Open Food Facts + a built-in common foods library; generic whole foods ranked above branded packaged products
+- **Smart modal** — recents (meal-type filtered) + favorites + search + manual entry; multi-add lets you log multiple foods without closing
 - **Macro rings** — calorie and macro progress displayed as closing SVG rings
+- **Analytics** — pattern insights on macro/nutrient trends (e.g., "You've recorded 8.5 servings in 7 days, (goal: 2.5 servings daily)")
 - **My Foods library** — save homemade recipes with your own macro data; they appear first in search
-- **Favorites** — star any logged food for quick re-logging
+- **Favorites** — star any logged food for quick re-logging (meal-type scoped)
 - **Search history** — previously logged foods surface in results, deduped across days
 - **TDEE calculator** — Mifflin-St Jeor BMR + activity multiplier; auto-applies a calorie target based on your weight goal (deficit/surplus capped at safe rates)
 - **Weight tracking** — 30-day chart, week/total change stats, trend projection toward goal
 - **Cross-device sync** — Google sign-in via Firebase Auth + Firestore
 - **PWA** — installable on iOS/Android home screen, works offline
 - **Dark mode** — follows system preference, manual ☀️/🌙 toggle persists to localStorage
+- **Barcode scanning** — point camera at packaged foods to populate nutrition data instantly
+- **Photo recognition** — (planned) point camera at any meal for AI-powered food identification
 
 ---
 
@@ -147,18 +151,45 @@ When you fix a bug, add a test that would have caught it. Mark it with a `regres
 
 ---
 
-## Search ranking
+## Search & Discovery
 
-Results are returned in priority order:
+**Modal hierarchy** (what appears when you open "Add food"):
+
+1. **Recents** — foods you've logged in this meal type before (most recent first), up to 5 with "show more"
+2. **Favorites** — starred foods (meal-type scoped, with legacy meal-agnostic favorites below)
+3. **Search input** — (not auto-focused) type to search, or leave blank
+4. **Manual entry** — create custom entries on the fly
+
+**Search ranking** (what appears when you type):
 
 1. **My Foods** — your saved custom foods (always first)
 2. **History** — foods you've logged before (deduped across days)
-3. **Common foods** — built-in library of ~50 standard preparations (coffee drinks, eggs, roasted veggies, grains, etc.)
+3. **Common foods** — built-in library (~590 entries: Persian, Thai, Indian, Chinese, Italian, US staples, raw ingredients)
 4. **USDA generic** — Foundation + SR Legacy data types (whole foods, raw ingredients)
 5. **Open Food Facts** — branded/packaged US products
 6. **USDA branded** — packaged products from USDA
 
 Within USDA results, exact and prefix matches are scored higher; very long descriptions and junk-food category names are penalized.
+
+---
+
+## Modal Workflow
+
+**Single-food entry:**
+1. Click "+ Add" on a meal
+2. See recent foods for this meal type
+3. Find your food (recents, favorites, or search)
+4. Click it → serving picker opens → confirm → food added
+5. Modal closes
+
+**Multi-add (quick logging):**
+1. Click "+ Add"
+2. Add a food (same as above)
+3. Modal stays open
+4. Add another food immediately
+5. Keep going until done, then click outside modal to close
+
+This flow prioritizes speed for common meals (breakfast, repeating lunches) while keeping manual entry available for edge cases.
 
 ---
 

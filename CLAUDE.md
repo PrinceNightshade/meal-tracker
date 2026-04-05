@@ -161,8 +161,17 @@ Run through these checks in the live preview server or on deployed staging:
 - [ ] Export data to CSV
 - [ ] Barcode history — remember recently scanned barcodes
 
-### Low priority / someday
-- [ ] AI plate photo analysis (built, paused pending monetization decision — see `js/api.js` `analyzePhoto()` and commented-out UI in `js/app.js`)
+### Under Evaluation / someday
+- [ ] **Photo-first UX pivot** — consolidate barcode scanning + plate image recognition into a single unified camera workflow. Trade-off: reduced friction for common meals vs. offline capability loss and accuracy dependency. See discussion in session notes.
+- [ ] AI plate photo analysis (built, functionality exists in `js/api.js` `analyzePhoto()` and commented-out UI in `js/app.js`)
 - [ ] Social / friend leaderboard
 - [ ] Apple Health / Google Fit integration
 - [ ] Macro targets by meal type (not just daily totals)
+
+### Recently Completed (Phase 4, Q1 2026)
+- [x] Recents-first modal UX — show meal-type filtered recent foods before search
+- [x] "Show more" for recents — collapse to 5 items, expand with button click
+- [x] Multi-add workflow — keep modal open after adding, enable quick meal logging
+- [x] Analytics insights — pattern detection on macro/nutrient trends with conversational copy
+- [x] Persian cuisine expansion — 8 traditional dishes (Ghormeh Sabzi, Fesenjan, Tahdig, etc.)
+- [x] Modal scroll UX fix — navigate to results instead of jumping to top when typing
