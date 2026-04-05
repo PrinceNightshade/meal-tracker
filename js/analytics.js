@@ -53,6 +53,7 @@ function detectVegetableIntake(foods, days) {
       pattern: 'vegetable_intake',
       severity: 'high',
       callout: 'You afraid of veggies, bruh?',
+      recommendation: 'Aim for 2-3 servings daily. Add a side salad or roasted veggies to your next meal.',
       stats: { actual: 0, daily_goal: 2.5, metric: 'vegetable servings', period: `${days} days` },
     };
   }
@@ -75,6 +76,7 @@ function detectVegetableIntake(foods, days) {
       pattern: 'vegetable_intake',
       severity: actual === 0 ? 'high' : 'medium',
       callout: CALLOUT_LIBRARY.vegetable_intake[Math.floor(Math.random() * CALLOUT_LIBRARY.vegetable_intake.length)],
+      recommendation: 'Aim for 2-3 servings daily. Add a side salad or roasted veggies to your next meal.',
       stats: { actual, daily_goal, metric: 'vegetable servings', period: `${days} days` },
     };
   }
@@ -103,6 +105,7 @@ function detectProteinSources(foods) {
       pattern: 'protein_sources',
       severity: sources === 0 ? 'high' : 'medium',
       callout: CALLOUT_LIBRARY.protein_sources[Math.floor(Math.random() * CALLOUT_LIBRARY.protein_sources.length)],
+      recommendation: 'Rotate between fish (2-3x/week), poultry, and legumes. Each offers different nutrients.',
       stats: { actual: sources, goal: 3, metric: 'protein sources', note: 'fish, poultry, legumes' },
     };
   }
@@ -120,6 +123,7 @@ function detectFoodVariety(foods) {
       pattern: 'food_variety',
       severity: uniqueFoods < 5 ? 'high' : 'medium',
       callout: CALLOUT_LIBRARY.food_variety[Math.floor(Math.random() * CALLOUT_LIBRARY.food_variety.length)],
+      recommendation: 'Try 3+ different foods per meal. Different foods = different nutrients.',
       stats: { actual: uniqueFoods, goal: 15, metric: 'unique foods logged' },
     };
   }
@@ -138,6 +142,7 @@ function detectAddedSugarTrend(totals, days) {
       pattern: 'sugar_trend',
       severity: avgSugar > dailyGoal * 1.5 ? 'high' : 'medium',
       callout: CALLOUT_LIBRARY.sugar_trend[Math.floor(Math.random() * CALLOUT_LIBRARY.sugar_trend.length)],
+      recommendation: 'Keep added sugars under 25g/day. Watch out for sugary drinks and sauces.',
       stats: { actual: Math.round(avgSugar * 10) / 10, daily_goal: dailyGoal, metric: 'g added sugar/day', period: `${days} days` },
     };
   }
@@ -158,6 +163,7 @@ function detectCalorieConsistency(totals, days) {
       pattern: 'calorie_consistency',
       severity: coefficient > 0.5 ? 'medium' : 'low',
       callout: CALLOUT_LIBRARY.calorie_consistency[Math.floor(Math.random() * CALLOUT_LIBRARY.calorie_consistency.length)],
+      recommendation: 'Aim for consistent daily intake (±200 cal). Steady eating helps metabolism.',
       stats: { actual: Math.round(avg), variance: Math.round(stdDev), metric: 'calorie variance' },
     };
   }
@@ -182,6 +188,7 @@ function detectRefinedVsWhole(foods) {
       pattern: 'whole_grains',
       severity: 'low',
       callout: CALLOUT_LIBRARY.whole_grains[Math.floor(Math.random() * CALLOUT_LIBRARY.whole_grains.length)],
+      recommendation: 'Switch to whole grains when possible. Brown rice, whole wheat bread, oats have more fiber.',
       stats: { refined: Math.round(refined * 10) / 10, whole: Math.round(whole * 10) / 10, metric: 'serving ratio' },
     };
   }

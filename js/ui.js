@@ -141,6 +141,7 @@ export function renderDailySummaryCarousel(totals, goals, insights = [], current
     insightContent = [
       el('div', { className: 'analytics-insight' }, [
         el('div', { className: 'insight-callout', textContent: callout }),
+        insight.recommendation ? el('div', { className: 'insight-recommendation', textContent: insight.recommendation }) : null,
         el('div', { className: 'insight-stats' }, statsLines.map(line =>
           el('div', { className: 'stat-line', textContent: line })
         )),

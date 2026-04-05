@@ -396,6 +396,14 @@ body {
   max-width: 240px;
 }
 
+.insight-recommendation {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.4;
+  max-width: 260px;
+  margin-top: 8px;
+}
+
 .insight-stats {
   display: flex;
   flex-direction: column;
