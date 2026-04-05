@@ -655,13 +655,15 @@ function openAddFoodModal(mealType) {
 
   modalBody.innerHTML = '';
 
+  // Extract recent foods for this meal type
+  const recents = store.getRecentFoodsByMealType(mealType, 20);
+
   const state = { results: [], loading: false };
 
   const searchInput = ui.el('input', {
     type: 'text',
     className: 'input-search',
     placeholder: 'Search foods…',
-    autofocus: 'true',
   });
 
   const scanBtn = ui.el('button', {
@@ -816,6 +818,25 @@ function openAddFoodModal(mealType) {
     }),
   ]);
 
+  // Recents section — foods previously logged in this meal type, most recent first
+  const recentsSection = recents.length > 0
+    ? ui.el('div', { className: 'recents-section' }, [
+        ui.el('div', { className: 'divider', textContent: '— recent —' }),
+        ...recents.map(food =>
+          ui.el('div', { className: 'result-row', onClick: () => showServingPicker(food, mealType) }, [
+            ui.el('div', { className: 'result-info' }, [
+              ui.el('span', { className: 'result-name', textContent: food.name }),
+              ui.el('span', {
+                className: 'result-macros',
+                textContent: `${food.calories} cal · ${food.protein}p · ${food.carbs}c · ${food.fat}f`,
+              }),
+            ]),
+            ui.el('button', { className: 'btn-icon', textContent: '+' }),
+          ])
+        ),
+      ])
+    : null;
+
   // Favorites section — only show favorites tagged to this meal type (or untagged legacy ones)
   const favs = store.getFavorites().filter(f => !f.mealType || f.mealType === mealType);
   const favsSection = favs.length > 0
@@ -850,13 +871,13 @@ function openAddFoodModal(mealType) {
 
   // Assemble modal
   modalBody.appendChild(ui.el('h2', { textContent: `Add to ${ui.capitalize(mealType)}` }));
+  if (recentsSection) modalBody.appendChild(recentsSection);
   modalBody.appendChild(ui.el('div', { className: 'search-row' }, [searchInput, scanBtn]));
   modalBody.appendChild(resultsList);
   if (favsSection) modalBody.appendChild(favsSection);
   modalBody.appendChild(manualSection);
 
   modal.classList.add('open');
-  searchInput.focus();
 
   // Close handlers
   ui.$('#modal-close').onclick = closeModal;

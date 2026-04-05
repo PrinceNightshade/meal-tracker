@@ -383,6 +383,31 @@ export function searchHistory(query) {
   return results;
 }
 
+export function getRecentFoodsByMealType(mealType, limit = 20) {
+  const days = getAllDays();
+  const seen = new Set();
+  const results = [];
+
+  // Walk days newest-first
+  const sortedDates = Object.keys(days).sort().reverse();
+  for (const date of sortedDates) {
+    if (results.length >= limit) break;
+    const day = days[date];
+    const meals = day.meals || {};
+    const mealsInType = meals[mealType] || [];
+
+    for (const food of mealsInType) {
+      if (!food.name) continue;
+      const key = food.name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      results.push({ ...food, source: food.source || 'history' });
+      if (results.length >= limit) break;
+    }
+  }
+  return results;
+}
+
 // ── Daily Totals ──
 
 export function getDayTotals(dateStr) {
