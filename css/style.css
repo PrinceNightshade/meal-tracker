@@ -953,6 +953,23 @@ body {
 .fav-actions { display: flex; gap: 2px; }
 .result-actions { display: flex; gap: 2px; align-items: center; }
 
+.show-more-recents {
+  width: 100%;
+  padding: 8px;
+  margin: 8px 0;
+  border: none;
+  border-radius: 6px;
+  background: var(--surface-light);
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.show-more-recents:hover {
+  background: var(--accent-light);
+}
+
 .my-food-badge {
   display: inline-block;
   margin-left: 6px;

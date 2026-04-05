@@ -820,21 +820,53 @@ function openAddFoodModal(mealType) {
 
   // Recents section — foods previously logged in this meal type, most recent first
   const recentsSection = recents.length > 0
-    ? ui.el('div', { className: 'recents-section' }, [
-        ui.el('div', { className: 'divider', textContent: '— recent —' }),
-        ...recents.map(food =>
-          ui.el('div', { className: 'result-row', onClick: () => showServingPicker(food, mealType) }, [
-            ui.el('div', { className: 'result-info' }, [
-              ui.el('span', { className: 'result-name', textContent: food.name }),
-              ui.el('span', {
-                className: 'result-macros',
-                textContent: `${food.calories} cal · ${food.protein}p · ${food.carbs}c · ${food.fat}f`,
-              }),
-            ]),
-            ui.el('button', { className: 'btn-icon', textContent: '+' }),
-          ])
-        ),
-      ])
+    ? (() => {
+        const section = ui.el('div', { className: 'recents-section' });
+        section.appendChild(ui.el('div', { className: 'divider', textContent: '— recent —' }));
+
+        let showingMore = false;
+
+        function renderRecents() {
+          const items = section.querySelectorAll('.result-row');
+          items.forEach((item, idx) => {
+            item.style.display = (idx < 5 || showingMore) ? 'flex' : 'none';
+          });
+
+          let moreBtn = section.querySelector('.show-more-recents');
+          if (recents.length > 5) {
+            if (!moreBtn) {
+              moreBtn = ui.el('button', {
+                className: 'show-more-recents',
+                textContent: `Show ${recents.length - 5} more`,
+                onClick: () => {
+                  showingMore = !showingMore;
+                  moreBtn.textContent = showingMore ? 'Show less' : `Show ${recents.length - 5} more`;
+                  renderRecents();
+                },
+              });
+              section.appendChild(moreBtn);
+            }
+          }
+        }
+
+        recents.forEach(food =>
+          section.appendChild(
+            ui.el('div', { className: 'result-row', onClick: () => showServingPicker(food, mealType) }, [
+              ui.el('div', { className: 'result-info' }, [
+                ui.el('span', { className: 'result-name', textContent: food.name }),
+                ui.el('span', {
+                  className: 'result-macros',
+                  textContent: `${food.calories} cal · ${food.protein}p · ${food.carbs}c · ${food.fat}f`,
+                }),
+              ]),
+              ui.el('button', { className: 'btn-icon', textContent: '+' }),
+            ])
+          )
+        );
+
+        renderRecents();
+        return section;
+      })()
     : null;
 
   // Favorites section — only show favorites tagged to this meal type (or untagged legacy ones)
@@ -980,8 +1012,8 @@ function showServingPicker(food, mealType) {
         onClick: () => {
           store.addFoodToMeal(currentDate, mealType, { ...food, servings });
           fb.pushDay(currentDate, store.getDay(currentDate));
-          closeModal();
           render();
+          openAddFoodModal(mealType);
         },
       }),
     ]),
