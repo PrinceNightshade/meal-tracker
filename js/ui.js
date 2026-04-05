@@ -131,7 +131,8 @@ export function renderDailySummaryCarousel(totals, goals, insights = [], current
       if (stats.actual !== undefined && stats.goal !== undefined && stats.metric) {
         statsLines.push(`${stats.actual} / ${stats.goal} ${stats.metric}`);
       } else if (stats.actual !== undefined && stats.daily_goal !== undefined && stats.metric) {
-        statsLines.push(`${stats.actual} ${stats.metric} (goal: ${stats.daily_goal}${stats.period ? ` / ${stats.period}` : ''})`);
+        const unit = stats.metric.split(' ').pop();
+        statsLines.push(`${stats.actual} ${stats.metric} in ${stats.period} (goal: ${stats.daily_goal} ${unit} daily)`);
       } else if (stats.refined !== undefined && stats.whole !== undefined) {
         statsLines.push(`Refined: ${stats.refined} | Whole: ${stats.whole} (${stats.metric})`);
       } else if (stats.actual !== undefined && stats.variance !== undefined) {
