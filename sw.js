@@ -17,7 +17,7 @@ self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE).then(cache => cache.addAll(ASSETS))
   );
-  self.skipWaiting();
+  // Don't skip waiting here - let the user explicitly update via the banner
 });
 
 self.addEventListener('activate', e => {
