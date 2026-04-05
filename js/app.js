@@ -725,8 +725,8 @@ function openAddFoodModal(mealType) {
   function renderResults() {
     resultsList.innerHTML = '';
     const modalContent = ui.$('#modal .modal-content');
-    modalContent.scrollTop = 0;
-    setTimeout(() => { modalContent.scrollTop = 0; }, 300);
+    // Scroll results into view after a brief delay to let DOM update
+    setTimeout(() => { resultsList.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
     if (state.results.length === 0) {
       resultsList.innerHTML = '<div class="no-results">No results found</div>';
       return;
