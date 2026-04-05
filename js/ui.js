@@ -120,7 +120,8 @@ export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFa
       className: `btn-icon btn-fav${isFav ? ' active' : ''}`,
       textContent: isFav ? '★' : '☆',
       title: isFav ? 'Remove from favorites' : 'Add to favorites',
-      onClick: () => {
+      onClick: (e) => {
+        e.stopPropagation();
         const nowFav = favBtn.classList.toggle('active');
         favBtn.textContent = nowFav ? '★' : '☆';
         favBtn.title = nowFav ? 'Remove from favorites' : 'Add to favorites';
