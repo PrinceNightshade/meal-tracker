@@ -18,7 +18,7 @@ export function renderInsightDetail(insight) {
       statsLines.push(`${stats.actual} / ${stats.goal} ${stats.metric}`);
     } else if (stats.actual !== undefined && stats.daily_goal !== undefined && stats.metric) {
       const unit = stats.metric.split(' ').pop();
-      statsLines.push(`You've recorded ${stats.actual} ${unit} in ${stats.period} (goal: ${stats.daily_goal} ${unit} daily)`);
+      statsLines.push(`You've recorded ${stats.actual} ${unit} in ${stats.period}, (goal: ${stats.daily_goal} ${unit} daily)`);
     } else if (stats.refined !== undefined && stats.whole !== undefined) {
       statsLines.push(`Refined: ${stats.refined} | Whole: ${stats.whole} (${stats.metric})`);
     } else if (stats.actual !== undefined && stats.variance !== undefined) {
