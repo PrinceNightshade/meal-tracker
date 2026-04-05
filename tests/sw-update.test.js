@@ -289,7 +289,7 @@ describe('Service Worker Update Detection', () => {
     console.error = originalError;
   });
 
-  test('periodic update check interval is set', () => {
+  test('periodic update check interval is set', async () => {
     let intervalSet = false;
     let intervalDuration = 0;
 
@@ -325,11 +325,10 @@ describe('Service Worker Update Detection', () => {
 
     initSW();
 
-    // Wait for promises
-    setTimeout(() => {
-      assert.ok(intervalSet, 'Should set interval for periodic checks');
-      assert.equal(intervalDuration, 60000, 'Should check for updates every 60 seconds');
-    }, 20);
+    // Wait for promises to resolve
+    await new Promise(resolve => setTimeout(resolve, 20));
+    assert.ok(intervalSet, 'Should set interval for periodic checks');
+    assert.equal(intervalDuration, 60000, 'Should check for updates every 60 seconds');
 
     global.setInterval = originalSetInterval;
   });
