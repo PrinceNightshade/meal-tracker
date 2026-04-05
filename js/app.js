@@ -31,30 +31,48 @@ document.addEventListener('DOMContentLoaded', () => {
 function initSW() {
   if (!('serviceWorker' in navigator)) return;
 
-  navigator.serviceWorker.ready.then(reg => {
-    // A SW may already be waiting (e.g. user reopened the PWA after a deploy)
-    if (reg.waiting) { showUpdateBanner(reg.waiting); return; }
+  // Register the service worker
+  navigator.serviceWorker.register('/meal-tracker/sw.js', { updateViaCache: 'none' })
+    .then(reg => {
+      // Check if there's already a waiting SW
+      if (reg.waiting) {
+        showUpdateBanner(reg.waiting);
+      }
 
-    // Watch for a new SW installing during this session
-    reg.addEventListener('updatefound', () => {
-      const newWorker = reg.installing;
-      newWorker.addEventListener('statechange', () => {
-        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-          showUpdateBanner(newWorker);
-        }
+      // Listen for updates
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener('statechange', () => {
+          // Show banner when new SW is installed and ready
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            showUpdateBanner(newWorker);
+          }
+        });
       });
-    });
-  });
+
+      // Periodically check for updates
+      setInterval(() => {
+        reg.update();
+      }, 60000); // Check every minute
+    })
+    .catch(err => console.error('Service Worker registration failed:', err));
 }
 
 function showUpdateBanner(worker) {
   const banner = ui.$('#update-banner');
+  const btn = ui.$('#update-banner-btn');
+
+  // Only add listener once - check if already added
+  if (!banner.dataset.listenerAdded) {
+    banner.dataset.listenerAdded = 'true';
+    btn.addEventListener('click', () => {
+      // Tell the waiting SW to take over, then reload to pick up new assets
+      worker.postMessage({ type: 'SKIP_WAITING' });
+      setTimeout(() => location.reload(), 250);
+    });
+  }
+
   banner.classList.add('show');
-  ui.$('#update-banner-btn').addEventListener('click', () => {
-    // Tell the waiting SW to take over, then reload to pick up new assets
-    worker.postMessage({ type: 'SKIP_WAITING' });
-    setTimeout(() => location.reload(), 250);
-  });
 }
 
 // ── Theme ──
