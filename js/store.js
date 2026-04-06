@@ -1,5 +1,6 @@
 // store.js — localStorage data layer
 import { shiftDate, todayStr } from './ui.js';
+import { getCommonFood } from './api.js';
 
 const KEYS = {
   days: 'mt_days',
@@ -436,12 +437,16 @@ export function getDayTotals(dateStr) {
   const totals = { calories: 0, protein: 0, carbs: 0, fat: 0, addedSugars: 0 };
   for (const mealType of Object.keys(day.meals)) {
     for (const food of day.meals[mealType]) {
-      const mult = food.servings || 1;
-      totals.calories += (food.calories || 0) * mult;
-      totals.protein += (food.protein || 0) * mult;
-      totals.carbs += (food.carbs || 0) * mult;
-      totals.fat += (food.fat || 0) * mult;
-      totals.addedSugars += (food.addedSugars || 0) * mult;
+      // Enrich food with latest COMMON_FOODS data (fills in missing fields like addedSugars)
+      const commonFood = getCommonFood(food.name);
+      const enriched = commonFood ? { ...commonFood, ...food } : food;
+
+      const mult = enriched.servings || 1;
+      totals.calories += (enriched.calories || 0) * mult;
+      totals.protein += (enriched.protein || 0) * mult;
+      totals.carbs += (enriched.carbs || 0) * mult;
+      totals.fat += (enriched.fat || 0) * mult;
+      totals.addedSugars += (enriched.addedSugars || 0) * mult;
     }
   }
   totals.calories = Math.round(totals.calories);

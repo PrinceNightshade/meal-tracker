@@ -767,6 +767,14 @@ export function searchCommonFoods(query) {
     .map(({ tags, ...food }) => food);
 }
 
+// Look up a food in COMMON_FOODS by exact name match (case-insensitive)
+// Returns the food entry or null if not found
+export function getCommonFood(foodName) {
+  if (!foodName) return null;
+  const nameLower = foodName.toLowerCase();
+  return COMMON_FOODS.find(f => f.name.toLowerCase() === nameLower) || null;
+}
+
 // ── USDA FoodData Central ──
 
 // Fetch results from USDA + Open Food Facts only (no local data).

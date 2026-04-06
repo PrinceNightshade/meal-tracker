@@ -1,6 +1,6 @@
 // app.js — Main entry point
 import * as store from './store.js';
-import { searchCommonFoods, searchFoodsFromAPI, lookupBarcode, analyzePhoto, debounce } from './api.js';
+import { searchCommonFoods, searchFoodsFromAPI, lookupBarcode, analyzePhoto, debounce, getCommonFood } from './api.js';
 import * as ui from './ui.js';
 import * as fb from './firebase.js';
 import * as analytics from './analytics.js';
@@ -253,7 +253,12 @@ function renderDaily() {
   };
 
   for (const mealType of ['breakfast', 'lunch', 'dinner', 'snacks']) {
-    container.appendChild(ui.renderMealSection(mealType, day.meals[mealType], mealCallbacks, favorites));
+    // Enrich foods with latest COMMON_FOODS data (fills in missing fields like addedSugars)
+    const enrichedFoods = day.meals[mealType].map(food => {
+      const commonFood = getCommonFood(food.name);
+      return commonFood ? { ...commonFood, ...food } : food;
+    });
+    container.appendChild(ui.renderMealSection(mealType, enrichedFoods, mealCallbacks, favorites));
   }
 
 }
