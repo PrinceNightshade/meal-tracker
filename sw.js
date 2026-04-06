@@ -1,5 +1,5 @@
 // Service Worker — Meal Tracker
-const CACHE = 'meal-tracker-v57';
+const CACHE = 'meal-tracker-v58';
 const ASSETS = [
   '/meal-tracker/',
   '/meal-tracker/index.html',
