@@ -80,7 +80,12 @@ export async function pullFromCloud(store) {
     ]);
 
     if (profileSnap.exists()) store.saveProfile(profileSnap.data());
-    if (goalsSnap.exists()) store.saveGoals(goalsSnap.data());
+    // Merge cloud goals with defaults to fill in any missing fields (e.g., addedSugars)
+    if (goalsSnap.exists()) {
+      const DEFAULT_GOALS = { calories: 2000, protein: 150, carbs: 200, fat: 65, addedSugars: 25 };
+      const cloudGoals = goalsSnap.data();
+      store.saveGoals({ ...DEFAULT_GOALS, ...cloudGoals });
+    }
     if (weightSnap.exists()) {
       const entries = weightSnap.data();
       for (const [date, weight] of Object.entries(entries)) {
