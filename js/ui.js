@@ -61,10 +61,18 @@ export function renderRing(current, goal, label, unit = '', size = 100, stroke =
 
 // ── Progress Bar ──
 
-export function renderProgressBar(current, goal, label, unit = '') {
+export function renderProgressBar(current, goal, label, unit = '', inverse = false) {
   const pct = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
   const over = current > goal;
-  const color = over ? 'var(--over)' : pct >= 85 ? 'var(--good)' : pct >= 50 ? 'var(--near)' : 'var(--over)';
+
+  // For inverse (sugar), low is good (green), high is bad (red), over is worse (purple)
+  // For normal (macros), low is bad, hitting goal is good, over is bad
+  let color;
+  if (inverse) {
+    color = over ? '#a78bfa' : pct >= 85 ? '#ef4444' : pct >= 40 ? '#fbbf24' : '#22c55e';
+  } else {
+    color = over ? 'var(--over)' : pct >= 85 ? 'var(--good)' : pct >= 50 ? 'var(--near)' : 'var(--over)';
+  }
 
   const wrapper = el('div', { className: 'progress-bar-wrapper' }, [
     el('div', { className: 'progress-bar-header' }, [
@@ -95,9 +103,9 @@ export function renderDailySummaryRings(totals, goals) {
   ]);
   container.appendChild(macros);
 
-  // Added sugar progress bar
+  // Added sugar progress bar (inverse: low is good/green, high is bad/red, over is worse/purple)
   if (goals.addedSugars && goals.addedSugars > 0) {
-    container.appendChild(renderProgressBar(totals.addedSugars || 0, goals.addedSugars, 'Added Sugar', 'g'));
+    container.appendChild(renderProgressBar(totals.addedSugars || 0, goals.addedSugars, 'Added Sugar', 'g', true));
   }
 
   return container;
