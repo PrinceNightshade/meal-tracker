@@ -664,6 +664,13 @@ function openAddFoodModal(mealType) {
     type: 'text',
     className: 'input-search',
     placeholder: 'Search foods…',
+    onFocus: () => {
+      // On mobile, keyboard covers input. Scroll search row to top so user can see input + results.
+      setTimeout(() => {
+        const searchRow = searchInput.closest('.search-row');
+        if (searchRow) searchRow.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100); // wait for keyboard to appear
+    },
   });
 
   const scanBtn = ui.el('button', {
