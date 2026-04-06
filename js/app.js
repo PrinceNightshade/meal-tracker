@@ -866,7 +866,20 @@ function openAddFoodModal(mealType) {
                   textContent: `${food.calories} cal · ${food.protein}p · ${food.carbs}c · ${food.fat}f`,
                 }),
               ]),
-              ui.el('button', { className: 'btn-icon', textContent: '+' }),
+              ui.el('div', { className: 'fav-actions' }, [
+                ui.el('button', { className: 'btn-icon', textContent: '+' }),
+                ui.el('button', {
+                  className: 'btn-icon btn-remove',
+                  textContent: '×',
+                  onClick: (e) => {
+                    e.stopPropagation();
+                    store.removeRecentFood(mealType, food.name);
+                    fb.pushDay(currentDate, store.getDay(currentDate));
+                    // Refresh modal to show updated recents
+                    openAddFoodModal(mealType);
+                  },
+                }),
+              ]),
             ])
           )
         );

@@ -408,6 +408,27 @@ export function getRecentFoodsByMealType(mealType, limit = 20) {
   return results;
 }
 
+// Remove the most recent instance of a food from a meal type's history
+export function removeRecentFood(mealType, foodName) {
+  const days = getAllDays();
+  const sortedDates = Object.keys(days).sort().reverse();
+
+  for (const date of sortedDates) {
+    const day = days[date];
+    const meals = day.meals || {};
+    const mealsInType = meals[mealType] || [];
+
+    // Find and remove the food (case-insensitive)
+    const idx = mealsInType.findIndex(f => f.name && f.name.toLowerCase() === foodName.toLowerCase());
+    if (idx !== -1) {
+      mealsInType.splice(idx, 1);
+      saveDay(date, day);
+      return true; // removed successfully
+    }
+  }
+  return false; // not found
+}
+
 // ── Daily Totals ──
 
 export function getDayTotals(dateStr) {
