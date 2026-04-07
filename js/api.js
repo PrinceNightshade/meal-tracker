@@ -534,6 +534,16 @@ const COMMON_FOODS = [
   { name: 'Hot Chocolate', servingSize: 8, servingUnit: 'fl oz', calories: 195, protein: 8, carbs: 27, fat: 6, addedSugars: 20, source: 'common', tags: 'hot chocolate cocoa milk drink' },
   { name: 'Protein Shake (ready to drink)', servingSize: 1, servingUnit: '11 fl oz bottle', calories: 160, protein: 30, carbs: 6, fat: 3, addedSugars: 1, source: 'common', tags: 'protein shake ready to drink fairlife premier' },
 
+  // ── Cocktails & Spirits ──
+  { name: 'Moscow Mule', servingSize: 8, servingUnit: 'fl oz', calories: 180, protein: 0, carbs: 18, fat: 0, addedSugars: 17, source: 'common', tags: 'moscow mule vodka ginger beer lime cocktail' },
+  { name: 'Margarita', servingSize: 3.5, servingUnit: 'fl oz', calories: 175, protein: 0, carbs: 15, fat: 0, addedSugars: 11, source: 'common', tags: 'margarita tequila triple sec lime cocktail' },
+  { name: 'Daiquiri', servingSize: 5.5, servingUnit: 'fl oz', calories: 200, protein: 0, carbs: 15, fat: 0, addedSugars: 16, source: 'common', tags: 'daiquiri rum lime simple syrup cocktail' },
+  { name: 'Cosmopolitan', servingSize: 4, servingUnit: 'fl oz', calories: 210, protein: 0, carbs: 11, fat: 0, addedSugars: 10, source: 'common', tags: 'cosmopolitan vodka triple sec cranberry lime cocktail' },
+  { name: 'Old Fashioned', servingSize: 2.5, servingUnit: 'fl oz', calories: 160, protein: 0, carbs: 5, fat: 0, addedSugars: 11, source: 'common', tags: 'old fashioned whiskey bitters sugar cocktail' },
+  { name: 'Mojito', servingSize: 8.5, servingUnit: 'fl oz', calories: 195, protein: 0, carbs: 15, fat: 0, addedSugars: 14, source: 'common', tags: 'mojito rum mint lime simple syrup soda cocktail' },
+  { name: 'Piña Colada', servingSize: 4.5, servingUnit: 'fl oz', calories: 245, protein: 1, carbs: 34, fat: 2.5, addedSugars: 29, source: 'common', tags: 'pina colada rum coconut cream pineapple juice cocktail' },
+  { name: 'Martini (gin)', servingSize: 3, servingUnit: 'fl oz', calories: 130, protein: 0, carbs: 0.5, fat: 0, addedSugars: 0, source: 'common', tags: 'martini gin vermouth cocktail' },
+
   // ── Lamb, Venison & Other Proteins ──
   { name: 'Lamb Chop (grilled)', servingSize: 3, servingUnit: 'oz (85g)', calories: 250, protein: 22, carbs: 0, fat: 17, source: 'common', tags: 'lamb chop grilled meat' , addedSugars: 0 },
   { name: 'Ground Lamb (cooked)', servingSize: 4, servingUnit: 'oz', calories: 320, protein: 23, carbs: 0, fat: 25, source: 'common', tags: 'ground lamb cooked meat' },
