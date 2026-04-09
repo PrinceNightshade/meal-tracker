@@ -409,25 +409,27 @@ export function getRecentFoodsByMealType(mealType, limit = 20) {
   return results;
 }
 
-// Remove the most recent instance of a food from a meal type's history
+// Remove all instances of a food from a meal type's history across all days
+// This prevents deleted foods from reappearing in recents
 export function removeRecentFood(mealType, foodName) {
   const days = getAllDays();
   const sortedDates = Object.keys(days).sort().reverse();
+  let removed = false;
 
   for (const date of sortedDates) {
     const day = days[date];
     const meals = day.meals || {};
     const mealsInType = meals[mealType] || [];
 
-    // Find and remove the food (case-insensitive)
-    const idx = mealsInType.findIndex(f => f.name && f.name.toLowerCase() === foodName.toLowerCase());
-    if (idx !== -1) {
-      mealsInType.splice(idx, 1);
+    // Remove ALL instances of this food (case-insensitive) from this meal type across all days
+    const newMeals = mealsInType.filter(f => !f.name || f.name.toLowerCase() !== foodName.toLowerCase());
+    if (newMeals.length < mealsInType.length) {
+      meals[mealType] = newMeals;
       saveDay(date, day);
-      return true; // removed successfully
+      removed = true;
     }
   }
-  return false; // not found
+  return removed;
 }
 
 // ── Daily Totals ──
