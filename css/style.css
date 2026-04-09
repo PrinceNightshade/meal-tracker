@@ -618,8 +618,8 @@ body {
   align-items: center;
   position: sticky;
   top: 0;
-  z-index: 2;
-  background: var(--bg);
+  z-index: 4;
+  background: var(--surface);
   margin-bottom: 10px;
 }
 
