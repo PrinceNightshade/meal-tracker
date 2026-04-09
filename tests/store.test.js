@@ -106,11 +106,37 @@ describe('My Foods', () => {
 describe('Weight', () => {
   test('saveWeight and getWeight round-trip', () => {
     store.saveWeight('2026-03-29', '185.5');
-    assert.equal(store.getWeight('2026-03-29'), '185.5');
+    assert.equal(store.getWeight('2026-03-29'), 185.5);
+  });
+
+  test('saveWeight stores value as a number', () => {
+    store.saveWeight('2026-03-29', '185.5');
+    assert.equal(typeof store.getWeight('2026-03-29'), 'number');
   });
 
   test('getWeight returns null for unknown date', () => {
     assert.equal(store.getWeight('2000-01-01'), null);
+  });
+
+  test('replaceWeight normalizes all values to numbers', () => {
+    store.replaceWeight({
+      '2026-03-28': '180.2',
+      '2026-03-29': 185.5,
+      '2026-03-30': '190',
+    });
+    assert.equal(store.getWeight('2026-03-28'), 180.2);
+    assert.equal(typeof store.getWeight('2026-03-28'), 'number');
+    assert.equal(store.getWeight('2026-03-29'), 185.5);
+    assert.equal(typeof store.getWeight('2026-03-29'), 'number');
+    assert.equal(store.getWeight('2026-03-30'), 190);
+    assert.equal(typeof store.getWeight('2026-03-30'), 'number');
+  });
+
+  test('replaceWeight handles null/empty input', () => {
+    store.replaceWeight(null);
+    assert.equal(store.getWeight('2026-03-29'), null);
+    store.replaceWeight({});
+    assert.equal(store.getWeight('2026-03-29'), null);
   });
 });
 
@@ -159,5 +185,93 @@ describe('searchHistory', () => {
     store.addFoodToMeal('2026-03-28', 'snacks',  { id: 'b', name: 'Apple', calories: 95, protein: 0, carbs: 25, fat: 0, servings: 1 });
     const results = store.searchHistory('apple');
     assert.equal(results.length, 1, 'Same food on different days should appear once');
+  });
+});
+
+// ── Recent Foods by Meal Type ──
+
+describe('getRecentFoodsByMealType', () => {
+  test('returns foods for the specified meal type only', () => {
+    store.addFoodToMeal('2026-03-28', 'breakfast', { id: 'a', name: 'Eggs', calories: 70, protein: 6, carbs: 1, fat: 5, servings: 1 });
+    store.addFoodToMeal('2026-03-28', 'dinner', { id: 'b', name: 'Steak', calories: 400, protein: 40, carbs: 0, fat: 25, servings: 1 });
+    const breakfastRecents = store.getRecentFoodsByMealType('breakfast');
+    const dinnerRecents = store.getRecentFoodsByMealType('dinner');
+    assert.equal(breakfastRecents.length, 1);
+    assert.equal(breakfastRecents[0].name, 'Eggs');
+    assert.equal(dinnerRecents.length, 1);
+    assert.equal(dinnerRecents[0].name, 'Steak');
+  });
+
+  test('deduplicates foods by name', () => {
+    store.addFoodToMeal('2026-03-27', 'breakfast', { id: 'a', name: 'Eggs', calories: 70, protein: 6, carbs: 1, fat: 5, servings: 1 });
+    store.addFoodToMeal('2026-03-28', 'breakfast', { id: 'b', name: 'Eggs', calories: 70, protein: 6, carbs: 1, fat: 5, servings: 2 });
+    const results = store.getRecentFoodsByMealType('breakfast');
+    assert.equal(results.length, 1, 'Same food on different days should appear once');
+  });
+
+  test('returns most recent entry first (newest day first)', () => {
+    store.addFoodToMeal('2026-03-26', 'lunch', { id: 'a', name: 'Salad', calories: 120, protein: 5, carbs: 10, fat: 6, servings: 1 });
+    store.addFoodToMeal('2026-03-28', 'lunch', { id: 'b', name: 'Sandwich', calories: 350, protein: 15, carbs: 40, fat: 12, servings: 1 });
+    const results = store.getRecentFoodsByMealType('lunch');
+    assert.equal(results[0].name, 'Sandwich', 'Most recent food should be first');
+    assert.equal(results[1].name, 'Salad');
+  });
+
+  test('respects limit parameter', () => {
+    store.addFoodToMeal('2026-03-28', 'snacks', { id: 'a', name: 'Apple', calories: 95, protein: 0, carbs: 25, fat: 0, servings: 1 });
+    store.addFoodToMeal('2026-03-28', 'snacks', { id: 'b', name: 'Banana', calories: 105, protein: 1, carbs: 27, fat: 0, servings: 1 });
+    store.addFoodToMeal('2026-03-28', 'snacks', { id: 'c', name: 'Grapes', calories: 60, protein: 1, carbs: 16, fat: 0, servings: 1 });
+    const results = store.getRecentFoodsByMealType('snacks', 2);
+    assert.equal(results.length, 2, 'Should respect limit');
+  });
+
+  test('returns empty array when no foods for meal type', () => {
+    const results = store.getRecentFoodsByMealType('breakfast');
+    assert.deepEqual(results, []);
+  });
+});
+
+// ── Hidden Recents (Blocklist) ──
+
+describe('hideRecentFood', () => {
+  test('hidden food does not appear in recents', () => {
+    store.addFoodToMeal('2026-03-28', 'breakfast', { id: 'a', name: 'Oatmeal', calories: 150, protein: 5, carbs: 27, fat: 3, servings: 1 });
+    store.addFoodToMeal('2026-03-28', 'breakfast', { id: 'b', name: 'Toast', calories: 80, protein: 3, carbs: 14, fat: 1, servings: 1 });
+
+    // Before hiding
+    let results = store.getRecentFoodsByMealType('breakfast');
+    assert.equal(results.length, 2);
+
+    // Hide oatmeal
+    store.hideRecentFood('breakfast', 'Oatmeal');
+
+    // After hiding
+    results = store.getRecentFoodsByMealType('breakfast');
+    assert.equal(results.length, 1);
+    assert.equal(results[0].name, 'Toast');
+  });
+
+  test('hidden food is case-insensitive', () => {
+    store.addFoodToMeal('2026-03-28', 'lunch', { id: 'a', name: 'Burger', calories: 500, protein: 25, carbs: 40, fat: 28, servings: 1 });
+    store.hideRecentFood('lunch', 'BURGER');
+    const results = store.getRecentFoodsByMealType('lunch');
+    assert.equal(results.length, 0, 'Hidden food should match case-insensitively');
+  });
+
+  test('hiding does not affect other meal types', () => {
+    store.addFoodToMeal('2026-03-28', 'breakfast', { id: 'a', name: 'Eggs', calories: 70, protein: 6, carbs: 1, fat: 5, servings: 1 });
+    store.addFoodToMeal('2026-03-28', 'lunch', { id: 'b', name: 'Eggs', calories: 70, protein: 6, carbs: 1, fat: 5, servings: 1 });
+    store.hideRecentFood('breakfast', 'Eggs');
+    const breakfastResults = store.getRecentFoodsByMealType('breakfast');
+    const lunchResults = store.getRecentFoodsByMealType('lunch');
+    assert.equal(breakfastResults.length, 0, 'Should be hidden in breakfast');
+    assert.equal(lunchResults.length, 1, 'Should still appear in lunch');
+  });
+
+  test('removeRecentFood uses the blocklist (alias for hideRecentFood)', () => {
+    store.addFoodToMeal('2026-03-28', 'dinner', { id: 'a', name: 'Pizza', calories: 300, protein: 12, carbs: 35, fat: 14, servings: 1 });
+    store.removeRecentFood('dinner', 'Pizza');
+    const results = store.getRecentFoodsByMealType('dinner');
+    assert.equal(results.length, 0, 'removeRecentFood should hide the food');
   });
 });
