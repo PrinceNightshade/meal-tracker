@@ -593,8 +593,8 @@ body {
 
 #modal-close {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 16px;
+  right: 16px;
   background: none;
   border: none;
   font-size: 32px;
@@ -607,14 +607,7 @@ body {
   align-items: center;
   justify-content: center;
   line-height: 1;
-}
-
-#modal-close:hover {
-  opacity: 0.8;
-}
-
-#modal-close:active {
-  opacity: 0.6;
+  z-index: 10;
 }
 
 /* ── Search ── */
