@@ -118,8 +118,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v4
+
+      - name: Prepare deploy artifacts
+        run: |
+          # Auto-generate SW cache version from git SHA (no manual version bumps)
+          sed -i "s/const CACHE = 'meal-tracker-v[0-9]*'/const CACHE = 'meal-tracker-$(git rev-parse --short HEAD)'/" sw.js
+
+          # Copy only web files to dist/, excluding dev/CI artifacts
+          mkdir -p dist
+          cp -r js css icons dist/
+          cp index.html manifest.json sw.js dist/
+          touch dist/.nojekyll
+
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: 'dist'
       - uses: actions/deploy-pages@v4
         id: deploy
