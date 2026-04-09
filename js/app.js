@@ -928,9 +928,11 @@ function openAddFoodModal(mealType) {
 
   // Assemble modal
   modalBody.appendChild(ui.el('h2', { textContent: `Add to ${ui.capitalize(mealType)}` }));
-  if (recentsSection) modalBody.appendChild(recentsSection);
+  // Search row first (sticky), then results immediately below for better UX
   modalBody.appendChild(ui.el('div', { className: 'search-row' }, [searchInput, scanBtn]));
   modalBody.appendChild(resultsList);
+  // Recents/favorites/manual below, only shown when search is empty
+  if (recentsSection) modalBody.appendChild(recentsSection);
   if (favsSection) modalBody.appendChild(favsSection);
   modalBody.appendChild(manualSection);
 
