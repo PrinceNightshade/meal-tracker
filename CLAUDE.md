@@ -20,10 +20,10 @@ A PWA meal tracker focused on weight loss. Users log meals by meal type (Breakfa
 Phase 1 (instant): `COMMON_FOODS` local array (~590 entries) + My Foods + history render immediately. Phase 2 (background): USDA + Open Food Facts APIs fetch only if local results < 8. This keeps search feeling instant for common foods.
 
 **COMMON_FOODS array.**
-Curated local food data in `js/api.js`. Always wins over API results in ranking. Covers whole foods, common meals (fajitas, tikka masala, pad thai, etc.), and branded staples. When expanding, use natural serving units (1 cup, 1 slice, etc.) not raw grams.
+Curated local food data in `js/common-foods.js` (imported by `js/api.js`). Always wins over API results in ranking. Covers whole foods, common meals (fajitas, tikka masala, pad thai, etc.), and branded staples. When expanding, use natural serving units (1 cup, 1 slice, etc.) not raw grams.
 
 **Service worker versioning.**
-Cache key is `meal-tracker-vN` in `sw.js`. Bump N on every deploy that changes JS/CSS. The update banner (`#update-banner`) detects waiting SWs and prompts users to reload — no manual reinstall needed.
+Cache key is auto-generated from the git commit SHA during CI deploy (`meal-tracker-<sha>`). No manual version bumps needed. The update banner (`#update-banner`) detects waiting SWs and prompts users to reload. Logic lives in `js/sw-manager.js`.
 
 **Ring colors.**
 Red = far from goal (0–49%), Yellow = getting there (50–84%), Green = on track (85–100%), Red = overshot (>100%).
@@ -31,9 +31,25 @@ Red = far from goal (0–49%), Yellow = getting there (50–84%), Green = on tra
 **Favorites are meal-type scoped.**
 Each favorite stores a `mealType` field. Favorites filter to the current meal type in the add modal. Legacy favorites (no `mealType`) show in all meals.
 
+## Security
+
+**Firestore security rules** (project: `meal-tracker-f3bea`):
+- All reads/writes must be scoped to `users/{userId}` where `request.auth.uid == userId`
+- Unauthenticated requests are denied at the top level
+- Verify in Firebase Console > Firestore > Rules that these rules are active
+
+**Rollback strategy:**
+- No automated rollback workflow exists. To roll back a deployment, manually re-run the deploy workflow at a previous git SHA via GitHub Actions > "Run workflow" or by reverting the commit on `main`. This is acceptable for a single-developer PWA.
+
+## Deploy pipeline
+
+**SW cache versioning** is automated: the CI deploy step replaces `meal-tracker-vN` in `sw.js` with `meal-tracker-<git-short-sha>` before upload. No manual version bumps needed.
+
+**Deploy artifacts** are filtered: only `js/`, `css/`, `icons/`, `index.html`, `manifest.json`, and `sw.js` are deployed. `.git/`, `.claude/`, `.md` files, and `tests/` are excluded.
+
 ## Dev conventions
 - No build step — edit files directly, push to deploy
-- Always bump `sw.js` cache version on JS/CSS changes
+- SW cache version is auto-generated from git SHA in CI (no manual bumps needed)
 - Keep `COMMON_FOODS` entries with `source: 'common'` and a descriptive `tags` string for search matching
 - Calorie/macro values should match USDA or common label data (per natural serving)
 

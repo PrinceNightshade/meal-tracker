@@ -9,9 +9,10 @@ const KEYS = {
   myFoods: 'mt_myfoods',
   weight: 'mt_weight',
   profile: 'mt_profile',
+  hiddenRecents: 'mt_hidden_recents',
 };
 
-const DEFAULT_GOALS = {
+export const DEFAULT_GOALS = {
   calories: 2000,
   protein: 150,
   carbs: 200,
@@ -30,7 +31,15 @@ function read(key) {
 }
 
 function write(key, data) {
-  localStorage.setItem(key, JSON.stringify(data));
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e) {
+    if (e.name === 'QuotaExceededError') {
+      console.warn('localStorage quota exceeded — consider pruning old data');
+    } else {
+      console.warn('localStorage write failed:', e);
+    }
+  }
 }
 
 // ── Profile ──
@@ -284,9 +293,18 @@ export function saveWeight(dateStr, weight) {
   if (weight === null || weight === undefined || weight === '') {
     delete all[dateStr];
   } else {
-    all[dateStr] = weight;
+    all[dateStr] = parseFloat(weight);
   }
   write(KEYS.weight, all);
+}
+
+// Replace all weight entries with cloud data (handles deletions from cloud properly)
+export function replaceWeight(entries) {
+  const normalized = {};
+  for (const [date, weight] of Object.entries(entries || {})) {
+    normalized[date] = parseFloat(weight);
+  }
+  write(KEYS.weight, normalized);
 }
 
 export function getWeightHistory(days = 30) {
@@ -384,9 +402,37 @@ export function searchHistory(query) {
   return results;
 }
 
+// Get the blocklist of foods hidden from recents
+function getHiddenRecents() {
+  return read(KEYS.hiddenRecents) || {};
+}
+
+// Add a food to the hidden recents blocklist (prevents it from appearing in recents)
+export function hideRecentFood(mealType, foodName) {
+  const hidden = getHiddenRecents();
+  if (!hidden[mealType]) hidden[mealType] = new Set();
+  if (typeof hidden[mealType] === 'object' && !Array.isArray(hidden[mealType]) && !(hidden[mealType] instanceof Set)) {
+    // Convert from serialized array back to Set
+    hidden[mealType] = new Set(hidden[mealType]);
+  } else if (Array.isArray(hidden[mealType])) {
+    hidden[mealType] = new Set(hidden[mealType]);
+  } else if (!(hidden[mealType] instanceof Set)) {
+    hidden[mealType] = new Set();
+  }
+  hidden[mealType].add(foodName.toLowerCase());
+  // Convert Sets to arrays for JSON serialization
+  const serialized = {};
+  for (const [type, names] of Object.entries(hidden)) {
+    serialized[type] = Array.from(names);
+  }
+  write(KEYS.hiddenRecents, serialized);
+}
+
 export function getRecentFoodsByMealType(mealType, limit = 20) {
   const days = getAllDays();
   const seen = new Set();
+  const hidden = getHiddenRecents();
+  const hiddenNames = new Set((hidden[mealType] || []).map(n => n.toLowerCase()));
   const results = [];
 
   // Walk days newest-first
@@ -401,6 +447,7 @@ export function getRecentFoodsByMealType(mealType, limit = 20) {
       if (!food.name) continue;
       const key = food.name.toLowerCase();
       if (seen.has(key)) continue;
+      if (hiddenNames.has(key)) continue;  // Skip blocklisted foods
       seen.add(key);
       results.push({ ...food, source: food.source || 'history' });
       if (results.length >= limit) break;
@@ -409,27 +456,10 @@ export function getRecentFoodsByMealType(mealType, limit = 20) {
   return results;
 }
 
-// Remove all instances of a food from a meal type's history across all days
-// This prevents deleted foods from reappearing in recents
+// Hide a food from recents without deleting historical data
+// NOTE: This uses a blocklist, so historical meal data is preserved
 export function removeRecentFood(mealType, foodName) {
-  const days = getAllDays();
-  const sortedDates = Object.keys(days).sort().reverse();
-  let removed = false;
-
-  for (const date of sortedDates) {
-    const day = days[date];
-    const meals = day.meals || {};
-    const mealsInType = meals[mealType] || [];
-
-    // Remove ALL instances of this food (case-insensitive) from this meal type across all days
-    const newMeals = mealsInType.filter(f => !f.name || f.name.toLowerCase() !== foodName.toLowerCase());
-    if (newMeals.length < mealsInType.length) {
-      meals[mealType] = newMeals;
-      saveDay(date, day);
-      removed = true;
-    }
-  }
-  return removed;
+  hideRecentFood(mealType, foodName);
 }
 
 // ── Daily Totals ──

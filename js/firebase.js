@@ -6,6 +6,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { DEFAULT_GOALS } from './store.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyA3xKNq1RpiH_ALRFceNxBdwV1VxLVseYE',
@@ -82,15 +83,11 @@ export async function pullFromCloud(store) {
     if (profileSnap.exists()) store.saveProfile(profileSnap.data());
     // Merge cloud goals with defaults to fill in any missing fields (e.g., addedSugars)
     if (goalsSnap.exists()) {
-      const DEFAULT_GOALS = { calories: 2000, protein: 150, carbs: 200, fat: 65, addedSugars: 25 };
       const cloudGoals = goalsSnap.data();
       store.saveGoals({ ...DEFAULT_GOALS, ...cloudGoals });
     }
     if (weightSnap.exists()) {
-      const entries = weightSnap.data();
-      for (const [date, weight] of Object.entries(entries)) {
-        store.saveWeight(date, weight);
-      }
+      store.replaceWeight(weightSnap.data());
     }
     if (favSnap.exists()) {
       const { items } = favSnap.data();
@@ -113,30 +110,30 @@ export async function pullFromCloud(store) {
 
 export function pushProfile(data) {
   if (!currentUser) return;
-  setDoc(userDoc('data/profile'), data).catch(() => {});
+  setDoc(userDoc('data/profile'), data).catch(e => console.warn('Push profile failed:', e));
 }
 
 export function pushGoals(data) {
   if (!currentUser) return;
-  setDoc(userDoc('data/goals'), data).catch(() => {});
+  setDoc(userDoc('data/goals'), data).catch(e => console.warn('Push goals failed:', e));
 }
 
 export function pushWeight(allEntries) {
   if (!currentUser) return;
-  setDoc(userDoc('data/weight'), allEntries).catch(() => {});
+  setDoc(userDoc('data/weight'), allEntries).catch(e => console.warn('Push weight failed:', e));
 }
 
 export function pushFavorites(items) {
   if (!currentUser) return;
-  setDoc(userDoc('data/favorites'), { items }).catch(() => {});
+  setDoc(userDoc('data/favorites'), { items }).catch(e => console.warn('Push favorites failed:', e));
 }
 
 export function pushMyFoods(items) {
   if (!currentUser) return;
-  setDoc(userDoc('data/myfoods'), { items }).catch(() => {});
+  setDoc(userDoc('data/myfoods'), { items }).catch(e => console.warn('Push myfoods failed:', e));
 }
 
 export function pushDay(date, dayData) {
   if (!currentUser) return;
-  setDoc(doc(db, 'users', currentUser.uid, 'days', date), dayData).catch(() => {});
+  setDoc(doc(db, 'users', currentUser.uid, 'days', date), dayData).catch(e => console.warn(`Push day ${date} failed:`, e));
 }
