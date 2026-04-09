@@ -4,6 +4,7 @@ import { searchCommonFoods, searchFoodsFromAPI, lookupBarcode, analyzePhoto, deb
 import * as ui from './ui.js';
 import * as fb from './firebase.js';
 import * as analytics from './analytics.js';
+import { initSW } from './sw-manager.js';
 
 let currentDate = ui.todayStr();
 let currentView = 'daily'; // daily | goals | weight
@@ -16,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Deduplicate favorites that accumulated from the add-without-check bug
   store.replaceFavorites(store.getFavorites());
   initTheme();
-  initSW();
+  initSW(ui.$);
   if (store.isUnderage()) {
     renderAgeGate();
     return;
@@ -25,55 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
   bindNav();
   initAuth();
 });
-
-// ── Service Worker update detection ──
-
-function initSW() {
-  if (!('serviceWorker' in navigator)) return;
-
-  // Register the service worker
-  navigator.serviceWorker.register('/meal-tracker/sw.js', { updateViaCache: 'none' })
-    .then(reg => {
-      // Check if there's already a waiting SW
-      if (reg.waiting) {
-        showUpdateBanner(reg.waiting);
-      }
-
-      // Listen for updates
-      reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing;
-        newWorker.addEventListener('statechange', () => {
-          // Show banner when new SW is installed and ready
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            showUpdateBanner(newWorker);
-          }
-        });
-      });
-
-      // Periodically check for updates
-      setInterval(() => {
-        reg.update();
-      }, 60000); // Check every minute
-    })
-    .catch(err => console.error('Service Worker registration failed:', err));
-}
-
-function showUpdateBanner(worker) {
-  const banner = ui.$('#update-banner');
-  const btn = ui.$('#update-banner-btn');
-
-  // Only add listener once - check if already added
-  if (!banner.dataset.listenerAdded) {
-    banner.dataset.listenerAdded = 'true';
-    btn.addEventListener('click', () => {
-      // Tell the waiting SW to take over, then reload to pick up new assets
-      worker.postMessage({ type: 'SKIP_WAITING' });
-      setTimeout(() => location.reload(), 250);
-    });
-  }
-
-  banner.classList.add('show');
-}
 
 // ── Theme ──
 
@@ -1001,7 +953,9 @@ function showServingPicker(food, mealType) {
     const p = Math.round(food.protein * servings);
     const c = Math.round(food.carbs * servings);
     const f = Math.round(food.fat * servings);
-    preview.innerHTML = `<strong>${cals} cal</strong> · ${p}p · ${c}c · ${f}f`;
+    preview.textContent = '';
+    preview.appendChild(ui.el('strong', { textContent: `${cals} cal` }));
+    preview.appendChild(document.createTextNode(` · ${p}p · ${c}c · ${f}f`));
   }
 
   const servingInput = ui.el('input', {

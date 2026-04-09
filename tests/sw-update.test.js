@@ -1,335 +1,224 @@
 // tests/sw-update.test.js — Tests for Service Worker update detection and banner
-import { test, describe, beforeEach, afterEach } from 'node:test';
+// Tests import from sw-manager.js so they test the real code, not re-implementations.
+import { test, describe, beforeEach } from 'node:test';
 import { strict as assert } from 'node:assert';
 import './setup.js';
+import { showUpdateBanner, initSW } from '../js/sw-manager.js';
 
-// Mock DOM elements and navigator.serviceWorker
-const mockDOM = {
-  banner: null,
-  btn: null,
-};
+// ── Helpers ──
 
-function setupDOM() {
-  // Create mock DOM elements
-  const banner = {
-    classList: { add: function() {}, remove: function() {} },
-    dataset: {},
-  };
-  const btn = {
-    addEventListener: function() {},
-  };
-
-  mockDOM.banner = banner;
-  mockDOM.btn = btn;
-
-  // Mock document.querySelector
-  global.document = {
-    querySelector: function(selector) {
-      if (selector === '#update-banner') return banner;
-      if (selector === '#update-banner-btn') return btn;
-      return null;
+function createMockBanner() {
+  const showCalls = [];
+  const removeCalls = [];
+  return {
+    classList: {
+      add: (cls) => showCalls.push(cls),
+      remove: (cls) => removeCalls.push(cls),
     },
+    dataset: {},
+    _showCalls: showCalls,
+    _removeCalls: removeCalls,
   };
+}
 
-  return { banner, btn };
+function createMockBtn() {
+  const listeners = {};
+  return {
+    addEventListener: (event, handler) => {
+      if (!listeners[event]) listeners[event] = [];
+      listeners[event].push(handler);
+    },
+    _listeners: listeners,
+  };
 }
 
 function createMockWorker() {
+  const messages = [];
   return {
-    postMessage: function(msg) {},
+    postMessage: (msg) => messages.push(msg),
     state: 'installed',
-    addEventListener: function() {},
+    addEventListener: () => {},
+    _messages: messages,
   };
 }
 
 function createMockRegistration(options = {}) {
   const listeners = {};
-
   return {
     waiting: options.waiting || null,
     installing: options.installing || null,
     active: options.active || createMockWorker(),
-    addEventListener: function(event, handler) {
+    addEventListener: (event, handler) => {
       if (!listeners[event]) listeners[event] = [];
       listeners[event].push(handler);
     },
-    update: function() {
-      if (options.onUpdate) options.onUpdate();
-    },
-    _triggerUpdateFound: function() {
-      if (listeners['updatefound']) {
-        listeners['updatefound'].forEach(h => h());
-      }
-    },
-    _getListeners: () => listeners,
+    update: () => {},
+    _listeners: listeners,
   };
 }
 
-describe('Service Worker Update Detection', () => {
-  beforeEach(() => {
-    setupDOM();
-  });
+function mockQuerySelector(banner, btn) {
+  return (sel) => {
+    if (sel === '#update-banner') return banner;
+    if (sel === '#update-banner-btn') return btn;
+    return null;
+  };
+}
 
-  test('showUpdateBanner adds show class to banner', () => {
-    const { banner } = mockDOM;
+// ── Tests ──
+
+describe('showUpdateBanner', () => {
+  test('adds "show" class to banner element', () => {
+    const banner = createMockBanner();
+    const btn = createMockBtn();
     const worker = createMockWorker();
-    const showCalls = [];
-    const originalAdd = banner.classList.add;
-    banner.classList.add = function(cls) {
-      showCalls.push(cls);
-    };
+    const $ = mockQuerySelector(banner, btn);
 
-    // Extract and call showUpdateBanner logic
-    const showUpdateBanner = (worker) => {
-      const banner = document.querySelector('#update-banner');
-      const btn = document.querySelector('#update-banner-btn');
+    showUpdateBanner(worker, $);
 
-      if (!banner.dataset.listenerAdded) {
-        banner.dataset.listenerAdded = 'true';
-        btn.addEventListener('click', () => {
-          worker.postMessage({ type: 'SKIP_WAITING' });
-        });
-      }
-
-      banner.classList.add('show');
-    };
-
-    showUpdateBanner(worker);
-    assert.deepEqual(showCalls, ['show'], 'Banner should have show class added');
+    assert.deepEqual(banner._showCalls, ['show'], 'Banner should have "show" class added');
   });
 
-  test('showUpdateBanner only adds listener once', () => {
-    const { banner, btn } = mockDOM;
+  test('only adds click listener once across multiple calls', () => {
+    const banner = createMockBanner();
+    const btn = createMockBtn();
     const worker = createMockWorker();
-    let listenerCount = 0;
-    const originalAddEventListener = btn.addEventListener;
-    btn.addEventListener = function(event, handler) {
-      if (event === 'click') listenerCount++;
-    };
+    const $ = mockQuerySelector(banner, btn);
 
-    const showUpdateBanner = (worker) => {
-      const banner = document.querySelector('#update-banner');
-      const btn = document.querySelector('#update-banner-btn');
+    showUpdateBanner(worker, $);
+    showUpdateBanner(worker, $);
+    showUpdateBanner(worker, $);
 
-      if (!banner.dataset.listenerAdded) {
-        banner.dataset.listenerAdded = 'true';
-        btn.addEventListener('click', () => {
-          worker.postMessage({ type: 'SKIP_WAITING' });
-        });
-      }
-
-      banner.classList.add('show');
-    };
-
-    // Call multiple times
-    showUpdateBanner(worker);
-    showUpdateBanner(worker);
-    showUpdateBanner(worker);
-
-    assert.equal(listenerCount, 1, 'Click listener should only be added once');
+    assert.equal(
+      (btn._listeners.click || []).length,
+      1,
+      'Click listener should only be added once'
+    );
   });
 
-  test('initSW detects already-waiting Service Worker', async () => {
+  test('click handler sends SKIP_WAITING message to worker', () => {
+    const banner = createMockBanner();
+    const btn = createMockBtn();
+    const worker = createMockWorker();
+    const $ = mockQuerySelector(banner, btn);
+
+    // Mock location.reload to prevent errors
+    const origLocation = global.location;
+    global.location = { reload: () => {} };
+
+    showUpdateBanner(worker, $);
+    // Trigger the click handler
+    btn._listeners.click[0]();
+
+    assert.deepEqual(worker._messages, [{ type: 'SKIP_WAITING' }]);
+
+    global.location = origLocation;
+  });
+
+  test('does nothing if banner element is null', () => {
+    const worker = createMockWorker();
+    const $ = () => null;
+    // Should not throw
+    showUpdateBanner(worker, $);
+  });
+});
+
+describe('initSW', () => {
+  test('detects already-waiting Service Worker and shows banner', async () => {
+    const banner = createMockBanner();
+    const btn = createMockBtn();
+    const $ = mockQuerySelector(banner, btn);
     const waitingWorker = createMockWorker();
     const registration = createMockRegistration({ waiting: waitingWorker });
 
-    let bannerShown = false;
-    const showUpdateBanner = (worker) => {
-      bannerShown = true;
-      assert.equal(worker, waitingWorker, 'Should show banner with waiting worker');
-    };
-
-    // Mock navigator.serviceWorker
     global.navigator = {
       serviceWorker: {
-        ready: Promise.resolve(registration),
         register: () => Promise.resolve(registration),
+        ready: Promise.resolve(registration),
+        controller: true,
       },
     };
 
-    // Simulate initSW logic
-    const initSW = () => {
-      if (!('serviceWorker' in navigator)) return;
+    initSW($);
 
-      navigator.serviceWorker.ready.then(reg => {
-        if (reg.waiting) {
-          showUpdateBanner(reg.waiting);
-          return;
-        }
-      });
-    };
-
-    initSW();
-
-    // Wait for promise to resolve
-    await new Promise(resolve => setTimeout(resolve, 10));
-    assert.ok(bannerShown, 'Should show banner when waiting SW exists');
+    await new Promise(resolve => setTimeout(resolve, 20));
+    assert.deepEqual(banner._showCalls, ['show'], 'Should show banner when waiting SW exists');
   });
 
-  test('initSW detects new Service Worker installing during session', async () => {
-    const newWorker = createMockWorker();
-    const registration = createMockRegistration({ installing: newWorker });
-
-    let bannerShown = false;
-    const showUpdateBanner = (worker) => {
-      bannerShown = true;
-    };
+  test('registers Service Worker at correct path', async () => {
+    let registeredPath = null;
+    const registration = createMockRegistration();
 
     global.navigator = {
       serviceWorker: {
-        ready: Promise.resolve(registration),
-        register: () => Promise.resolve(registration),
-        controller: true, // Simulate existing controller
-      },
-    };
-
-    const initSW = () => {
-      if (!('serviceWorker' in navigator)) return;
-
-      navigator.serviceWorker.ready.then(reg => {
-        if (reg.waiting) {
-          showUpdateBanner(reg.waiting);
-          return;
-        }
-
-        reg.addEventListener('updatefound', () => {
-          const newWorker = reg.installing;
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              showUpdateBanner(newWorker);
-            }
-          });
-        });
-      });
-    };
-
-    initSW();
-
-    // Simulate new SW installing
-    await new Promise(resolve => setTimeout(resolve, 10));
-    registration._triggerUpdateFound();
-    newWorker.state = 'installed';
-    const listeners = registration._getListeners();
-    if (listeners.updatefound && listeners.updatefound[0]) {
-      const newWkr = registration.installing;
-      const stateListeners = newWkr._stateListeners || [];
-      stateListeners.forEach(h => h());
-    }
-
-    // Note: This test is simplified - in reality, we'd need to properly
-    // simulate the statechange event on the worker
-  });
-
-  test('initSW registers Service Worker', async () => {
-    let registerCalled = false;
-    let updateCalled = false;
-
-    const mockReg = createMockRegistration();
-    mockReg.update = function() {
-      updateCalled = true;
-    };
-
-    global.navigator = {
-      serviceWorker: {
-        register: function(path) {
-          registerCalled = true;
-          assert.equal(path, '/meal-tracker/sw.js', 'Should register correct SW path');
-          return Promise.resolve(mockReg);
+        register: (path, opts) => {
+          registeredPath = path;
+          return Promise.resolve(registration);
         },
-        ready: Promise.resolve(mockReg),
+        ready: Promise.resolve(registration),
       },
     };
 
-    const initSW = () => {
-      if (!('serviceWorker' in navigator)) return;
-
-      navigator.serviceWorker.register('/meal-tracker/sw.js', { updateViaCache: 'none' })
-        .then(reg => {
-          if (reg.waiting) {
-            return;
-          }
-        });
-    };
-
-    initSW();
+    const $ = mockQuerySelector(createMockBanner(), createMockBtn());
+    initSW($);
 
     await new Promise(resolve => setTimeout(resolve, 10));
-    assert.ok(registerCalled, 'Should call navigator.serviceWorker.register');
+    assert.equal(registeredPath, '/meal-tracker/sw.js');
   });
 
-  test('initSW handles registration errors gracefully', async () => {
+  test('handles registration errors gracefully', async () => {
     let errorLogged = false;
-    const originalError = console.error;
-    console.error = function(msg) {
-      if (msg.includes('Service Worker registration failed')) {
+    const origError = console.error;
+    console.error = (...args) => {
+      if (String(args[0]).includes('Service Worker registration failed')) {
         errorLogged = true;
       }
     };
 
     global.navigator = {
       serviceWorker: {
-        register: function() {
-          return Promise.reject(new Error('Registration failed'));
-        },
+        register: () => Promise.reject(new Error('Registration failed')),
       },
     };
 
-    const initSW = () => {
-      if (!('serviceWorker' in navigator)) return;
+    const $ = mockQuerySelector(createMockBanner(), createMockBtn());
+    initSW($);
 
-      navigator.serviceWorker.register('/meal-tracker/sw.js', { updateViaCache: 'none' })
-        .catch(err => console.error('Service Worker registration failed:', err));
-    };
-
-    initSW();
-
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await new Promise(resolve => setTimeout(resolve, 20));
     assert.ok(errorLogged, 'Should log error on registration failure');
 
-    console.error = originalError;
+    console.error = origError;
   });
 
-  test('periodic update check interval is set', async () => {
-    let intervalSet = false;
+  test('sets up periodic update check', async () => {
     let intervalDuration = 0;
-
-    const originalSetInterval = setInterval;
-    global.setInterval = function(fn, duration) {
-      intervalSet = true;
+    const origSetInterval = global.setInterval;
+    global.setInterval = (fn, duration) => {
       intervalDuration = duration;
-      return 'mock-interval-id';
+      return 'mock-id';
     };
 
-    const mockReg = createMockRegistration();
-    mockReg.update = function() {};
-
+    const registration = createMockRegistration();
     global.navigator = {
       serviceWorker: {
-        register: function() {
-          return Promise.resolve(mockReg);
-        },
-        ready: Promise.resolve(mockReg),
+        register: () => Promise.resolve(registration),
+        ready: Promise.resolve(registration),
       },
     };
 
-    const initSW = () => {
-      if (!('serviceWorker' in navigator)) return;
+    const $ = mockQuerySelector(createMockBanner(), createMockBtn());
+    initSW($);
 
-      navigator.serviceWorker.register('/meal-tracker/sw.js', { updateViaCache: 'none' })
-        .then(reg => {
-          setInterval(() => {
-            reg.update();
-          }, 60000);
-        });
-    };
-
-    initSW();
-
-    // Wait for promises to resolve
     await new Promise(resolve => setTimeout(resolve, 20));
-    assert.ok(intervalSet, 'Should set interval for periodic checks');
     assert.equal(intervalDuration, 60000, 'Should check for updates every 60 seconds');
 
-    global.setInterval = originalSetInterval;
+    global.setInterval = origSetInterval;
+  });
+
+  test('does nothing when serviceWorker not in navigator', () => {
+    global.navigator = {};
+    const $ = mockQuerySelector(createMockBanner(), createMockBtn());
+    // Should not throw
+    initSW($);
   });
 });
