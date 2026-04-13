@@ -124,6 +124,10 @@ describe('showUpdateBanner', () => {
 });
 
 describe('initSW', () => {
+  // Prevent real setInterval from keeping Node.js alive across all initSW tests
+  const origSetInterval = global.setInterval;
+  global.setInterval = (fn, duration) => 0;
+
   test('detects already-waiting Service Worker and shows banner', async () => {
     const banner = createMockBanner();
     const btn = createMockBtn();
@@ -193,9 +197,10 @@ describe('initSW', () => {
   test('sets up periodic update check', async () => {
     let intervalDuration = 0;
     const origSetInterval = global.setInterval;
+    // Mock setInterval BEFORE calling initSW so the real interval is never created
     global.setInterval = (fn, duration) => {
       intervalDuration = duration;
-      return 'mock-id';
+      return 0; // return a numeric ID so clearInterval doesn't error
     };
 
     const registration = createMockRegistration();
@@ -210,9 +215,8 @@ describe('initSW', () => {
     initSW($);
 
     await new Promise(resolve => setTimeout(resolve, 20));
+    global.setInterval = origSetInterval; // restore before asserting
     assert.equal(intervalDuration, 60000, 'Should check for updates every 60 seconds');
-
-    global.setInterval = origSetInterval;
   });
 
   test('does nothing when serviceWorker not in navigator', () => {
@@ -221,4 +225,7 @@ describe('initSW', () => {
     // Should not throw
     initSW($);
   });
+
+  // Restore after all initSW tests
+  global.setInterval = origSetInterval;
 });

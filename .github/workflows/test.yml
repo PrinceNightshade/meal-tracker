@@ -71,7 +71,7 @@ jobs:
         id: run_tests
         run: |
           set +e
-          output=$(node --test tests/*.test.js 2>&1)
+          output=$(node --test --test-timeout=10000 tests/*.test.js 2>&1)
           exit_code=$?
           echo "test_output<<EOF" >> $GITHUB_OUTPUT
           echo "$output" >> $GITHUB_OUTPUT
