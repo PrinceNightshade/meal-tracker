@@ -1,6 +1,6 @@
 // tests/sw-update.test.js — Tests for Service Worker update detection and banner
 // Tests import from sw-manager.js so they test the real code, not re-implementations.
-import { test, describe, beforeEach } from 'node:test';
+import { test, describe, beforeEach, before, after } from 'node:test';
 import { strict as assert } from 'node:assert';
 import './setup.js';
 import { showUpdateBanner, initSW } from '../js/sw-manager.js';
@@ -125,8 +125,11 @@ describe('showUpdateBanner', () => {
 
 describe('initSW', () => {
   // Prevent real setInterval from keeping Node.js alive across all initSW tests
-  const origSetInterval = global.setInterval;
-  global.setInterval = (fn, duration) => 0;
+  let origSetInterval;
+  before(() => {
+    origSetInterval = global.setInterval;
+    global.setInterval = (fn, duration) => 0;
+  });
 
   test('detects already-waiting Service Worker and shows banner', async () => {
     const banner = createMockBanner();
@@ -226,6 +229,7 @@ describe('initSW', () => {
     initSW($);
   });
 
-  // Restore after all initSW tests
-  global.setInterval = origSetInterval;
+  after(() => {
+    global.setInterval = origSetInterval;
+  });
 });
