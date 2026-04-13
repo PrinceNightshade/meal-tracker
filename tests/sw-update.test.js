@@ -102,17 +102,16 @@ describe('showUpdateBanner', () => {
     const worker = createMockWorker();
     const $ = mockQuerySelector(banner, btn);
 
-    // Mock location.reload to prevent errors
-    const origLocation = global.location;
-    global.location = { reload: () => {} };
+    // Mock setTimeout to prevent the delayed location.reload() from firing after the test ends
+    const origSetTimeout = global.setTimeout;
+    global.setTimeout = (fn, delay) => {};
 
     showUpdateBanner(worker, $);
-    // Trigger the click handler
     btn._listeners.click[0]();
 
     assert.deepEqual(worker._messages, [{ type: 'SKIP_WAITING' }]);
 
-    global.location = origLocation;
+    global.setTimeout = origSetTimeout;
   });
 
   test('does nothing if banner element is null', () => {
