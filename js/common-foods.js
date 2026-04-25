@@ -223,7 +223,6 @@ export const COMMON_FOODS = [
   { name: 'Flour Tortilla (10")', servingSize: 1, servingUnit: 'tortilla (72g)', calories: 220, protein: 6, carbs: 36, fat: 6, source: 'common', tags: 'flour tortilla wrap burrito' },
   { name: 'Corn Tortilla (6")', servingSize: 2, servingUnit: 'tortillas (46g)', calories: 100, protein: 3, carbs: 21, fat: 1, source: 'common', tags: 'corn tortilla taco' },
   { name: 'Pita Bread', servingSize: 1, servingUnit: 'pita (60g)', calories: 165, protein: 5, carbs: 33, fat: 1, source: 'common', tags: 'pita bread wrap' },
-  { name: 'Oatmeal (cooked)', servingSize: 1, servingUnit: 'cup (234g)', calories: 154, protein: 5, carbs: 27, fat: 3, source: 'common', tags: 'oatmeal oats porridge cooked grain breakfast' , addedSugars: 0 },
 
   // ── Legumes ──
   { name: 'Black Beans (cooked)', servingSize: 1, servingUnit: 'cup (172g)', calories: 227, protein: 15, carbs: 41, fat: 1, source: 'common', tags: 'black beans cooked legumes' },
@@ -556,8 +555,6 @@ export const COMMON_FOODS = [
   // ── More Proteins ──
   { name: 'Chicken Thigh (skinless, baked)', servingSize: 1, servingUnit: 'thigh (109g)', calories: 185, protein: 25, carbs: 0, fat: 9, source: 'common', tags: 'chicken thigh skinless baked roasted' },
   { name: 'Ground Turkey (93% lean)', servingSize: 4, servingUnit: 'oz (113g)', calories: 170, protein: 22, carbs: 0, fat: 9, source: 'common', tags: 'ground turkey lean cooked' },
-  { name: 'Pork Tenderloin (roasted)', servingSize: 3, servingUnit: 'oz (85g)', calories: 120, protein: 22, carbs: 0, fat: 3, source: 'common', tags: 'pork tenderloin lean roasted' , addedSugars: 0 },
-  { name: 'Lamb Chop (grilled)', servingSize: 3, servingUnit: 'oz (85g)', calories: 200, protein: 23, carbs: 0, fat: 11, source: 'common', tags: 'lamb chop grilled' , addedSugars: 0 },
   { name: 'Canned Chicken (in water)', servingSize: 0.5, servingUnit: 'cup (112g)', calories: 130, protein: 25, carbs: 0, fat: 3, source: 'common', tags: 'canned chicken white meat' },
   // ── More Vegetables ──
   { name: 'Roasted Brussels Sprouts', servingSize: 1, servingUnit: 'cup (156g)', calories: 65, protein: 5, carbs: 13, fat: 0, source: 'common', tags: 'brussels sprouts roasted baked vegetable' },
@@ -569,56 +566,38 @@ export const COMMON_FOODS = [
   { name: 'Egg Whites (cooked)', servingSize: 3, servingUnit: 'large whites (99g)', calories: 50, protein: 11, carbs: 0, fat: 0, source: 'common', tags: 'egg whites cooked protein' },
   { name: 'Cottage Cheese (2%)', servingSize: 0.5, servingUnit: 'cup (113g)', calories: 90, protein: 13, carbs: 5, fat: 2, source: 'common', tags: 'cottage cheese 2% low fat' },
   { name: 'Whole Milk Yogurt (plain)', servingSize: 1, servingUnit: 'cup (245g)', calories: 150, protein: 9, carbs: 11, fat: 8, source: 'common', tags: 'yogurt whole milk plain' },
-  { name: 'Kefir (plain)', servingSize: 1, servingUnit: 'cup (240ml)', calories: 110, protein: 10, carbs: 12, fat: 2, source: 'common', tags: 'kefir fermented dairy probiotic' },
   // ── More Grains / Bread ──
   { name: 'Pita Bread (whole wheat)', servingSize: 1, servingUnit: 'pita (64g)', calories: 165, protein: 6, carbs: 33, fat: 1, source: 'common', tags: 'pita bread whole wheat' },
-  { name: 'English Muffin', servingSize: 1, servingUnit: 'muffin (57g)', calories: 130, protein: 5, carbs: 25, fat: 1, source: 'common', tags: 'english muffin breakfast bread' , addedSugars: 4 },
   { name: 'Whole Wheat Crackers', servingSize: 16, servingUnit: 'crackers (30g)', calories: 130, protein: 3, carbs: 22, fat: 4, source: 'common', tags: 'whole wheat crackers snack' },
-  { name: 'Granola Bar', servingSize: 1, servingUnit: 'bar (47g)', calories: 190, protein: 4, carbs: 29, fat: 7, source: 'common', tags: 'granola bar snack oats' , addedSugars: 10 },
   // ── More Fruit ──
   { name: 'Pineapple (fresh)', servingSize: 1, servingUnit: 'cup chunks (165g)', calories: 82, protein: 1, carbs: 22, fat: 0, source: 'common', tags: 'pineapple fresh fruit tropical' },
-  { name: 'Kiwi', servingSize: 2, servingUnit: 'medium (148g)', calories: 90, protein: 2, carbs: 22, fat: 1, source: 'common', tags: 'kiwi fruit vitamin c' , addedSugars: 6 },
   { name: 'Dried Cranberries', servingSize: 0.25, servingUnit: 'cup (40g)', calories: 130, protein: 0, carbs: 33, fat: 0, source: 'common', tags: 'dried cranberries craisins snack' },
-  { name: 'Raisins', servingSize: 0.25, servingUnit: 'cup (41g)', calories: 123, protein: 1, carbs: 33, fat: 0, source: 'common', tags: 'raisins dried grapes snack' },
   // ── More Meals / Mixed Dishes ──
   { name: 'Chicken Caesar Salad', servingSize: 1, servingUnit: 'plate (~400g)', calories: 470, protein: 36, carbs: 20, fat: 28, source: 'common', tags: 'chicken caesar salad restaurant' },
   { name: 'Stir-Fry (chicken & vegetables)', servingSize: 1, servingUnit: 'cup (200g)', calories: 220, protein: 22, carbs: 14, fat: 8, source: 'common', tags: 'chicken stir fry vegetables rice' },
-  { name: 'Beef Tacos (2)', servingSize: 2, servingUnit: 'tacos (~200g)', calories: 380, protein: 22, carbs: 34, fat: 16, source: 'common', tags: 'beef tacos mexican corn tortilla' },
   { name: 'Vegetable Curry with Rice', servingSize: 1, servingUnit: 'plate (~350g)', calories: 380, protein: 9, carbs: 65, fat: 10, source: 'common', tags: 'vegetable curry rice indian' },
   { name: 'Egg Fried Rice', servingSize: 1, servingUnit: 'cup (198g)', calories: 238, protein: 8, carbs: 38, fat: 6, source: 'common', tags: 'egg fried rice chinese takeout' },
   { name: 'Spaghetti with Marinara', servingSize: 1, servingUnit: 'cup pasta + sauce (280g)', calories: 290, protein: 10, carbs: 56, fat: 4, source: 'common', tags: 'spaghetti marinara pasta tomato' },
   { name: 'Falafel (3 pieces)', servingSize: 3, servingUnit: 'pieces (90g)', calories: 210, protein: 8, carbs: 22, fat: 10, source: 'common', tags: 'falafel middle eastern chickpea fried' },
   { name: 'Edamame', servingSize: 0.5, servingUnit: 'cup shelled (78g)', calories: 94, protein: 9, carbs: 7, fat: 4, source: 'common', tags: 'edamame soybean appetizer japanese snack' , addedSugars: 4 },
-  { name: 'Miso Soup', servingSize: 1, servingUnit: 'cup (240ml)', calories: 35, protein: 3, carbs: 4, fat: 1, source: 'common', tags: 'miso soup japanese tofu seaweed' },
-  { name: 'Chicken Noodle Soup', servingSize: 1, servingUnit: 'cup (241g)', calories: 75, protein: 6, carbs: 9, fat: 2, source: 'common', tags: 'chicken noodle soup homemade canned' },
-  { name: 'Pad Thai', servingSize: 1, servingUnit: 'plate (300g)', calories: 450, protein: 20, carbs: 55, fat: 17, source: 'common', tags: 'pad thai noodles thai restaurant' , addedSugars: 12 },
-  { name: 'Hummus', servingSize: 2, servingUnit: 'tbsp (30g)', calories: 50, protein: 2, carbs: 6, fat: 3, source: 'common', tags: 'hummus chickpea dip spread' , addedSugars: 2 },
+  { name: 'Pad Thai (large plate)', servingSize: 1, servingUnit: 'plate (300g)', calories: 450, protein: 20, carbs: 55, fat: 17, source: 'common', tags: 'pad thai noodles thai restaurant large plate' , addedSugars: 12 },
   { name: 'Baby Carrots', servingSize: 1, servingUnit: 'cup (128g)', calories: 53, protein: 1, carbs: 12, fat: 0, source: 'common', tags: 'baby carrots raw snack vegetable' },
-  { name: 'String Cheese', servingSize: 1, servingUnit: 'stick (28g)', calories: 80, protein: 6, carbs: 1, fat: 6, source: 'common', tags: 'string cheese mozzarella stick snack' , addedSugars: 0 },
-  { name: 'Cashews', servingSize: 1, servingUnit: 'oz (28g)', calories: 157, protein: 5, carbs: 9, fat: 12, source: 'common', tags: 'cashews nuts snack' , addedSugars: 5 },
-  { name: 'Sunflower Seeds', servingSize: 1, servingUnit: 'oz (28g)', calories: 165, protein: 5, carbs: 7, fat: 14, source: 'common', tags: 'sunflower seeds snack nuts' , addedSugars: 3 },
-  { name: 'Dark Chocolate (70%+)', servingSize: 1, servingUnit: 'oz (28g)', calories: 170, protein: 2, carbs: 13, fat: 12, source: 'common', tags: 'dark chocolate 70% cocoa snack dessert' },
 
   // ── Mexican / Tex-Mex Dishes ──
   { name: 'Chicken Fajitas', servingSize: 1, servingUnit: 'serving (2 tortillas + filling)', calories: 500, protein: 36, carbs: 45, fat: 18, source: 'common', tags: 'chicken fajitas mexican tex mex peppers onions tortilla' },
   { name: 'Beef Fajitas', servingSize: 1, servingUnit: 'serving (2 tortillas + filling)', calories: 560, protein: 34, carbs: 45, fat: 22, source: 'common', tags: 'beef fajitas steak mexican tex mex peppers onions tortilla' },
   { name: 'Shrimp Fajitas', servingSize: 1, servingUnit: 'serving (2 tortillas + filling)', calories: 430, protein: 30, carbs: 46, fat: 14, source: 'common', tags: 'shrimp fajitas mexican tex mex seafood peppers onions tortilla' },
   { name: 'Chicken Burrito', servingSize: 1, servingUnit: 'burrito (~400g)', calories: 740, protein: 45, carbs: 85, fat: 22, source: 'common', tags: 'chicken burrito mexican rice beans cheese' },
-  { name: 'Beef Burrito', servingSize: 1, servingUnit: 'burrito (~400g)', calories: 800, protein: 40, carbs: 86, fat: 28, source: 'common', tags: 'beef burrito mexican rice beans cheese' },
   { name: 'Bean & Cheese Burrito', servingSize: 1, servingUnit: 'burrito (~280g)', calories: 490, protein: 18, carbs: 72, fat: 14, source: 'common', tags: 'bean cheese burrito vegetarian mexican' },
-  { name: 'Cheese Quesadilla', servingSize: 1, servingUnit: 'quesadilla (half 10" tortilla)', calories: 380, protein: 16, carbs: 34, fat: 20, source: 'common', tags: 'cheese quesadilla mexican snack' },
-  { name: 'Chicken Quesadilla', servingSize: 1, servingUnit: 'quesadilla (half 10" tortilla)', calories: 450, protein: 30, carbs: 34, fat: 21, source: 'common', tags: 'chicken quesadilla mexican' },
   { name: 'Cheese Enchiladas (2)', servingSize: 2, servingUnit: 'enchiladas', calories: 480, protein: 20, carbs: 46, fat: 24, source: 'common', tags: 'cheese enchiladas mexican baked' },
   { name: 'Chicken Enchiladas (2)', servingSize: 2, servingUnit: 'enchiladas', calories: 520, protein: 34, carbs: 46, fat: 20, source: 'common', tags: 'chicken enchiladas mexican baked' },
   { name: 'Nachos (with cheese)', servingSize: 1, servingUnit: 'serving (~200g)', calories: 550, protein: 14, carbs: 58, fat: 30, source: 'common', tags: 'nachos cheese chips mexican appetizer' },
   { name: 'Nachos (fully loaded)', servingSize: 1, servingUnit: 'serving (~350g)', calories: 850, protein: 30, carbs: 70, fat: 48, source: 'common', tags: 'nachos loaded beef sour cream guacamole mexican' },
-  { name: 'Fish Tacos (2)', servingSize: 2, servingUnit: 'tacos (~200g)', calories: 380, protein: 24, carbs: 38, fat: 14, source: 'common', tags: 'fish tacos baja seafood corn tortilla slaw' },
   { name: 'Shrimp Tacos (2)', servingSize: 2, servingUnit: 'tacos (~190g)', calories: 350, protein: 22, carbs: 38, fat: 12, source: 'common', tags: 'shrimp tacos seafood corn tortilla' },
   { name: 'Carnitas (3 oz)', servingSize: 3, servingUnit: 'oz (85g)', calories: 210, protein: 24, carbs: 0, fat: 12, source: 'common', tags: 'carnitas pork slow cooked mexican' },
   { name: 'Carne Asada (3 oz)', servingSize: 3, servingUnit: 'oz (85g)', calories: 185, protein: 22, carbs: 0, fat: 10, source: 'common', tags: 'carne asada beef steak mexican grilled' },
   { name: 'Spanish Rice', servingSize: 0.5, servingUnit: 'cup (95g)', calories: 150, protein: 3, carbs: 32, fat: 2, source: 'common', tags: 'spanish rice mexican side tomato' },
   { name: 'Pico de Gallo', servingSize: 0.25, servingUnit: 'cup (65g)', calories: 15, protein: 1, carbs: 4, fat: 0, source: 'common', tags: 'pico de gallo salsa fresh tomato onion' },
-  { name: 'Sour Cream', servingSize: 2, servingUnit: 'tbsp (30g)', calories: 60, protein: 1, carbs: 1, fat: 6, source: 'common', tags: 'sour cream dairy topping mexican' , addedSugars: 2 },
   { name: 'Salsa (jarred)', servingSize: 2, servingUnit: 'tbsp (30g)', calories: 10, protein: 0, carbs: 2, fat: 0, source: 'common', tags: 'salsa jarred tomato condiment mexican' },
 
   // ── Asian Dishes ──
@@ -636,7 +615,6 @@ export const COMMON_FOODS = [
   { name: 'Sashimi (6 pcs)', servingSize: 6, servingUnit: 'pieces (~120g)', calories: 160, protein: 28, carbs: 0, fat: 5, source: 'common', tags: 'sashimi sushi raw fish tuna salmon japanese' },
   { name: 'Spring Rolls (fried, 2)', servingSize: 2, servingUnit: 'rolls (~120g)', calories: 280, protein: 8, carbs: 32, fat: 14, source: 'common', tags: 'spring rolls fried chinese appetizer' },
   { name: 'Dumplings / Potstickers (6)', servingSize: 6, servingUnit: 'pieces (~180g)', calories: 310, protein: 14, carbs: 38, fat: 11, source: 'common', tags: 'dumplings potstickers gyoza chinese japanese' },
-  { name: 'Chicken Tikka Masala', servingSize: 1, servingUnit: 'cup (240g)', calories: 360, protein: 30, carbs: 18, fat: 18, source: 'common', tags: 'chicken tikka masala indian curry tomato' },
   { name: 'Butter Chicken', servingSize: 1, servingUnit: 'cup (240g)', calories: 390, protein: 28, carbs: 16, fat: 22, source: 'common', tags: 'butter chicken indian curry creamy' },
   { name: 'Saag Paneer', servingSize: 1, servingUnit: 'cup (240g)', calories: 280, protein: 14, carbs: 12, fat: 20, source: 'common', tags: 'saag paneer spinach cheese indian curry' },
   { name: 'Fried Dumplings (6)', servingSize: 6, servingUnit: 'pieces (~180g)', calories: 380, protein: 14, carbs: 38, fat: 18, source: 'common', tags: 'fried dumplings potstickers pan fried chinese' },
@@ -646,10 +624,8 @@ export const COMMON_FOODS = [
   { name: 'BBQ Chicken (half bird)', servingSize: 0.5, servingUnit: 'chicken (~300g)', calories: 580, protein: 62, carbs: 12, fat: 30, source: 'common', tags: 'bbq chicken barbecue grilled half' },
   { name: 'BBQ Ribs (half rack)', servingSize: 0.5, servingUnit: 'rack (~340g)', calories: 730, protein: 52, carbs: 16, fat: 50, source: 'common', tags: 'bbq ribs pork barbecue half rack' },
   { name: 'Pulled Pork (sandwich)', servingSize: 1, servingUnit: 'sandwich (~300g)', calories: 540, protein: 32, carbs: 52, fat: 20, source: 'common', tags: 'pulled pork sandwich bbq barbecue bun' },
-  { name: 'Beef Chili', servingSize: 1, servingUnit: 'cup (253g)', calories: 290, protein: 22, carbs: 24, fat: 12, source: 'common', tags: 'beef chili beans tomato' },
   { name: 'White Chicken Chili', servingSize: 1, servingUnit: 'cup (253g)', calories: 260, protein: 26, carbs: 22, fat: 8, source: 'common', tags: 'white chicken chili beans' },
   { name: 'Pot Roast', servingSize: 1, servingUnit: 'serving (4 oz beef + veg)', calories: 380, protein: 35, carbs: 18, fat: 18, source: 'common', tags: 'pot roast beef slow cooked vegetables' },
-  { name: 'Beef Stew', servingSize: 1, servingUnit: 'cup (245g)', calories: 250, protein: 20, carbs: 22, fat: 9, source: 'common', tags: 'beef stew vegetables potatoes hearty' , addedSugars: 3 },
   { name: 'Chicken Pot Pie', servingSize: 1, servingUnit: 'individual pie (284g)', calories: 550, protein: 20, carbs: 48, fat: 30, source: 'common', tags: 'chicken pot pie crust vegetables' },
   { name: 'Meatloaf', servingSize: 1, servingUnit: 'slice (150g)', calories: 290, protein: 24, carbs: 12, fat: 16, source: 'common', tags: 'meatloaf beef ground comfort food' },
   { name: 'Pork Chop (grilled)', servingSize: 1, servingUnit: 'chop (6 oz)', calories: 280, protein: 38, carbs: 0, fat: 13, source: 'common', tags: 'pork chop grilled boneless' },
@@ -665,8 +641,6 @@ export const COMMON_FOODS = [
   { name: 'Chicken & Rice (plain)', servingSize: 1, servingUnit: 'plate (6 oz chicken + 1 cup rice)', calories: 530, protein: 54, carbs: 55, fat: 8, source: 'common', tags: 'chicken rice plain diet meal prep' },
 
   // ── Sandwiches & Wraps ──
-  { name: 'Club Sandwich', servingSize: 1, servingUnit: 'sandwich', calories: 560, protein: 36, carbs: 42, fat: 26, source: 'common', tags: 'club sandwich turkey bacon triple decker' },
-  { name: 'Philly Cheesesteak', servingSize: 1, servingUnit: 'sandwich (hoagie roll)', calories: 700, protein: 40, carbs: 58, fat: 30, source: 'common', tags: 'philly cheesesteak beef hoagie peppers onions' },
   { name: 'Reuben Sandwich', servingSize: 1, servingUnit: 'sandwich', calories: 620, protein: 32, carbs: 46, fat: 32, source: 'common', tags: 'reuben sandwich corned beef sauerkraut swiss rye' },
   { name: 'Italian Sub / Hoagie', servingSize: 1, servingUnit: 'sandwich (12")', calories: 680, protein: 36, carbs: 56, fat: 32, source: 'common', tags: 'italian sub hoagie salami pepperoni ham' },
   { name: 'Meatball Sub', servingSize: 1, servingUnit: 'sandwich (6")', calories: 580, protein: 28, carbs: 62, fat: 22, source: 'common', tags: 'meatball sub sandwich marinara mozzarella' },
@@ -674,7 +648,6 @@ export const COMMON_FOODS = [
   { name: 'Chicken Wrap (grilled)', servingSize: 1, servingUnit: 'wrap', calories: 420, protein: 34, carbs: 38, fat: 12, source: 'common', tags: 'chicken wrap grilled tortilla lettuce' },
   { name: 'Crispy Chicken Sandwich', servingSize: 1, servingUnit: 'sandwich', calories: 650, protein: 32, carbs: 58, fat: 32, source: 'common', tags: 'crispy chicken sandwich fried fast food bun' },
   { name: 'Grilled Chicken Sandwich', servingSize: 1, servingUnit: 'sandwich', calories: 420, protein: 36, carbs: 40, fat: 12, source: 'common', tags: 'grilled chicken sandwich bun' },
-  { name: 'Hot Dog (with bun)', servingSize: 1, servingUnit: 'hot dog', calories: 290, protein: 11, carbs: 24, fat: 17, source: 'common', tags: 'hot dog bun frank beef pork' },
   { name: 'Gyro (pita)', servingSize: 1, servingUnit: 'gyro pita sandwich', calories: 520, protein: 28, carbs: 46, fat: 22, source: 'common', tags: 'gyro pita lamb beef tzatziki greek' },
 
   // ── Breakfast Dishes ──
@@ -687,16 +660,12 @@ export const COMMON_FOODS = [
   { name: 'Avocado Toast (with egg)', servingSize: 1, servingUnit: 'slice toast + avocado + egg', calories: 350, protein: 14, carbs: 24, fat: 22, source: 'common', tags: 'avocado toast egg breakfast brunch' },
   { name: 'Avocado Toast (plain)', servingSize: 1, servingUnit: 'slice toast + avocado', calories: 250, protein: 5, carbs: 24, fat: 16, source: 'common', tags: 'avocado toast plain breakfast brunch' },
   { name: 'Huevos Rancheros', servingSize: 1, servingUnit: 'plate', calories: 470, protein: 22, carbs: 44, fat: 22, source: 'common', tags: 'huevos rancheros eggs mexican salsa tortilla beans' },
-  { name: 'Shakshuka (2 eggs)', servingSize: 1, servingUnit: 'serving (2 eggs in sauce)', calories: 260, protein: 16, carbs: 18, fat: 14, source: 'common', tags: 'shakshuka eggs tomato sauce middle eastern' },
 
   // ── Soups ──
   { name: 'Tomato Soup (creamy)', servingSize: 1, servingUnit: 'cup (245g)', calories: 160, protein: 4, carbs: 20, fat: 8, source: 'common', tags: 'tomato soup creamy canned homemade' },
-  { name: 'French Onion Soup', servingSize: 1, servingUnit: 'cup with crouton & cheese', calories: 280, protein: 12, carbs: 28, fat: 14, source: 'common', tags: 'french onion soup gruyere crouton' },
-  { name: 'Clam Chowder (New England)', servingSize: 1, servingUnit: 'cup (248g)', calories: 220, protein: 10, carbs: 22, fat: 10, source: 'common', tags: 'clam chowder new england cream white soup' },
+  { name: 'French Onion Soup (with crouton & gruyère)', servingSize: 1, servingUnit: 'cup with crouton & cheese', calories: 280, protein: 12, carbs: 28, fat: 14, source: 'common', tags: 'french onion soup gruyere crouton classic' },
   { name: 'Minestrone', servingSize: 1, servingUnit: 'cup (241g)', calories: 120, protein: 5, carbs: 20, fat: 3, source: 'common', tags: 'minestrone italian vegetable soup pasta beans' },
-  { name: 'Lentil Soup', servingSize: 1, servingUnit: 'cup (248g)', calories: 180, protein: 12, carbs: 28, fat: 3, source: 'common', tags: 'lentil soup vegetarian hearty' },
   { name: 'Split Pea Soup', servingSize: 1, servingUnit: 'cup (253g)', calories: 190, protein: 11, carbs: 32, fat: 3, source: 'common', tags: 'split pea soup ham hearty' },
-  { name: 'Black Bean Soup', servingSize: 1, servingUnit: 'cup (243g)', calories: 200, protein: 12, carbs: 34, fat: 3, source: 'common', tags: 'black bean soup vegetarian latin' },
   { name: 'Broccoli Cheddar Soup', servingSize: 1, servingUnit: 'cup (248g)', calories: 240, protein: 9, carbs: 18, fat: 15, source: 'common', tags: 'broccoli cheddar soup cheese panera' },
 
   // ── Persian Dishes ──
