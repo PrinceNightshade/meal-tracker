@@ -94,18 +94,17 @@ Every push to `main` automatically deploys to GitHub Pages via GitHub Actions.
 
 **Deploy steps:**
 1. Make changes
-2. Bump `const CACHE = 'meal-tracker-vN'` in `sw.js` (increment N)
-3. Commit and push — GitHub Pages deploys within ~1 min
+2. Commit and push — GitHub Pages deploys within ~1 min
 
 ```bash
-git add -A
+git add <files>
 git commit -m "Your message"
 git push
 ```
 
-**Why bump the SW cache?** The service worker caches all app files. Changing the cache name causes the browser to install a fresh SW and download all updated files. Skip this and users get stale code.
+**SW cache version is automatic.** The CI deploy step rewrites `const CACHE = 'meal-tracker-vN'` in `sw.js` to `meal-tracker-<git-short-sha>` before publishing. Each commit gets a unique cache key, so the browser always installs a fresh SW after a push. No manual bumps needed.
 
-**To pick up an update on your installed PWA:** Close the app fully from the app switcher and reopen it. The new SW will take over on next launch.
+**To pick up an update on your installed PWA:** Close the app fully from the app switcher and reopen it. The new SW will take over on next launch — or use the in-app "Update available" banner.
 
 ---
 

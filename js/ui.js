@@ -284,11 +284,12 @@ export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFa
     return foodItemEl;
   });
 
-  const emptyMsg = foods.length === 0
-    ? [el('div', { className: 'empty-meal', textContent: 'No foods logged' })]
+  const isEmpty = foods.length === 0;
+  const emptyMsg = isEmpty
+    ? [el('div', { className: 'empty-meal', textContent: 'Tap to add your first food' })]
     : [];
 
-  return el('div', { className: 'meal-section' }, [
+  const section = el('div', { className: `meal-section${isEmpty ? ' is-empty' : ''}` }, [
     el('div', { className: 'meal-header' }, [
       el('span', { className: 'meal-title' }, [
         el('span', { className: 'meal-icon', textContent: icons[mealType] || '○' }),
@@ -298,12 +299,19 @@ export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFa
       el('button', {
         className: 'btn-add',
         textContent: '+ Add',
-        onClick: () => onAdd(mealType),
+        onClick: (e) => { e.stopPropagation(); onAdd(mealType); },
       }),
     ]),
     ...foodItems,
     ...emptyMsg,
   ]);
+
+  // Whole-card tap when empty — biggest hit area for the most common one-handed action.
+  if (isEmpty) {
+    section.addEventListener('click', () => onAdd(mealType));
+  }
+
+  return section;
 }
 
 // ── Weight Chart (simple SVG) ──
@@ -474,6 +482,12 @@ export function capitalize(s) {
 export function formatDate(dateStr) {
   const d = new Date(dateStr + 'T12:00:00');
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// Header-friendly: omits the year so the date never wraps on narrow widths.
+export function formatDateCompact(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 function formatShortDate(dateStr) {

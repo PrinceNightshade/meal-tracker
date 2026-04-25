@@ -10,6 +10,7 @@ let currentDate = ui.todayStr();
 let currentView = 'daily'; // daily | goals | weight
 let currentInsightIndex = 0; // for cycling through analytics insights
 let activeCameraStream = null; // track live camera so closeModal can stop it
+let currentUser = null; // tracked separately from button rendering
 
 // ── Init ──
 
@@ -32,44 +33,34 @@ document.addEventListener('DOMContentLoaded', () => {
 function initTheme() {
   const saved = localStorage.getItem('mt_theme'); // 'dark' | 'light' | null
   if (saved) document.documentElement.classList.add(saved);
-
-  const btn = ui.el('button', {
-    className: 'theme-toggle',
-    title: 'Toggle dark/light mode',
-    textContent: getThemeIcon(),
-    onClick: () => {
-      const root = document.documentElement;
-      const isDark = root.classList.contains('dark') ||
-        (!root.classList.contains('light') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-      root.classList.remove('dark', 'light');
-      if (isDark) {
-        root.classList.add('light');
-        localStorage.setItem('mt_theme', 'light');
-      } else {
-        root.classList.add('dark');
-        localStorage.setItem('mt_theme', 'dark');
-      }
-      btn.textContent = getThemeIcon();
-    },
-  });
-
-  document.querySelector('.date-nav').prepend(btn);
 }
 
-function getThemeIcon() {
+function getCurrentTheme() {
   const root = document.documentElement;
-  const isDark = root.classList.contains('dark') ||
-    (!root.classList.contains('light') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  return isDark ? '☀️' : '🌙';
+  if (root.classList.contains('light')) return 'light';
+  if (root.classList.contains('dark')) return 'dark';
+  return 'auto';
+}
+
+function setTheme(theme) {
+  const root = document.documentElement;
+  root.classList.remove('dark', 'light');
+  if (theme === 'auto') {
+    localStorage.removeItem('mt_theme');
+  } else {
+    root.classList.add(theme);
+    localStorage.setItem('mt_theme', theme);
+  }
 }
 
 // ── Auth ──
 
 function initAuth() {
   fb.handleRedirectResult(); // handle mobile redirect sign-in return
-  renderAuthButton(null);
+  renderProfileButton();
   fb.onUserChange(async user => {
-    renderAuthButton(user);
+    currentUser = user;
+    renderProfileButton();
     if (user) {
       showToast('Signed in — syncing...');
       await fb.pullFromCloud(store);
@@ -79,30 +70,85 @@ function initAuth() {
   });
 }
 
-function renderAuthButton(user) {
-  const existing = document.getElementById('auth-btn');
-  if (existing) existing.remove();
+function renderProfileButton() {
+  const btn = ui.$('#btn-profile');
+  if (!btn) return;
+  btn.textContent = currentUser
+    ? (currentUser.displayName?.split(' ')[0] || 'Account')
+    : 'Sign in';
+  btn.onclick = openProfileSheet;
+}
 
-  const btn = ui.el('button', {
-    id: 'auth-btn',
-    className: 'auth-btn',
-    textContent: user ? (user.displayName?.split(' ')[0] || 'Account') : 'Sign in',
-    title: user ? 'Sign out' : 'Sign in with Google to sync across devices',
-    onClick: async () => {
-      if (user) {
+function openProfileSheet() {
+  const modal = ui.$('#modal');
+  const modalBody = ui.$('#modal-body');
+  modalBody.innerHTML = '';
+
+  const sheet = ui.el('div', { className: 'profile-sheet' });
+
+  // Theme row with segmented control
+  const renderThemeOptions = () => {
+    const current = getCurrentTheme();
+    return ['light', 'dark', 'auto'].map(opt =>
+      ui.el('button', {
+        className: current === opt ? 'active' : '',
+        textContent: opt[0].toUpperCase() + opt.slice(1),
+        onClick: (e) => {
+          setTheme(opt);
+          // Re-render the theme row to update active state
+          const newOptions = renderThemeOptions();
+          const container = e.target.parentElement;
+          container.innerHTML = '';
+          newOptions.forEach(b => container.appendChild(b));
+        },
+      })
+    );
+  };
+
+  sheet.appendChild(ui.el('div', { className: 'profile-sheet-row' }, [
+    ui.el('span', { className: 'label', textContent: 'Theme' }),
+    ui.el('div', { className: 'theme-options' }, renderThemeOptions()),
+  ]));
+
+  // Account row
+  if (currentUser) {
+    sheet.appendChild(ui.el('div', { className: 'profile-sheet-row' }, [
+      ui.el('span', { className: 'label', textContent: 'Account' }),
+      ui.el('span', { className: 'value', textContent: currentUser.email || currentUser.displayName || 'Signed in' }),
+    ]));
+    sheet.appendChild(ui.el('button', {
+      className: 'btn-secondary',
+      textContent: 'Sign out',
+      onClick: async () => {
         await fb.signOutUser();
         showToast('Signed out');
-      } else {
+        closeModal();
+      },
+    }));
+  } else {
+    sheet.appendChild(ui.el('div', { className: 'profile-sheet-row' }, [
+      ui.el('span', { className: 'label', textContent: 'Account' }),
+      ui.el('span', { className: 'value', textContent: 'Sync across devices' }),
+    ]));
+    sheet.appendChild(ui.el('button', {
+      className: 'btn-primary',
+      textContent: 'Sign in with Google',
+      onClick: async () => {
         try {
           await fb.signInWithGoogle();
+          closeModal();
         } catch (e) {
           showToast('Sign in failed: ' + (e.code || e.message || 'unknown error'));
         }
-      }
-    },
-  });
+      },
+    }));
+  }
 
-  document.querySelector('.date-nav').appendChild(btn);
+  modalBody.appendChild(ui.el('h2', { textContent: 'Profile' }));
+  modalBody.appendChild(sheet);
+  modal.classList.add('open');
+  ui.$('#modal-close').onclick = closeModal;
+  modal.onclick = (e) => { if (e.target === modal) closeModal(); };
 }
 
 function bindNav() {
@@ -146,8 +192,12 @@ function renderAgeGate() {
 // ── Render ──
 
 function render() {
-  ui.$('#date-display').textContent = ui.formatDate(currentDate);
-  ui.$('#btn-next').disabled = currentDate >= ui.todayStr();
+  const today = ui.todayStr();
+  const isToday = currentDate === today;
+  // Compact format in the header (no year) — keeps the date on one line on iPhone widths.
+  ui.$('#date-display').textContent = isToday ? 'Today' : ui.formatDateCompact(currentDate);
+  ui.$('#btn-next').disabled = currentDate >= today;
+  ui.$('#btn-today').classList.toggle('hidden', isToday);
 
   if (currentView === 'daily') renderDaily();
   else if (currentView === 'goals') renderGoals();
@@ -234,7 +284,53 @@ function renderGoals() {
     ['very_active', 'Very Active (2x/day)'],
   ];
 
-  const activitySelect = ui.el('select', { className: 'input-select', dataset: { profile: 'activityLevel' } },
+  const saveProfile = (input) => {
+    const updated = {};
+    const activeSex = ui.$('.toggle-btn.active', container);
+    updated.sex = activeSex ? activeSex.dataset.value : null;
+    const byInput = ui.$('[data-profile="birthYear"]', container);
+    updated.birthYear = byInput.value ? parseInt(byInput.value) : null;
+    const ftInput = ui.$('[data-profile="heightFt"]', container);
+    updated.heightFt = ftInput.value ? parseInt(ftInput.value) : null;
+    const inInput = ui.$('[data-profile="heightIn"]', container);
+    updated.heightIn = inInput.value ? parseInt(inInput.value) : null;
+    const actInput = ui.$('[data-profile="activityLevel"]', container);
+    updated.activityLevel = actInput.value;
+    store.saveProfile(updated);
+    fb.pushProfile(updated);
+
+    const weightInput = ui.$('[data-profile="weight"]', container);
+    if (weightInput && weightInput.value) {
+      store.saveWeight(ui.todayStr(), weightInput.value);
+      fb.pushWeight(store.getAllWeightEntries());
+    }
+
+    if (store.isUnderage()) {
+      renderAgeGate();
+      return;
+    }
+
+    // Auto-apply TDEE the first time profile is fully filled in (still at defaults)
+    const suggested = store.getSuggestedGoals();
+    let toastMsg = 'Saved';
+    if (suggested && store.goalsAreDefaults()) {
+      const newGoals = { ...store.getGoals(), calories: suggested.calories, protein: suggested.protein, carbs: suggested.carbs, fat: suggested.fat };
+      store.saveGoals(newGoals);
+      fb.pushGoals(newGoals);
+      toastMsg = 'Goals updated from TDEE';
+      // Re-render so updated nutrition values appear
+      renderGoals();
+      showToast(toastMsg);
+      return;
+    }
+    flashSaved(input);
+  };
+
+  const activitySelect = ui.el('select', {
+    className: 'input-select',
+    dataset: { profile: 'activityLevel' },
+    onChange: (e) => saveProfile(e.target),
+  },
     activityOptions.map(([val, label]) => {
       const opt = ui.el('option', { value: val, textContent: label });
       if (profile.activityLevel === val) opt.selected = true;
@@ -255,13 +351,13 @@ function renderGoals() {
           className: `toggle-btn ${profile.sex === 'male' ? 'active' : ''}`,
           textContent: 'Male',
           dataset: { profile: 'sex', value: 'male' },
-          onClick: (e) => { selectToggle(e.target); },
+          onClick: (e) => { selectToggle(e.target); saveProfile(e.target); },
         }),
         ui.el('button', {
           className: `toggle-btn ${profile.sex === 'female' ? 'active' : ''}`,
           textContent: 'Female',
           dataset: { profile: 'sex', value: 'female' },
-          onClick: (e) => { selectToggle(e.target); },
+          onClick: (e) => { selectToggle(e.target); saveProfile(e.target); },
         }),
       ]),
     ]),
@@ -273,6 +369,7 @@ function renderGoals() {
         value: profile.birthYear || '',
         placeholder: 'e.g. 1990',
         dataset: { profile: 'birthYear' },
+        onBlur: (e) => saveProfile(e.target),
       }),
     ]),
     ui.el('div', { className: 'goal-row' }, [
@@ -284,6 +381,7 @@ function renderGoals() {
           value: profile.heightFt || '',
           placeholder: 'ft',
           dataset: { profile: 'heightFt' },
+          onBlur: (e) => saveProfile(e.target),
         }),
         ui.el('span', { textContent: 'ft' }),
         ui.el('input', {
@@ -292,6 +390,7 @@ function renderGoals() {
           value: profile.heightIn || '',
           placeholder: 'in',
           dataset: { profile: 'heightIn' },
+          onBlur: (e) => saveProfile(e.target),
         }),
         ui.el('span', { textContent: 'in' }),
       ]),
@@ -311,53 +410,11 @@ function renderGoals() {
           placeholder: 'lbs',
           step: '0.1',
           dataset: { profile: 'weight' },
+          onBlur: (e) => saveProfile(e.target),
         }),
         ui.el('span', { textContent: 'lbs' }),
       ]),
     ]),
-    ui.el('button', {
-      className: 'btn-primary',
-      textContent: 'Save Profile',
-      onClick: () => {
-        const updated = {};
-        const activeSex = ui.$('.toggle-btn.active', container);
-        updated.sex = activeSex ? activeSex.dataset.value : null;
-        const byInput = ui.$('[data-profile="birthYear"]', container);
-        updated.birthYear = byInput.value ? parseInt(byInput.value) : null;
-        const ftInput = ui.$('[data-profile="heightFt"]', container);
-        updated.heightFt = ftInput.value ? parseInt(ftInput.value) : null;
-        const inInput = ui.$('[data-profile="heightIn"]', container);
-        updated.heightIn = inInput.value ? parseInt(inInput.value) : null;
-        const actInput = ui.$('[data-profile="activityLevel"]', container);
-        updated.activityLevel = actInput.value;
-        store.saveProfile(updated);
-        fb.pushProfile(updated);
-
-        // Save weight if provided
-        const weightInput = ui.$('[data-profile="weight"]', container);
-        if (weightInput && weightInput.value) {
-          store.saveWeight(ui.todayStr(), weightInput.value);
-          fb.pushWeight(store.getAllWeightEntries());
-        }
-
-        if (store.isUnderage()) {
-          renderAgeGate();
-          return;
-        }
-
-        // Auto-apply TDEE if goals are still at defaults
-        const suggested = store.getSuggestedGoals();
-        if (suggested && store.goalsAreDefaults()) {
-          const newGoals = { ...store.getGoals(), calories: suggested.calories, protein: suggested.protein, carbs: suggested.carbs, fat: suggested.fat };
-          store.saveGoals(newGoals);
-          fb.pushGoals(newGoals);
-          showToast('Profile saved — goals updated from TDEE');
-        } else {
-          showToast('Profile saved');
-        }
-        renderGoals();
-      },
-    }),
   ]);
 
   container.appendChild(ui.collapsible('Profile', profileSummary, profileContent, { startOpen: !profileFilled }));
@@ -408,8 +465,21 @@ function renderGoals() {
   const goalsCustomized = goals.calories !== 2000 || goals.protein !== 150 || goals.carbs !== 200 || goals.fat !== 65;
   const goalsSummary = `${goals.calories} cal · ${goals.protein}p · ${goals.carbs}c · ${goals.fat}f`;
 
-  const nutritionContent = ui.el('div', { className: 'collapsible-content' }, [
-    ...['calories', 'protein', 'carbs', 'fat'].map(key => {
+  const saveNutritionGoals = (input) => {
+    const updated = { ...store.getGoals() };
+    ui.$$('.input-goal[data-key]', container).forEach(inp => {
+      const k = inp.dataset.key;
+      if (k === 'weightGoal') return; // handled in its own section
+      const val = inp.value.trim();
+      updated[k] = parseInt(val) || 0;
+    });
+    store.saveGoals(updated);
+    fb.pushGoals(updated);
+    flashSaved(input);
+  };
+
+  const nutritionContent = ui.el('div', { className: 'collapsible-content' },
+    ['calories', 'protein', 'carbs', 'fat'].map(key => {
       const unitLabel = key === 'calories' ? 'cal' : 'g';
       return ui.el('div', { className: 'goal-row' }, [
         ui.el('label', { textContent: `${ui.capitalize(key)} (${unitLabel})` }),
@@ -418,35 +488,25 @@ function renderGoals() {
           className: 'input-goal',
           value: String(goals[key]),
           dataset: { key },
+          onBlur: (e) => saveNutritionGoals(e.target),
         }),
       ]);
     }),
-    ui.el('button', {
-      className: 'btn-primary',
-      textContent: 'Save Goals',
-      onClick: () => {
-        const updated = {};
-        ui.$$('.input-goal', container).forEach(input => {
-          if (!input.dataset.key) return;
-          const val = input.value.trim();
-          if (input.dataset.key === 'weightGoal') {
-            updated.weightGoal = val ? parseFloat(val) : null;
-          } else {
-            updated[input.dataset.key] = parseInt(val) || 0;
-          }
-        });
-        store.saveGoals(updated);
-        fb.pushGoals(updated);
-        showToast('Goals saved');
-        renderGoals();
-      },
-    }),
-  ]);
+  );
 
   container.appendChild(ui.collapsible('Nutrition Goals', goalsSummary, nutritionContent, { startOpen: !goalsCustomized }));
 
   // ── Weight Goal ──
   const weightSummary = goals.weightGoal ? `Target: ${goals.weightGoal} lbs` : null;
+
+  const saveWeightGoal = (input) => {
+    const val = input.value.trim();
+    const current = store.getGoals();
+    const wGoals = { ...current, weightGoal: val ? parseFloat(val) : null };
+    store.saveGoals(wGoals);
+    fb.pushGoals(wGoals);
+    flashSaved(input);
+  };
 
   const weightContent = ui.el('div', { className: 'collapsible-content' }, [
     ui.el('div', { className: 'goal-row' }, [
@@ -458,22 +518,9 @@ function renderGoals() {
         placeholder: '—',
         step: '0.1',
         dataset: { key: 'weightGoal' },
+        onBlur: (e) => saveWeightGoal(e.target),
       }),
     ]),
-    ui.el('button', {
-      className: 'btn-primary',
-      textContent: 'Save Weight Goal',
-      onClick: () => {
-        const input = ui.$('[data-key="weightGoal"]', container);
-        const val = input.value.trim();
-        const current = store.getGoals();
-        const wGoals = { ...current, weightGoal: val ? parseFloat(val) : null };
-        store.saveGoals(wGoals);
-        fb.pushGoals(wGoals);
-        showToast('Weight goal saved');
-        renderGoals();
-      },
-    }),
   ]);
 
   container.appendChild(ui.collapsible('Weight Goal', weightSummary, weightContent, { startOpen: !goals.weightGoal }));
@@ -616,6 +663,73 @@ function openAddFoodModal(mealType) {
   const recents = store.getRecentFoodsByMealType(mealType, 20);
 
   const state = { results: [], loading: false };
+
+  // Multi-select state for recents/favorites — keyed by food name (lowercased) so the same
+  // food can't be selected twice across both lists. Value is the food object to add.
+  const selected = new Map();
+  let multiBar = null; // sticky bottom action bar (created lazily when first item picked)
+
+  function updateMultiBar() {
+    const count = selected.size;
+    if (count === 0) {
+      if (multiBar) { multiBar.remove(); multiBar = null; }
+      return;
+    }
+    if (!multiBar) {
+      multiBar = ui.el('div', { className: 'multi-add-bar' });
+      modalBody.appendChild(multiBar);
+    }
+    multiBar.innerHTML = '';
+    multiBar.appendChild(ui.el('span', {
+      className: 'multi-count',
+      textContent: `${count} selected`,
+    }));
+    multiBar.appendChild(ui.el('button', {
+      className: 'btn-secondary',
+      textContent: 'Clear',
+      onClick: () => {
+        selected.clear();
+        // Visually uncheck all rows + drop highlight
+        modalBody.querySelectorAll('.multi-check').forEach(c => { c.checked = false; });
+        modalBody.querySelectorAll('.result-row.is-selected').forEach(r => r.classList.remove('is-selected'));
+        updateMultiBar();
+      },
+    }));
+    multiBar.appendChild(ui.el('button', {
+      className: 'btn-primary',
+      textContent: `Add ${count} to ${ui.capitalize(mealType)}`,
+      onClick: () => {
+        const items = Array.from(selected.values());
+        items.forEach(food => {
+          store.addFoodToMeal(currentDate, mealType, { ...food, servings: 1 });
+        });
+        fb.pushDay(currentDate, store.getDay(currentDate));
+        showToast(`Added ${items.length} item${items.length === 1 ? '' : 's'}`);
+        closeModal();
+        render();
+      },
+    }));
+  }
+
+  function makeMultiCheckbox(food) {
+    const key = food.name.toLowerCase();
+    return ui.el('input', {
+      type: 'checkbox',
+      className: 'multi-check',
+      onClick: (e) => e.stopPropagation(),
+      onChange: (e) => {
+        const row = e.target.closest('.result-row');
+        if (e.target.checked) {
+          selected.set(key, food);
+          row?.classList.add('is-selected');
+        } else {
+          selected.delete(key);
+          row?.classList.remove('is-selected');
+        }
+        updateMultiBar();
+      },
+    });
+  }
 
   const searchInput = ui.el('input', {
     type: 'text',
@@ -813,9 +927,11 @@ function openAddFoodModal(mealType) {
           }
         }
 
-        recents.forEach(food =>
+        recents.forEach(food => {
+          const checkbox = makeMultiCheckbox(food);
           section.appendChild(
             ui.el('div', { className: 'result-row', onClick: () => showServingPicker(food, mealType) }, [
+              checkbox,
               ui.el('div', { className: 'result-info' }, [
                 ui.el('span', { className: 'result-name', textContent: food.name }),
                 ui.el('span', {
@@ -824,22 +940,21 @@ function openAddFoodModal(mealType) {
                 }),
               ]),
               ui.el('div', { className: 'fav-actions' }, [
-                ui.el('button', { className: 'btn-icon', textContent: '+' }),
                 ui.el('button', {
                   className: 'btn-icon btn-remove',
                   textContent: '×',
+                  title: "Don't show this again",
                   onClick: (e) => {
                     e.stopPropagation();
                     store.removeRecentFood(mealType, food.name);
-                    fb.pushDay(currentDate, store.getDay(currentDate));
                     // Refresh modal to show updated recents
                     openAddFoodModal(mealType);
                   },
                 }),
               ]),
             ])
-          )
-        );
+          );
+        });
 
         renderRecents();
         return section;
@@ -851,8 +966,10 @@ function openAddFoodModal(mealType) {
   const favsSection = favs.length > 0
     ? ui.el('div', { className: 'favorites-section' }, [
         ui.el('div', { className: 'divider', textContent: '— favorites —' }),
-        ...favs.map(fav =>
-          ui.el('div', { className: 'result-row', onClick: () => showServingPicker(fav, mealType) }, [
+        ...favs.map(fav => {
+          const checkbox = makeMultiCheckbox(fav);
+          return ui.el('div', { className: 'result-row', onClick: () => showServingPicker(fav, mealType) }, [
+            checkbox,
             ui.el('div', { className: 'result-info' }, [
               ui.el('span', { className: 'result-name', textContent: fav.name }),
               ui.el('span', {
@@ -861,20 +978,23 @@ function openAddFoodModal(mealType) {
               }),
             ]),
             ui.el('div', { className: 'fav-actions' }, [
-              ui.el('button', { className: 'btn-icon', textContent: '+' }),
               ui.el('button', {
                 className: 'btn-icon btn-remove',
                 textContent: '×',
+                title: "Remove favorite and don't show again",
                 onClick: (e) => {
                   e.stopPropagation();
                   store.removeFavorite(fav.favId);
+                  // Also suppress from recents in this meal type so the food doesn't pop
+                  // back tomorrow as a "recent" — matches the user's expectation that X means gone.
+                  store.removeRecentFood(mealType, fav.name);
                   fb.pushFavorites(store.getFavorites());
                   openAddFoodModal(mealType);
                 },
               }),
             ]),
-          ])
-        ),
+          ]);
+        }),
       ])
     : null;
 
@@ -1253,4 +1373,11 @@ function showToast(msg) {
   toast.textContent = msg;
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+// Quick green-border flash on a field after autosave — quieter than a toast for every blur.
+function flashSaved(el) {
+  if (!el || !el.classList) return;
+  el.classList.add('saved');
+  setTimeout(() => el.classList.remove('saved'), 800);
 }

@@ -31,6 +31,21 @@ Red = far from goal (0–49%), Yellow = getting there (50–84%), Green = on tra
 **Favorites are meal-type scoped.**
 Each favorite stores a `mealType` field. Favorites filter to the current meal type in the add modal. Legacy favorites (no `mealType`) show in all meals.
 
+**Dismiss-with-X is sticky.**
+Clicking the × on a recent or favorite adds the food name to `mt_hidden_recents[mealType]` (a per-meal-type blocklist in localStorage). Dismissed foods never re-appear in recents until the user re-adds them via search. Dismissing a favorite removes it from favorites **and** adds it to the blocklist — so the food doesn't pop back tomorrow as a "recent." Logic in `js/store.js` (`removeRecentFood`, `getRecentFoodsByMealType`).
+
+**Goals page autosaves.**
+No Save buttons — every input saves on blur, every toggle/select saves on change. A green border briefly flashes the field as confirmation. The first time the profile is fully filled in (sex + birth year + height) and goals are still at defaults, TDEE-derived goals are auto-applied with a toast.
+
+**Profile sheet (top-right).**
+Theme toggle and auth controls live in a single bottom-sheet opened from the top-right `#btn-profile` button. Theme has three states: Light / Dark / Auto (Auto follows OS via `prefers-color-scheme`). Replaces the previous separate `theme-toggle` + `auth-btn` chrome that crowded the date row.
+
+**Multi-add from recents/favorites.**
+Each row in the recents/favorites sections shows a checkbox. Selecting any row reveals a sticky bottom action bar (`.multi-add-bar`) inside the modal: "N selected | Clear | Add N to Breakfast." Bulk-add closes the modal after pushing all items. Tapping the row body (anywhere except the checkbox or X) still goes straight to the serving picker for the single-add flow.
+
+**UI/UX guiding principle: breathe freely.**
+Favor whitespace and reduce competing elements. When in doubt, remove chrome rather than add toggles. Examples: "Today" hides when on today; date drops the year in the header; whole empty meal cards are tappable instead of relying on the small "+ Add" button alone; tap targets ≥44pt for one-handed use.
+
 ## Security
 
 **Firestore security rules** (project: `meal-tracker-f3bea`):
@@ -183,6 +198,14 @@ Run through these checks in the live preview server or on deployed staging:
 - [ ] Social / friend leaderboard
 - [ ] Apple Health / Google Fit integration
 - [ ] Macro targets by meal type (not just daily totals)
+
+### Recently Completed (Phase 5, Apr 2026 — UI/UX refresh)
+- [x] Header refresh — drop year from date, "Today" replaces date when on today, hide Today button on today, prev/next bumped to 44pt tap targets, theme + auth collapsed into a single Profile bottom-sheet
+- [x] Goals autosave — removed three Save buttons, save on blur with green border flash
+- [x] Multi-add — checkbox column on recents/favorites with sticky "Add N to MealType" bar
+- [x] Dismiss-with-X persistence — X on recents/favorites adds to `mt_hidden_recents` blocklist so the food doesn't reappear next day
+- [x] Whole empty meal cards tappable (not just the small "+ Add" button)
+- [x] Sticky search row no longer leaks results above it (modal padding restructure)
 
 ### Recently Completed (Phase 4, Q1 2026)
 - [x] Recents-first modal UX — show meal-type filtered recent foods before search

@@ -462,6 +462,14 @@ export function removeRecentFood(mealType, foodName) {
   hideRecentFood(mealType, foodName);
 }
 
+// Hide a food across ALL meal types (used when dismissing a favorite — the user
+// doesn't want to see this food re-appear as a recent in the same meal type either).
+export function hideFromAllRecents(foodName) {
+  for (const mealType of ['breakfast', 'lunch', 'dinner', 'snacks']) {
+    hideRecentFood(mealType, foodName);
+  }
+}
+
 // ── Daily Totals ──
 
 export function getDayTotals(dateStr) {

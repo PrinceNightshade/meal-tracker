@@ -69,8 +69,8 @@ body {
 .date-nav {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: calc(14px + env(safe-area-inset-top)) 0 10px;
+  gap: 4px;
+  padding: calc(10px + env(safe-area-inset-top)) 0 10px;
   position: sticky;
   top: 0;
   background: var(--bg);
@@ -80,16 +80,24 @@ body {
 .date-nav button {
   background: none;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 4px 10px;
+  border-radius: 8px;
+  padding: 0 10px;
   font-size: 16px;
   cursor: pointer;
   color: var(--text);
+  min-height: 44px;
 }
 
 .date-nav button:disabled {
-  opacity: 0.3;
+  opacity: 0.25;
   cursor: default;
+}
+
+.btn-chevron {
+  min-width: 44px;
+  font-size: 22px;
+  line-height: 1;
+  padding: 0;
 }
 
 #date-display {
@@ -98,46 +106,26 @@ body {
   flex: 1;
   text-align: center;
   min-width: 0;
+  white-space: nowrap;
 }
 
 #btn-today {
   font-size: 13px;
   color: var(--accent);
   border-color: var(--accent);
+  padding: 0 12px;
 }
+#btn-today.hidden { display: none; }
 
-/* ── Dark Mode Toggle ── */
-
-.theme-toggle {
-  background: none;
-  border: none;
-  font-size: 18px;
-  cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 6px;
-  line-height: 1;
-  opacity: 0.7;
-  transition: opacity 0.2s;
-}
-.theme-toggle:hover { opacity: 1; }
-
-/* ── Auth Button ── */
-
-.auth-btn {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 12px;
-  color: var(--text-muted);
-  cursor: pointer;
-  margin-left: 4px;
+.btn-profile {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  padding: 0 12px;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.auth-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
 }
 
 /* ── Bottom Nav ── */
@@ -538,15 +526,24 @@ body {
   border: none;
   font-size: 18px;
   cursor: pointer;
-  padding: 2px 6px;
+  padding: 0;
   color: var(--text-muted);
-  border-radius: 4px;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-icon:hover { background: var(--accent-light); }
 .btn-fav { color: var(--text-secondary); }
 .btn-fav.active { color: #f5a623; }
 .btn-remove:hover { color: var(--over); }
+
+.meal-section.is-empty { cursor: pointer; transition: background 0.15s; }
+.meal-section.is-empty:hover,
+.meal-section.is-empty:active { background: var(--accent-light); }
 
 .empty-meal {
   color: var(--text-muted);
@@ -576,39 +573,38 @@ body {
   max-width: 480px;
   max-height: 85dvh;
   overflow-y: auto;
-  padding: 16px;
-  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  /* No top padding — children handle their own top spacing so sticky elements
+     can pin flush against the modal edge with no peek-through. */
+  padding: 0 16px calc(16px + env(safe-area-inset-bottom));
   position: relative;
 }
 
 .modal-content h2 {
   font-size: 18px;
-  margin-bottom: 12px;
-  position: sticky;
-  top: 0;
-  background: var(--surface);
-  padding-top: 4px;
-  z-index: 3;
+  margin: 16px 0 12px;
+  padding-right: 44px; /* leave room for close button */
 }
 
 #modal-close {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 8px;
+  right: 8px;
   background: none;
   border: none;
-  font-size: 32px;
+  font-size: 28px;
   width: 44px;
   height: 44px;
   padding: 0;
   cursor: pointer;
-  color: var(--text);
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
   z-index: 10;
+  border-radius: 8px;
 }
+#modal-close:hover { background: var(--accent-light); color: var(--text); }
 
 /* ── Search ── */
 
@@ -618,9 +614,11 @@ body {
   align-items: center;
   position: sticky;
   top: 0;
-  z-index: 4;
+  z-index: 6;
   background: var(--surface);
-  margin-bottom: 10px;
+  padding: 8px 0 10px;
+  /* subtle separator below the sticky row to make pinning visible while scrolling */
+  box-shadow: 0 1px 0 var(--border);
 }
 
 .input-search {
@@ -1617,4 +1615,119 @@ body {
   .manual-row {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+/* ── Multi-select (recents/favorites) ── */
+
+.result-row .multi-check {
+  width: 22px;
+  height: 22px;
+  margin-right: 8px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.result-row.is-selected {
+  background: var(--accent-light);
+  border-radius: 8px;
+}
+
+.multi-add-bar {
+  position: sticky;
+  bottom: 0;
+  margin: 12px -16px 0;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  z-index: 5;
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.15);
+}
+
+.multi-add-bar .multi-count {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.multi-add-bar .btn-primary {
+  width: auto;
+  padding: 10px 18px;
+}
+
+.multi-add-bar .btn-secondary {
+  padding: 10px 14px;
+  font-size: 14px;
+}
+
+/* ── Profile Sheet ── */
+
+.profile-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0 8px;
+}
+
+.profile-sheet-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 4px;
+  border-top: 1px solid var(--border);
+}
+
+.profile-sheet-row:first-child { border-top: none; }
+
+.profile-sheet-row .label {
+  font-size: 15px;
+  color: var(--text);
+}
+
+.profile-sheet-row .value {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.theme-options {
+  display: flex;
+  gap: 4px;
+  background: var(--bg);
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.theme-options button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  min-height: 32px;
+}
+
+.theme-options button.active {
+  background: var(--accent);
+  color: white;
+}
+
+.profile-sheet .btn-primary,
+.profile-sheet .btn-secondary {
+  margin-top: 8px;
+}
+
+/* Saved indicator on Goals inputs (autosave feedback) */
+.input-goal.saved,
+.input-height.saved,
+.input-search.saved {
+  transition: border-color 0.4s ease;
+  border-color: var(--good);
 }
