@@ -238,9 +238,10 @@ export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFa
 
   const foodItems = foods.map(food => {
     const cals = Math.round((food.calories || 0) * (food.servings || 1));
+    const baseServing = formatServing(food);
     const servLabel = food.servings && food.servings !== 1
-      ? `${food.servings} × ${food.servingSize || ''}${food.servingUnit || ''}`
-      : `${food.servingSize || ''}${food.servingUnit || ''}`;
+      ? `${food.servings} × ${baseServing}`.trim()
+      : baseServing;
 
     const isFav = favorites.some(f => f.name === food.name);
     const favBtn = el('button', {
@@ -256,10 +257,11 @@ export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFa
       },
     });
 
+    const detailText = servLabel ? `${servLabel} — ${cals} cal` : `${cals} cal`;
     const foodItemEl = el('div', { className: 'food-item' }, [
       el('div', { className: 'food-info' }, [
         el('span', { className: 'food-name', textContent: food.name }),
-        el('span', { className: 'food-detail', textContent: `${servLabel} — ${cals} cal` }),
+        el('span', { className: 'food-detail', textContent: detailText }),
       ]),
       el('div', { className: 'food-actions' }, [
         favBtn,
@@ -399,7 +401,7 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
   const fatPct = getPercent(currentFat, goals.fat);
   const sugarsPct = getPercent(currentSugars, goals.addedSugars);
 
-  const servLabel = `${food.servingSize || ''}${food.servingUnit || ''}`;
+  const servLabel = formatServing(food);
 
   const modal = el('div', { className: 'food-modal' }, [
     el('div', { className: 'food-modal-header' }, [
@@ -477,6 +479,24 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
 
 export function capitalize(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// Human-readable portion label, e.g. "1 burrito (170g)", "8 fl oz", "100 g".
+// Always inserts a space between size and unit. Returns '' when neither is present
+// (manual entries) so callers can omit the dash separator.
+//
+// When size is 1 and the unit already starts with a number (e.g. "16 fl oz bottle",
+// "8.4 fl oz can"), drop the leading "1" — the unit is self-describing and "1 16 fl oz"
+// reads awkwardly.
+export function formatServing(food) {
+  const size = food.servingSize;
+  const unit = (food.servingUnit || '').trim();
+  const sizeStr = size === 0 || size == null || size === '' ? '' : String(size);
+  if (!sizeStr && !unit) return '';
+  if (!sizeStr) return unit;
+  if (!unit) return sizeStr;
+  if (Number(size) === 1 && /^\d/.test(unit)) return unit;
+  return `${sizeStr} ${unit}`;
 }
 
 export function formatDate(dateStr) {

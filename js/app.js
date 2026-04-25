@@ -842,7 +842,7 @@ function openAddFoodModal(mealType) {
           nameEl,
           ui.el('span', {
             className: 'result-macros',
-            textContent: `${food.calories} cal · ${food.protein}p · ${food.carbs}c · ${food.fat}f  per ${food.servingSize}${food.servingUnit}`,
+            textContent: `${food.calories} cal · ${food.protein}p · ${food.carbs}c · ${food.fat}f${ui.formatServing(food) ? `  per ${ui.formatServing(food)}` : ''}`,
           }),
         ]),
         actions,
@@ -1095,7 +1095,7 @@ function showServingPicker(food, mealType) {
   const label = food.brand ? `${food.name} (${food.brand})` : food.name;
   modalBody.appendChild(ui.el('div', { className: 'serving-picker' }, [
     ui.el('h3', { textContent: label }),
-    ui.el('div', { className: 'serving-size-info', textContent: `Serving: ${food.servingSize}${food.servingUnit}` }),
+    ui.el('div', { className: 'serving-size-info', textContent: `Serving: ${ui.formatServing(food) || '—'}` }),
     ui.el('div', { className: 'serving-input-row' }, [
       ui.el('label', { textContent: 'Servings:' }),
       servingInput,

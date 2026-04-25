@@ -28,6 +28,29 @@ function detectOffCountryTag() {
   return region ? (OFF_COUNTRY_TAGS[region] || null) : null;
 }
 
+// Parse Open Food Facts `serving_size` strings into a {size, unit} pair.
+// Examples:
+//   "1 burrito (170g)" → { size: 1, unit: 'burrito (170g)' }
+//   "28 g"             → { size: 28, unit: 'g' }
+//   "1 pouch (90g)"    → { size: 1, unit: 'pouch (90g)' }
+//   "5.5 oz"           → { size: 5.5, unit: 'oz' }
+//   ""                 → { size: '', unit: '' }
+// Falls back to using `serving_quantity` (always grams) if the label is empty.
+export function parseServingLabel(label, fallbackQty) {
+  const trimmed = (label || '').trim();
+  const m = trimmed.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
+  if (m) {
+    const size = Math.round(parseFloat(m[1].replace(',', '.')) * 10) / 10;
+    const unit = m[2].trim() || 'serving';
+    return { size, unit };
+  }
+  if (trimmed) return { size: 1, unit: trimmed };
+  // No usable label — fall back to grams from serving_quantity (numeric)
+  const qty = parseFloat(fallbackQty);
+  if (qty && isFinite(qty)) return { size: Math.round(qty * 10) / 10, unit: 'g' };
+  return { size: '', unit: '' };
+}
+
 // Free USDA API key — public data, no billing
 const USDA_API_KEY = 'HGLL5EFe4RWMraaWCSRDqtZdl131ajiERSfuQPcu';
 
@@ -245,18 +268,9 @@ async function searchOpenFoodFacts(query, pageSize = 15) {
           protein = Math.round((nm.proteins_serving || 0) * 10) / 10;
           carbs = Math.round((nm.carbohydrates_serving || 0) * 10) / 10;
           fat = Math.round((nm.fat_serving || 0) * 10) / 10;
-          // serving_quantity is a numeric field (may have float precision issues), serving_size is the full label string
-          const qty = parseFloat(p.serving_quantity);
-          if (qty && isFinite(qty)) {
-            // Extract unit from the serving_size label (e.g. "28 g" → "g", "1 oz (28g)" → "oz")
-            const unitMatch = (p.serving_size || '').match(/[a-zA-Z]+/);
-            servingSize = Math.round(qty * 10) / 10;
-            servingUnit = unitMatch ? unitMatch[0] : 'serving';
-          } else {
-            // Fall back to the label as-is but strip float noise from any leading number
-            servingSize = '';
-            servingUnit = (p.serving_size || 'serving').replace(/(\d+\.\d*?[1-9])0+\d*/g, '$1');
-          }
+          // Use the full `serving_size` label (e.g. "1 burrito (170g)") rather than
+          // grafting the gram qty onto the first matched word (which produced "170 burrito").
+          ({ size: servingSize, unit: servingUnit } = parseServingLabel(p.serving_size, p.serving_quantity));
         } else if (hasPer100g) {
           calories = Math.round(nm['energy-kcal_100g'] || 0);
           protein = Math.round((nm.proteins_100g || 0) * 10) / 10;
@@ -310,15 +324,7 @@ export async function lookupBarcode(barcode) {
     protein  = Math.round((nm.proteins_serving       || 0) * 10) / 10;
     carbs    = Math.round((nm.carbohydrates_serving  || 0) * 10) / 10;
     fat      = Math.round((nm.fat_serving            || 0) * 10) / 10;
-    const qty = parseFloat(p.serving_quantity);
-    if (qty && isFinite(qty)) {
-      const unitMatch = (p.serving_size || '').match(/[a-zA-Z]+/);
-      servingSize = Math.round(qty * 10) / 10;
-      servingUnit = unitMatch ? unitMatch[0] : 'g';
-    } else {
-      servingSize = '';
-      servingUnit = (p.serving_size || 'serving').replace(/(\d+\.\d*?[1-9])0+\d*/g, '$1');
-    }
+    ({ size: servingSize, unit: servingUnit } = parseServingLabel(p.serving_size, p.serving_quantity));
   } else {
     // Fall back to per-100g
     calories = Math.round(nm['energy-kcal_100g'] || nm['energy-kcal'] || 0);
