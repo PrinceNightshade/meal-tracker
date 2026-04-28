@@ -423,7 +423,14 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
     ]),
 
     el('div', { className: 'food-modal-section' }, [
-      el('h3', { textContent: 'Nutritional Breakdown' }),
+      el('div', { className: 'nutrition-heading-row' }, [
+        el('h3', { textContent: 'Nutritional Breakdown' }),
+        el('span', {
+          className: 'edit-nutrition-link',
+          textContent: 'Edit nutrition',
+          onClick: () => enterEditMode(),
+        }),
+      ]),
       el('div', { className: 'nutrition-breakdown' }, [
         el('div', { className: 'nutrition-row' }, [
           el('span', { textContent: 'Calories' }),
@@ -457,7 +464,24 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
         onClick: () => {
           const quantityInput = modal.querySelector('.input-quantity');
           const newServings = parseFloat(quantityInput.value) || 1;
-          onSave?.(newServings);
+          let nutritionEdits = null;
+          if (modal.dataset.editMode === '1') {
+            const calsInput = modal.querySelector('.nutrition-edit-calories');
+            const proteinInput = modal.querySelector('.nutrition-edit-protein');
+            const carbsInput = modal.querySelector('.nutrition-edit-carbs');
+            const fatInput = modal.querySelector('.nutrition-edit-fat');
+            const sugarsInput = modal.querySelector('.nutrition-edit-sugars');
+            const saveCheckbox = modal.querySelector('.save-correction-checkbox');
+            nutritionEdits = {
+              calories: parseFloat(calsInput.value) || 0,
+              protein: parseFloat(proteinInput.value) || 0,
+              carbs: parseFloat(carbsInput.value) || 0,
+              fat: parseFloat(fatInput.value) || 0,
+              saveToMyFoods: saveCheckbox?.checked ?? true,
+            };
+            if (sugarsInput) nutritionEdits.addedSugars = parseFloat(sugarsInput.value) || 0;
+          }
+          onSave?.(newServings, nutritionEdits);
         },
       }),
       el('button', {
@@ -471,6 +495,48 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
       }),
     ]),
   ]);
+
+  function enterEditMode() {
+    modal.dataset.editMode = '1';
+
+    const editLink = modal.querySelector('.edit-nutrition-link');
+    if (editLink) editLink.style.display = 'none';
+
+    const rows = modal.querySelectorAll('.nutrition-row');
+    const nutrients = [
+      { cls: 'nutrition-edit-calories', val: currentCals, unit: '' },
+      { cls: 'nutrition-edit-protein', val: currentProtein, unit: 'g' },
+      { cls: 'nutrition-edit-carbs', val: currentCarbs, unit: 'g' },
+      { cls: 'nutrition-edit-fat', val: currentFat, unit: 'g' },
+      ...(goals.addedSugars && goals.addedSugars > 0
+        ? [{ cls: 'nutrition-edit-sugars', val: currentSugars, unit: 'g' }]
+        : []),
+    ];
+
+    rows.forEach((row, i) => {
+      const valueSpan = row.querySelector('.nutrition-value');
+      if (!valueSpan || !nutrients[i]) return;
+      const { cls, val, unit } = nutrients[i];
+      const input = el('input', {
+        type: 'number',
+        className: `nutrition-row-input ${cls}`,
+        value: String(val),
+        min: '0',
+        step: '1',
+      });
+      const unitSpan = unit ? el('span', { className: 'nutrition-edit-unit', textContent: unit }) : null;
+      const wrapper = el('div', { className: 'nutrition-edit-cell' }, unitSpan ? [input, unitSpan] : [input]);
+      valueSpan.replaceWith(wrapper);
+    });
+
+    const saveCheckbox = el('input', { type: 'checkbox', className: 'save-correction-checkbox' });
+    saveCheckbox.checked = true;
+    const checkboxLabel = el('label', { className: 'save-correction-label' }, [
+      saveCheckbox,
+      el('span', { textContent: 'Save to My Foods so future searches use this version' }),
+    ]);
+    modal.querySelector('.nutrition-breakdown').after(checkboxLabel);
+  }
 
   return modal;
 }

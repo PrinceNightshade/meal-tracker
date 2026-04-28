@@ -1570,6 +1570,62 @@ body {
   font-weight: 600;
 }
 
+.nutrition-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.edit-nutrition-link {
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  user-select: none;
+}
+
+.nutrition-edit-cell {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.nutrition-row-input {
+  width: 70px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: right;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.nutrition-edit-unit {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.save-correction-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 4px 0 0;
+  cursor: pointer;
+}
+
+.save-correction-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
 .food-modal-actions {
   display: flex;
   gap: 10px;

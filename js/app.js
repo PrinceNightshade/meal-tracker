@@ -1037,8 +1037,34 @@ function openFoodDetailsModal(mealType, food) {
   modalBody.innerHTML = '';
 
   const foodModal = ui.renderFoodModal(food, goals, {
-    onSave: (newServings) => {
-      store.updateFoodQuantity(currentDate, mealType, food.id, newServings);
+    onSave: (newServings, nutritionEdits) => {
+      if (nutritionEdits) {
+        const perServing = (val) => (parseFloat(newServings) || 1) > 0
+          ? val / (parseFloat(newServings) || 1)
+          : 0;
+        const updates = {
+          servings: newServings,
+          calories: perServing(nutritionEdits.calories),
+          protein: perServing(nutritionEdits.protein),
+          carbs: perServing(nutritionEdits.carbs),
+          fat: perServing(nutritionEdits.fat),
+        };
+        if (nutritionEdits.addedSugars !== undefined) {
+          updates.addedSugars = perServing(nutritionEdits.addedSugars);
+        }
+        store.updateFoodInMeal(currentDate, mealType, food.id, updates);
+        if (nutritionEdits.saveToMyFoods) {
+          const existing = store.getMyFoods().find(
+            f => f.name && f.name.toLowerCase() === food.name.toLowerCase()
+          );
+          if (existing) store.deleteMyFood(existing.myFoodId);
+          store.saveMyFood({ ...food, ...updates });
+          fb.pushMyFoods(store.getMyFoods());
+          showToast('Saved to My Foods');
+        }
+      } else {
+        store.updateFoodQuantity(currentDate, mealType, food.id, newServings);
+      }
       fb.pushDay(currentDate, store.getDay(currentDate));
       closeModal();
       render();
