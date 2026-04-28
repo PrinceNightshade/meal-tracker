@@ -196,7 +196,7 @@ Run through these checks in the live preview server or on deployed staging:
 - [ ] **Photo-first UX pivot** — consolidate barcode scanning + plate image recognition into a single unified camera workflow. Trade-off: reduced friction for common meals vs. offline capability loss and accuracy dependency. See discussion in session notes.
 - [ ] AI plate photo analysis (built, functionality exists in `js/api.js` `analyzePhoto()` and commented-out UI in `js/app.js`)
 - [ ] Social / friend leaderboard
-- [ ] Apple Health / Google Fit integration
+- [ ] Apple Health / Google Fit integration — **weight sync only**, explicitly NOT calorie-burn import. Crediting exercise calories triggers the well-documented compensation effect (people overestimate burn 2–4x and the resulting "earned it" snack flips a deficit day into a surplus). The app is intentionally one-sided: precise about intake, silent about burn.
 - [ ] Macro targets by meal type (not just daily totals)
 
 ### Recently Completed (Phase 5, Apr 2026 — UI/UX refresh)
