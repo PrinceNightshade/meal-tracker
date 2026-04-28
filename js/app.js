@@ -238,8 +238,8 @@ function renderDaily() {
       fb.pushDay(currentDate, store.getDay(currentDate));
       render();
     },
-    onRemove: () => {
-      store.removeGlass(currentDate);
+    onSet: (count) => {
+      store.setWater(currentDate, count);
       fb.pushDay(currentDate, store.getDay(currentDate));
       render();
     },

@@ -193,9 +193,9 @@ export function addGlass(dateStr) {
   saveDay(dateStr, day);
 }
 
-export function removeGlass(dateStr) {
+export function setWater(dateStr, count) {
   const day = getDay(dateStr);
-  day.water = Math.max(0, (day.water || 0) - 1);
+  day.water = Math.max(0, count | 0);
   saveDay(dateStr, day);
 }
 
