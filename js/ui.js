@@ -541,6 +541,67 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
   return modal;
 }
 
+// ── Water Chip ──
+
+export function renderWaterChip(water, { onAdd, onRemove } = {}) {
+  const hasWater = water > 0;
+  const label = el('span', { className: 'water-label', textContent: 'Water' });
+  const countSpan = el('span', {
+    className: 'water-count',
+    textContent: hasWater ? `${water} ${water === 1 ? 'glass' : 'glasses'}` : 'tap to log a glass',
+  });
+  const plusSpan = el('span', { className: 'water-plus', textContent: '+' });
+
+  const chip = el('div', { className: 'water-chip' }, [
+    el('div', { className: 'water-left' }, [label, countSpan]),
+    hasWater ? plusSpan : null,
+  ]);
+
+  let longPressTimer = null;
+  let suppressNextTap = false;
+
+  chip.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    suppressNextTap = false;
+    longPressTimer = setTimeout(() => {
+      suppressNextTap = true;
+      longPressTimer = null;
+      if (water > 0) {
+        if (navigator.vibrate) navigator.vibrate(10);
+        onRemove?.();
+      }
+    }, 500);
+  });
+
+  chip.addEventListener('pointerup', () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+    if (!suppressNextTap) {
+      onAdd?.();
+      const count = chip.querySelector('.water-count');
+      if (count) {
+        count.classList.add('pulse');
+        setTimeout(() => count.classList.remove('pulse'), 150);
+      }
+    }
+    suppressNextTap = false;
+  });
+
+  chip.addEventListener('pointercancel', () => {
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    suppressNextTap = false;
+  });
+
+  chip.addEventListener('pointerleave', () => {
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    suppressNextTap = false;
+  });
+
+  return chip;
+}
+
 // ── Helpers ──
 
 export function capitalize(s) {

@@ -231,6 +231,20 @@ function renderDaily() {
   // Increment insight index for next view (cycle through insights)
   currentInsightIndex = (currentInsightIndex + 1) % Math.max(insights.length, 1);
 
+  // Water chip
+  container.appendChild(ui.renderWaterChip(store.getWater(currentDate), {
+    onAdd: () => {
+      store.addGlass(currentDate);
+      fb.pushDay(currentDate, store.getDay(currentDate));
+      render();
+    },
+    onRemove: () => {
+      store.removeGlass(currentDate);
+      fb.pushDay(currentDate, store.getDay(currentDate));
+      render();
+    },
+  }));
+
   // Meals
   const favorites = store.getFavorites();
   const mealCallbacks = {

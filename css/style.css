@@ -172,6 +172,53 @@ body {
   box-shadow: var(--shadow);
 }
 
+/* ── Water Chip ── */
+
+.water-chip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+  min-height: 44px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.water-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.water-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.water-count {
+  font-size: 14px;
+  color: var(--text-muted);
+  display: inline-block;
+  transition: transform 150ms ease-out;
+}
+
+.water-count.pulse {
+  transform: scale(1.15);
+}
+
+.water-plus {
+  font-size: 20px;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
 /* ── Progress Rings ── */
 
 .rings-container {

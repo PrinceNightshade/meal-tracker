@@ -183,6 +183,22 @@ export function saveDay(dateStr, dayData) {
   saveAllDays(days);
 }
 
+export function getWater(dateStr) {
+  return getDay(dateStr).water || 0;
+}
+
+export function addGlass(dateStr) {
+  const day = getDay(dateStr);
+  day.water = (day.water || 0) + 1;
+  saveDay(dateStr, day);
+}
+
+export function removeGlass(dateStr) {
+  const day = getDay(dateStr);
+  day.water = Math.max(0, (day.water || 0) - 1);
+  saveDay(dateStr, day);
+}
+
 export function addFoodToMeal(dateStr, mealType, food) {
   const day = getDay(dateStr);
   day.meals[mealType].push({
