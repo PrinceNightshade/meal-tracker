@@ -6,8 +6,8 @@
   "scope": "/meal-tracker/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#121212",
-  "theme_color": "#5b1a8a",
+  "background_color": "#000000",
+  "theme_color": "#C8FF3D",
   "icons": [
     {
       "src": "icons/icon-192.png",
