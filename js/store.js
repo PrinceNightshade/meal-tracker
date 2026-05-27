@@ -581,3 +581,22 @@ export function getFoodsForRange(startDate, endDate) {
 
   return foods;
 }
+
+export function getStreak() {
+  let streak = 0;
+  const today = new Date();
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    const day = getDay(dateStr);
+    const total = Object.values(day.meals || {}).reduce((sum, arr) => sum + (arr?.length || 0), 0);
+    if (total === 0) {
+      // Allow today to be empty without breaking streak
+      if (i === 0) continue;
+      break;
+    }
+    streak++;
+  }
+  return streak;
+}

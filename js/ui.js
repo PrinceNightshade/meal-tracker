@@ -265,8 +265,27 @@ export function renderDailySummaryCarousel(totals, goals, insights = [], current
   const carouselWrapper = el('div', { className: 'carousel-wrapper' });
   const carousel = el('div', { className: 'daily-carousel' });
 
-  // Card 1: Calorie ring + macro cards
+  // Card 1: Calorie ring + macro cards (with prev/next nav overlays)
   const ringsCard = el('div', { className: 'daily-summary carousel-card' });
+
+  const prevBtn = el('button', {
+    id: 'btn-prev',
+    className: 'daily-summary__nav daily-summary__nav--prev',
+    type: 'button',
+  });
+  prevBtn.setAttribute('aria-label', 'Previous day');
+  prevBtn.innerHTML = '&#8249;';
+
+  const nextBtn = el('button', {
+    id: 'btn-next',
+    className: 'daily-summary__nav daily-summary__nav--next',
+    type: 'button',
+  });
+  nextBtn.setAttribute('aria-label', 'Next day');
+  nextBtn.innerHTML = '&#8250;';
+
+  ringsCard.appendChild(prevBtn);
+  ringsCard.appendChild(nextBtn);
   ringsCard.appendChild(renderDailySummaryRings(totals, goals));
   carousel.appendChild(ringsCard);
 

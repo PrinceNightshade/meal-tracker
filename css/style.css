@@ -201,11 +201,6 @@ body { font-size: var(--t-body); line-height: 1.5; min-height: 100dvh; }
   padding: 4px;
   min-width: 44px; min-height: 44px;
 }
-.btn-prev-next { color: var(--ink-2); }
-.btn-prev-next:disabled { opacity: 0.25; cursor: default; }
-
-/* flip the arrow for prev */
-#btn-prev svg { transform: scaleX(-1); }
 
 .btn-profile {
   width: 34px; height: 34px; border-radius: 100px;
@@ -246,6 +241,28 @@ body { font-size: var(--t-body); line-height: 1.5; min-height: 100dvh; }
 }
 .daily-summary__corner--left  b { color: var(--accent); }
 .daily-summary__corner--right b { color: var(--ink); }
+
+/* Prev/next overlay buttons inside the rings hero card */
+.daily-summary__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px; height: 36px;
+  border-radius: 100px;
+  background: var(--surface-2);
+  border: 1px solid var(--hair);
+  color: var(--ink-2);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+  font-size: 22px; line-height: 1;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.daily-summary__nav:hover,
+.daily-summary__nav:active { background: var(--surface); color: var(--ink); border-color: var(--accent-dim); }
+.daily-summary__nav:disabled { opacity: 0.25; cursor: default; }
+.daily-summary__nav--prev { left: 10px; }
+.daily-summary__nav--next { right: 10px; }
 
 /* ── Rings ────────────────────────────────────────────────────────── */
 

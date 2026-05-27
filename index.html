@@ -93,19 +93,14 @@
     <!-- Date Navigation -->
     <div class="date-nav">
       <div class="date-nav__left">
-        <button id="btn-prev" class="btn-ghost btn-prev-next" aria-label="Previous day">
-          <svg width="20" height="20"><use href="#i-arrow" style="transform:scaleX(-1);transform-origin:center"/></svg>
-        </button>
         <div>
           <div class="date-nav__eyebrow" id="date-eyebrow">TODAY</div>
           <div class="date-nav__title" id="date-display"></div>
         </div>
-        <button id="btn-next" class="btn-ghost btn-prev-next" aria-label="Next day">
-          <svg width="20" height="20"><use href="#i-arrow"/></svg>
-        </button>
       </div>
       <div class="date-nav__right">
         <button id="btn-today" class="date-nav__streak hidden">TODAY</button>
+        <span class="date-nav__streak hidden" id="streak-pill">STREAK <b>0</b></span>
         <button id="btn-profile" class="btn-profile" aria-label="Profile menu"></button>
       </div>
     </div>

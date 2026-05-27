@@ -172,13 +172,18 @@ function openProfileSheet() {
 }
 
 function bindNav() {
-  ui.$('#btn-prev').addEventListener('click', () => {
-    currentDate = ui.shiftDate(currentDate, -1);
-    render();
-  });
-  ui.$('#btn-next').addEventListener('click', () => {
-    currentDate = ui.shiftDate(currentDate, 1);
-    render();
+  // btn-prev and btn-next are rendered dynamically inside the hero card —
+  // use event delegation on .app so the handlers survive re-renders.
+  ui.$('.app').addEventListener('click', (e) => {
+    const prev = e.target.closest('#btn-prev');
+    const next = e.target.closest('#btn-next');
+    if (prev) {
+      currentDate = ui.shiftDate(currentDate, -1);
+      render();
+    } else if (next && !next.disabled) {
+      currentDate = ui.shiftDate(currentDate, 1);
+      render();
+    }
   });
   ui.$('#btn-today').addEventListener('click', () => {
     currentDate = ui.todayStr();
@@ -236,14 +241,27 @@ function render() {
     }
   }
 
-  ui.$('#btn-next').disabled = currentDate >= today;
-  // "TODAY" streak pill hides when on today
+  // "TODAY" button hides when on today
   const todayBtn = ui.$('#btn-today');
   if (todayBtn) todayBtn.classList.toggle('hidden', isToday);
+
+  // Streak pill — show when streak > 0
+  const streakPill = ui.$('#streak-pill');
+  if (streakPill) {
+    const streak = store.getStreak();
+    const show = streak > 0;
+    streakPill.classList.toggle('hidden', !show);
+    const boldEl = streakPill.querySelector('b');
+    if (boldEl) boldEl.textContent = streak;
+  }
 
   if (currentView === 'daily') renderDaily();
   else if (currentView === 'goals') renderGoals();
   else if (currentView === 'weight') renderWeight();
+
+  // Update prev/next disable state after renderDaily() creates the buttons
+  const nextBtn = ui.$('#btn-next');
+  if (nextBtn) nextBtn.disabled = currentDate >= today;
 }
 
 // ── Daily View ──
