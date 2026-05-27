@@ -25,12 +25,36 @@ export function el(tag, attrs = {}, children = []) {
   return e;
 }
 
+// ── SVG icon helper ──
+
+export function svgIcon(id, size = 16) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', size);
+  svg.setAttribute('height', size);
+  svg.setAttribute('aria-hidden', 'true');
+  const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+  use.setAttribute('href', `#${id}`);
+  svg.appendChild(use);
+  return svg;
+}
+
 // ── Progress Ring ──
 
-export function renderRing(current, goal, label, unit = '', size = 100, stroke = 8) {
+export function renderRing(current, goal, label, unit = '', size = 120, stroke = 10) {
   const pct = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
   const over = current > goal;
-  const color = over ? 'var(--over)' : pct >= 85 ? 'var(--good)' : pct >= 50 ? 'var(--near)' : 'var(--over)';
+
+  // Threshold logic: 0-49% = over(red), 50-84% = warn(yellow), 85-100% = good(green), >100% = over(red)
+  let colorClass;
+  if (over) {
+    colorClass = 'ring-fill--over';
+  } else if (pct >= 85) {
+    colorClass = 'ring-fill--good';
+  } else if (pct >= 50) {
+    colorClass = 'ring-fill--warn';
+  } else {
+    colorClass = 'ring-fill--over';
+  }
 
   const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
@@ -43,35 +67,33 @@ export function renderRing(current, goal, label, unit = '', size = 100, stroke =
   svg.setAttribute('width', size);
   svg.setAttribute('height', size);
   svg.innerHTML = `
-    <circle cx="${center}" cy="${center}" r="${r}" fill="none" stroke="var(--border)" stroke-width="${stroke}" opacity="0.3"/>
-    <circle cx="${center}" cy="${center}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}"
-      stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${offset}"
-      transform="rotate(-90 ${center} ${center})" class="ring-fill"/>
+    <circle cx="${center}" cy="${center}" r="${r}" fill="none" class="ring-track" stroke-width="${stroke}"/>
+    <circle cx="${center}" cy="${center}" r="${r}" fill="none" stroke-width="${stroke}"
+      stroke-dasharray="${circ}" stroke-dashoffset="${offset}"
+      transform="rotate(-90 ${center} ${center})" class="ring-fill ${colorClass}"/>
   `;
 
-  const wrapper = el('div', { className: 'ring-wrapper' });
+  const wrapper = el('div', { className: 'ring-wrapper ring-calorie' });
   wrapper.appendChild(svg);
   wrapper.appendChild(el('div', { className: 'ring-label' }, [
-    el('span', { className: 'ring-current', textContent: `${current}` }),
+    el('span', { className: 'ring-current', textContent: `${Math.round(current)}` }),
     el('span', { className: 'ring-goal', textContent: `/ ${goal}${unit}` }),
     el('span', { className: 'ring-name', textContent: label }),
   ]));
   return wrapper;
 }
 
-// ── Progress Bar ──
+// ── Progress Bar (kept for food details modal etc.) ──
 
 export function renderProgressBar(current, goal, label, unit = '', inverse = false) {
   const pct = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
   const over = current > goal;
 
-  // For inverse (sugar), low is good (green), high is bad (red), over is worse (purple)
-  // For normal (macros), low is bad, hitting goal is good, over is bad
   let color;
   if (inverse) {
     color = over ? '#a78bfa' : pct >= 85 ? '#ef4444' : pct >= 40 ? '#fbbf24' : '#22c55e';
   } else {
-    color = over ? 'var(--over)' : pct >= 85 ? 'var(--good)' : pct >= 50 ? 'var(--near)' : 'var(--over)';
+    color = over ? 'var(--over)' : pct >= 85 ? 'var(--good)' : pct >= 50 ? 'var(--warn)' : 'var(--over)';
   }
 
   const wrapper = el('div', { className: 'progress-bar-wrapper' }, [
@@ -89,90 +111,173 @@ export function renderProgressBar(current, goal, label, unit = '', inverse = fal
   return wrapper;
 }
 
+// ── Macro card (replaces individual macro rings) ──
+
+export function renderMacroCard(label, current, goal, unit = 'g', inverse = false) {
+  const pct = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
+  const over = current > goal;
+
+  // Sugar card uses inverse coloring: low is good (green), high is bad
+  let barColorStyle = '';
+  let cardClass = 'macro-card';
+
+  if (label === 'SUGAR') {
+    cardClass += ' macro-card--sugar';
+    if (over) {
+      cardClass += ' sugar-purple';
+    } else if (pct >= 85) {
+      cardClass += ' sugar-over';
+    } else if (pct >= 40) {
+      cardClass += ' sugar-warn';
+    }
+    // else: green (default via CSS)
+  } else if (over) {
+    cardClass += ' over';
+  }
+
+  // Bar fill: accent by default; CSS handles sugar overrides via class
+  const barFillEl = el('div', {});
+  if (!inverse) {
+    barFillEl.style.width = `${pct}%`;
+  } else {
+    barFillEl.style.width = `${pct}%`;
+  }
+
+  const card = el('div', { className: cardClass }, [
+    el('div', { className: 'macro-card__label', textContent: label }),
+    el('div', { className: 'macro-card__value' }, [
+      el('b', { textContent: String(Math.round(current)) }),
+      el('span', { textContent: `/${goal}${unit}` }),
+    ]),
+    el('div', { className: 'macro-card__bar' }, [barFillEl]),
+  ]);
+
+  return card;
+}
+
+// ── Daily rings + macro card section ──
+
 export function renderDailySummaryRings(totals, goals) {
-  const container = el('div', { className: 'rings-container' });
+  const container = el('div', {});
 
   // Big calorie ring
-  container.appendChild(renderRing(totals.calories, goals.calories, 'Calories', '', 120, 10));
+  const ringsContainer = el('div', { className: 'rings-container' });
+  ringsContainer.appendChild(renderRing(totals.calories, goals.calories, 'Calories', '', 120, 10));
+  container.appendChild(ringsContainer);
 
-  // Macro rings row
-  const macros = el('div', { className: 'macro-rings' }, [
-    renderRing(totals.protein, goals.protein, 'Protein', 'g', 80, 6),
-    renderRing(totals.carbs, goals.carbs, 'Carbs', 'g', 80, 6),
-    renderRing(totals.fat, goals.fat, 'Fat', 'g', 80, 6),
-  ]);
-  container.appendChild(macros);
-
-  // Added sugar progress bar (inverse: low is good/green, high is bad/red, over is worse/purple)
-  if (goals.addedSugars && goals.addedSugars > 0) {
-    container.appendChild(renderProgressBar(totals.addedSugars || 0, goals.addedSugars, 'Added Sugar', 'g', true));
-  }
+  // 4-up macro card grid (protein / carbs / fat / sugar)
+  const macroRow = el('div', { className: 'macro-row' });
+  macroRow.appendChild(renderMacroCard('PROTEIN', totals.protein || 0, goals.protein || 150, 'g'));
+  macroRow.appendChild(renderMacroCard('CARBS',   totals.carbs   || 0, goals.carbs   || 200, 'g'));
+  macroRow.appendChild(renderMacroCard('FAT',     totals.fat     || 0, goals.fat     || 65,  'g'));
+  // Sugar card — only if goal set; fall back to 25g default
+  const sugarGoal = goals.addedSugars && goals.addedSugars > 0 ? goals.addedSugars : 25;
+  macroRow.appendChild(renderMacroCard('SUGAR', totals.addedSugars || 0, sugarGoal, 'g', true));
+  container.appendChild(macroRow);
 
   return container;
 }
 
-export function renderDailySummaryCarousel(totals, goals, insights = [], currentInsightIndex = 0) {
+// ── Insight card (Pulse carousel slide 2) ──
+
+export function renderInsightCard(totals7, goals) {
+  // Compute protein hit booleans for the last 7 days
+  const proteinGoal = goals.protein || 150;
+  const hits = (totals7 || []).map(t => t && (t.protein || 0) >= proteinGoal);
+  const hitCount = hits.filter(Boolean).length;
+  const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+  // Pick a secondary trend — fat (simplest to derive inline)
+  const fatGoal = goals.fat || 65;
+  const fatOver = (totals7 || []).filter(t => t && (t.fat || 0) > fatGoal).length;
+  const hasFatTrend = fatOver >= 3;
+
+  // Build chart bars
+  const chartEl = el('div', { className: 'insight-card__chart' });
+  const maxHeight = 60;
+  const minHeight = 30;
+  hits.forEach((hit, i) => {
+    const h = minHeight + Math.round(Math.random() * (maxHeight - minHeight));
+    const bar = el('div', { className: `bar${hit ? ' hit' : ''}` });
+    bar.style.setProperty('--h', `${h}px`);
+    bar.appendChild(el('span', { textContent: dayLabels[i % 7] }));
+    chartEl.appendChild(bar);
+  });
+
+  // Insight headline
+  const hedText = hitCount >= 5
+    ? `Protein on goal ${hitCount} of ${hits.length} days`
+    : hitCount >= 3
+    ? `Protein hit ${hitCount} of ${hits.length} days`
+    : `Protein goal reached ${hitCount} of ${hits.length} days`;
+
+  const card = el('div', { className: 'daily-summary insight-card carousel-card' });
+
+  // Head
+  const headEl = el('div', { className: 'insight-card__head' });
+  const iconEl = el('span', { className: 'insight-card__icon' });
+  iconEl.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h7v8l9-12h-7V2z"/></svg>';
+  headEl.appendChild(iconEl);
+  headEl.appendChild(el('span', { className: 'insight-card__eyebrow', textContent: 'INSIGHT · LAST 7 DAYS' }));
+  card.appendChild(headEl);
+
+  // Headline
+  const hed = el('h2', { className: 'insight-card__hed' });
+  const parts = hedText.split(/([\d]+ of [\d]+ days)/);
+  parts.forEach(part => {
+    if (/\d+ of \d+ days/.test(part)) {
+      const em = el('em', { textContent: part });
+      hed.appendChild(em);
+    } else {
+      hed.appendChild(document.createTextNode(part));
+    }
+  });
+  card.appendChild(hed);
+
+  // Sub
+  const subText = hitCount >= 5
+    ? 'Strong week. Keep this up for steady progress.'
+    : hitCount >= 3
+    ? 'Getting there — a few more consistent days will lock in the habit.'
+    : 'Protein under target most days — try adding a source to each meal.';
+  card.appendChild(el('p', { className: 'insight-card__sub', textContent: subText }));
+
+  // Chart
+  card.appendChild(chartEl);
+
+  // Secondary note (fat trend if present)
+  if (hasFatTrend) {
+    const noteEl = el('div', { className: 'insight-card__note' });
+    const trendEl = el('span', { className: 'trend trend-up' });
+    trendEl.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17l5-5 5 5M7 11l5-5 5 5"/></svg>';
+    noteEl.appendChild(trendEl);
+    const noteText = el('div');
+    noteText.appendChild(el('div', { className: 'note__title', textContent: 'Fat trending up' }));
+    noteText.appendChild(el('div', { className: 'note__sub', textContent: `${fatOver} DAYS OVER · CHECK SAUCES & OILS` }));
+    noteEl.appendChild(noteText);
+    card.appendChild(noteEl);
+  }
+
+  return card;
+}
+
+export function renderDailySummaryCarousel(totals, goals, insights = [], currentInsightIndex = 0, totals7 = null) {
   const carouselWrapper = el('div', { className: 'carousel-wrapper' });
   const carousel = el('div', { className: 'daily-carousel' });
 
-  // Card 1: Macro rings
-  const ringsCard = el('div', { className: 'carousel-card carousel-card-rings' }, [
-    renderDailySummaryRings(totals, goals),
-  ]);
+  // Card 1: Calorie ring + macro cards
+  const ringsCard = el('div', { className: 'daily-summary carousel-card' });
+  ringsCard.appendChild(renderDailySummaryRings(totals, goals));
   carousel.appendChild(ringsCard);
 
-  // Card 2: Analytics
-  // Render analytics insight inline to avoid circular imports
-  const safeIndex = insights.length > 0 ? currentInsightIndex % insights.length : 0;
-  const insight = insights[safeIndex];
-
-  let insightContent = [];
-  if (!insights || insights.length === 0) {
-    insightContent = [el('div', { className: 'analytics-empty', textContent: 'Log some meals to see insights!' })];
-  } else {
-    const { callout, stats } = insight;
-    // Build stats lines
-    const statsLines = [];
-    if (stats.message) {
-      statsLines.push(stats.message);
-    } else {
-      if (stats.actual !== undefined && stats.goal !== undefined && stats.metric) {
-        statsLines.push(`${stats.actual} / ${stats.goal} ${stats.metric}`);
-      } else if (stats.actual !== undefined && stats.daily_goal !== undefined && stats.metric) {
-        const unit = stats.metric.split(' ').pop();
-        statsLines.push(`You've recorded ${stats.actual} ${unit} in ${stats.period}, (goal: ${stats.daily_goal} ${unit} daily)`);
-      } else if (stats.refined !== undefined && stats.whole !== undefined) {
-        statsLines.push(`Refined: ${stats.refined} | Whole: ${stats.whole} (${stats.metric})`);
-      } else if (stats.actual !== undefined && stats.variance !== undefined) {
-        statsLines.push(`Avg: ${stats.actual} cal | Variance: ±${stats.variance} cal`);
-      }
-    }
-
-    insightContent = [
-      el('div', { className: 'analytics-insight' }, [
-        el('div', { className: 'insight-callout', textContent: callout }),
-        insight.recommendation ? el('div', { className: 'insight-recommendation', textContent: insight.recommendation }) : null,
-        el('div', { className: 'insight-stats' }, statsLines.map(line =>
-          el('div', { className: 'stat-line', textContent: line })
-        )),
-      ]),
-      el('div', { className: 'insight-indicator' }, [
-        el('span', { textContent: insights.length > 0 ? `${safeIndex + 1} / ${insights.length}` : '—' }),
-      ]),
-    ];
-  }
-
-  const analyticsCard = el('div', { className: 'carousel-card carousel-card-analytics' }, [
-    el('div', { className: 'analytics-card-wrapper' }, [
-      el('div', { className: 'analytics-card' }, insightContent),
-    ]),
-  ]);
-  carousel.appendChild(analyticsCard);
+  // Card 2: Pulse insight card
+  const insightCard = renderInsightCard(totals7, goals);
+  carousel.appendChild(insightCard);
 
   // Page indicator dots
   const dotsContainer = el('div', { className: 'carousel-dots' }, [
-    el('div', { className: 'dot active' }),
-    el('div', { className: 'dot' }),
+    el('div', { className: 'carousel-dot active' }),
+    el('div', { className: 'carousel-dot' }),
   ]);
 
   // Update dots on scroll
@@ -180,20 +285,16 @@ export function renderDailySummaryCarousel(totals, goals, insights = [], current
     const scrollLeft = carousel.scrollLeft;
     const cardWidth = carousel.offsetWidth;
     const currentCard = Math.round(scrollLeft / cardWidth);
-    const dots = dotsContainer.querySelectorAll('.dot');
+    const dots = dotsContainer.querySelectorAll('.carousel-dot');
     dots.forEach((dot, idx) => {
-      if (idx === currentCard) {
-        dot.classList.add('active');
-      } else {
-        dot.classList.remove('active');
-      }
+      dot.classList.toggle('active', idx === currentCard);
     });
   });
 
   carouselWrapper.appendChild(carousel);
   carouselWrapper.appendChild(dotsContainer);
 
-  // Add touch/swipe detection for smooth scrolling
+  // Touch swipe support
   let touchStartX = 0;
   let touchEndX = 0;
 
@@ -203,29 +304,12 @@ export function renderDailySummaryCarousel(totals, goals, insights = [], current
 
   carousel.addEventListener('touchend', (e) => {
     touchEndX = e.changedTouches[0].clientX;
-    handleSwipe();
-  }, false);
-
-  function handleSwipe() {
-    const swipeThreshold = 50; // minimum swipe distance
     const diff = touchStartX - touchEndX;
-
-    if (Math.abs(diff) > swipeThreshold) {
-      if (diff > 0) {
-        // Swiped left — scroll to next card
-        const nextCard = carousel.children[1];
-        if (nextCard) {
-          nextCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
-        }
-      } else {
-        // Swiped right — scroll to previous card
-        const prevCard = carousel.children[0];
-        if (prevCard) {
-          prevCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
-        }
-      }
+    if (Math.abs(diff) > 50) {
+      const target = diff > 0 ? carousel.children[1] : carousel.children[0];
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
     }
-  }
+  }, false);
 
   return carouselWrapper;
 }
@@ -233,7 +317,19 @@ export function renderDailySummaryCarousel(totals, goals, insights = [], current
 // ── Meal Section ──
 
 export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFav, onFoodClick }, favorites = []) {
-  const icons = { breakfast: '☀', lunch: '☼', dinner: '☾', snacks: '○' };
+  const mealIconMap = {
+    breakfast: 'i-meal-breakfast',
+    lunch:     'i-meal-lunch',
+    dinner:    'i-meal-dinner',
+    snacks:    'i-meal-snacks',
+  };
+  const mealTimeMap = {
+    breakfast: '07:00 · MORNING',
+    lunch:     '12:30 · MIDDAY',
+    dinner:    '18:30 · EVENING',
+    snacks:    'ANYTIME',
+  };
+
   const mealCals = foods.reduce((sum, f) => sum + (f.calories || 0) * (f.servings || 1), 0);
 
   const foodItems = foods.map(food => {
@@ -244,18 +340,32 @@ export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFa
       : baseServing;
 
     const isFav = favorites.some(f => f.name === food.name);
+
+    // Star button with SVG icon
     const favBtn = el('button', {
-      className: `btn-icon btn-fav${isFav ? ' active' : ''}`,
-      textContent: isFav ? '★' : '☆',
+      className: `btn-icon btn-fav${isFav ? ' active is-fav' : ''}`,
       title: isFav ? 'Remove from favorites' : 'Add to favorites',
       onClick: (e) => {
         e.stopPropagation();
         const nowFav = favBtn.classList.toggle('active');
-        favBtn.textContent = nowFav ? '★' : '☆';
-        favBtn.title = nowFav ? 'Remove from favorites' : 'Add to favorites';
+        favBtn.classList.toggle('is-fav', nowFav);
+        favBtn.innerHTML = '';
+        favBtn.appendChild(svgIcon(nowFav ? 'i-star-fill' : 'i-star', 16));
         onToggleFav(food, nowFav, mealType);
       },
     });
+    favBtn.appendChild(svgIcon(isFav ? 'i-star-fill' : 'i-star', 16));
+
+    // Remove button with SVG icon
+    const removeBtn = el('button', {
+      className: 'btn-icon btn-remove',
+      title: 'Remove',
+      onClick: (e) => {
+        e.stopPropagation();
+        onRemove(mealType, food.id);
+      },
+    });
+    removeBtn.appendChild(svgIcon('i-close', 14));
 
     const detailText = servLabel ? `${servLabel} — ${cals} cal` : `${cals} cal`;
     const foodItemEl = el('div', { className: 'food-item' }, [
@@ -263,53 +373,56 @@ export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFa
         el('span', { className: 'food-name', textContent: food.name }),
         el('span', { className: 'food-detail', textContent: detailText }),
       ]),
-      el('div', { className: 'food-actions' }, [
-        favBtn,
-        el('button', {
-          className: 'btn-icon btn-remove',
-          textContent: '×',
-          onClick: (e) => {
-            e.stopPropagation();
-            onRemove(mealType, food.id);
-          },
-        }),
-      ]),
+      el('div', { className: 'food-actions' }, [favBtn, removeBtn]),
     ]);
 
-    // Make the food item clickable (excluding action buttons)
     foodItemEl.addEventListener('click', () => {
-      if (onFoodClick) {
-        onFoodClick(mealType, food);
-      }
+      if (onFoodClick) onFoodClick(mealType, food);
     });
 
     return foodItemEl;
   });
 
   const isEmpty = foods.length === 0;
-  const emptyMsg = isEmpty
-    ? [el('div', { className: 'empty-meal', textContent: 'Tap to add your first food' })]
-    : [];
 
-  const section = el('div', { className: `meal-section${isEmpty ? ' is-empty' : ''}` }, [
-    el('div', { className: 'meal-header' }, [
-      el('span', { className: 'meal-title' }, [
-        el('span', { className: 'meal-icon', textContent: icons[mealType] || '○' }),
-        el('span', { textContent: ` ${capitalize(mealType)}` }),
-        el('span', { className: 'meal-cals', textContent: ` — ${Math.round(mealCals)} cal` }),
-      ]),
-      el('button', {
-        className: 'btn-add',
-        textContent: '+ Add',
-        onClick: (e) => { e.stopPropagation(); onAdd(mealType); },
-      }),
+  // Meal icon
+  const mealIconEl = el('span', { className: 'meal-icon' });
+  mealIconEl.appendChild(svgIcon(mealIconMap[mealType] || 'i-meal-snacks', 18));
+
+  // Add button with SVG icon
+  const addBtn = el('button', {
+    className: 'btn-add',
+    'aria-label': `Add to ${mealType}`,
+    onClick: (e) => { e.stopPropagation(); onAdd(mealType); },
+  });
+  addBtn.appendChild(svgIcon('i-plus', 14));
+
+  // Calorie display
+  const calsEl = el('div', { className: 'meal-cals' }, [
+    document.createTextNode(String(Math.round(mealCals))),
+  ]);
+  const calsUnit = el('span', { className: 'meal-cals__unit', textContent: 'kcal' });
+  calsEl.appendChild(calsUnit);
+
+  const section = el('div', {
+    className: `meal-section meal-section--${mealType}${isEmpty ? ' is-empty meal-section--empty' : ''}`,
+  });
+
+  const header = el('div', { className: 'meal-header' }, [
+    mealIconEl,
+    el('div', { className: 'meal-title-block' }, [
+      el('div', { className: 'meal-title', textContent: capitalize(mealType) }),
+      el('div', { className: 'meal-time', textContent: mealTimeMap[mealType] || '' }),
     ]),
-    ...foodItems,
-    ...emptyMsg,
+    calsEl,
+    addBtn,
   ]);
 
-  // Whole-card tap when empty — biggest hit area for the most common one-handed action.
+  section.appendChild(header);
+  foodItems.forEach(fi => section.appendChild(fi));
+
   if (isEmpty) {
+    section.appendChild(el('div', { className: 'meal-empty-hint', textContent: 'TAP TO COMPOSE' }));
     section.addEventListener('click', () => onAdd(mealType));
   }
 
@@ -335,18 +448,24 @@ export function renderWeightChart(history) {
     return { x, y, ...e };
   });
 
-  const polyline = points.map(p => `${p.x},${p.y}`).join(' ');
-
-  // Date labels (first and last)
+  const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
   const firstDate = formatShortDate(history[0].date);
   const lastDate = formatShortDate(history[history.length - 1].date);
+  const lastPoint = points[points.length - 1];
 
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   svg.setAttribute('class', 'weight-chart');
   svg.innerHTML = `
-    <polyline points="${polyline}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>
+    <defs>
+      <linearGradient id="w-grad" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#5BE9F0"/>
+        <stop offset="100%" stop-color="var(--accent)"/>
+      </linearGradient>
+    </defs>
+    <path d="${pathD}" fill="none" stroke="url(#w-grad)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
     ${points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3" fill="var(--accent)"><title>${p.date}: ${p.weight} lbs</title></circle>`).join('')}
+    <circle cx="${lastPoint.x}" cy="${lastPoint.y}" r="10" fill="var(--accent)" opacity="0.15"/>
     <text x="${PAD}" y="${H - 5}" class="chart-label">${firstDate}</text>
     <text x="${W - PAD}" y="${H - 5}" class="chart-label" text-anchor="end">${lastDate}</text>
     <text x="5" y="${PAD}" class="chart-label">${max.toFixed(1)}</text>
@@ -359,7 +478,11 @@ export function renderWeightChart(history) {
 
 export function collapsible(title, summary, content, { startOpen = true } = {}) {
   const body = el('div', { className: `collapsible-body ${startOpen ? 'open' : ''}` }, [content]);
-  const chevron = el('span', { className: 'collapsible-chevron', textContent: '›' });
+
+  // Chevron SVG
+  const chevron = el('span', { className: 'collapsible-chevron' });
+  chevron.appendChild(svgIcon('i-chevron-right', 16));
+
   const summaryEl = summary
     ? el('span', { className: 'collapsible-summary', textContent: summary })
     : null;
@@ -375,7 +498,6 @@ export function collapsible(title, summary, content, { startOpen = true } = {}) 
   header.addEventListener('click', () => {
     const isOpen = wrapper.classList.toggle('open');
     body.classList.toggle('open', isOpen);
-    // Show/hide summary when collapsed
     if (summaryEl) {
       if (isOpen) summaryEl.remove();
       else header.insertBefore(summaryEl, chevron);
@@ -388,18 +510,13 @@ export function collapsible(title, summary, content, { startOpen = true } = {}) 
 // ── Food Details Modal ──
 
 export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
-  const currentCals = Math.round((food.calories || 0) * (food.servings || 1));
-  const currentProtein = Math.round((food.protein || 0) * (food.servings || 1));
-  const currentCarbs = Math.round((food.carbs || 0) * (food.servings || 1));
-  const currentFat = Math.round((food.fat || 0) * (food.servings || 1));
-  const currentSugars = Math.round((food.addedSugars || 0) * (food.servings || 1));
+  const currentCals    = Math.round((food.calories    || 0) * (food.servings || 1));
+  const currentProtein = Math.round((food.protein     || 0) * (food.servings || 1));
+  const currentCarbs   = Math.round((food.carbs       || 0) * (food.servings || 1));
+  const currentFat     = Math.round((food.fat         || 0) * (food.servings || 1));
+  const currentSugars  = Math.round((food.addedSugars || 0) * (food.servings || 1));
 
   const getPercent = (val, goal) => goal > 0 ? Math.round((val / goal) * 100) : 0;
-  const calPct = getPercent(currentCals, goals.calories);
-  const proteinPct = getPercent(currentProtein, goals.protein);
-  const carbsPct = getPercent(currentCarbs, goals.carbs);
-  const fatPct = getPercent(currentFat, goals.fat);
-  const sugarsPct = getPercent(currentSugars, goals.addedSugars);
 
   const servLabel = formatServing(food);
 
@@ -417,8 +534,7 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
         type: 'number',
         className: 'input-quantity',
         value: String(food.servings || 1),
-        step: '0.5',
-        min: '0.1',
+        step: '0.5', min: '0.1',
       }),
     ]),
 
@@ -434,24 +550,24 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
       el('div', { className: 'nutrition-breakdown' }, [
         el('div', { className: 'nutrition-row' }, [
           el('span', { textContent: 'Calories' }),
-          el('span', { className: 'nutrition-value', textContent: `${currentCals} / ${goals.calories} (${calPct}%)` }),
+          el('span', { className: 'nutrition-value', textContent: `${currentCals} / ${goals.calories} (${getPercent(currentCals, goals.calories)}%)` }),
         ]),
         el('div', { className: 'nutrition-row' }, [
           el('span', { textContent: 'Protein' }),
-          el('span', { className: 'nutrition-value', textContent: `${currentProtein}g / ${goals.protein}g (${proteinPct}%)` }),
+          el('span', { className: 'nutrition-value', textContent: `${currentProtein}g / ${goals.protein}g (${getPercent(currentProtein, goals.protein)}%)` }),
         ]),
         el('div', { className: 'nutrition-row' }, [
           el('span', { textContent: 'Carbs' }),
-          el('span', { className: 'nutrition-value', textContent: `${currentCarbs}g / ${goals.carbs}g (${carbsPct}%)` }),
+          el('span', { className: 'nutrition-value', textContent: `${currentCarbs}g / ${goals.carbs}g (${getPercent(currentCarbs, goals.carbs)}%)` }),
         ]),
         el('div', { className: 'nutrition-row' }, [
           el('span', { textContent: 'Fat' }),
-          el('span', { className: 'nutrition-value', textContent: `${currentFat}g / ${goals.fat}g (${fatPct}%)` }),
+          el('span', { className: 'nutrition-value', textContent: `${currentFat}g / ${goals.fat}g (${getPercent(currentFat, goals.fat)}%)` }),
         ]),
         ...(goals.addedSugars && goals.addedSugars > 0 ? [
           el('div', { className: 'nutrition-row' }, [
             el('span', { textContent: 'Added Sugar' }),
-            el('span', { className: 'nutrition-value', textContent: `${currentSugars}g / ${goals.addedSugars}g (${sugarsPct}%)` }),
+            el('span', { className: 'nutrition-value', textContent: `${currentSugars}g / ${goals.addedSugars}g (${getPercent(currentSugars, goals.addedSugars)}%)` }),
           ]),
         ] : []),
       ]),
@@ -466,17 +582,17 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
           const newServings = parseFloat(quantityInput.value) || 1;
           let nutritionEdits = null;
           if (modal.dataset.editMode === '1') {
-            const calsInput = modal.querySelector('.nutrition-edit-calories');
+            const calsInput    = modal.querySelector('.nutrition-edit-calories');
             const proteinInput = modal.querySelector('.nutrition-edit-protein');
-            const carbsInput = modal.querySelector('.nutrition-edit-carbs');
-            const fatInput = modal.querySelector('.nutrition-edit-fat');
-            const sugarsInput = modal.querySelector('.nutrition-edit-sugars');
+            const carbsInput   = modal.querySelector('.nutrition-edit-carbs');
+            const fatInput     = modal.querySelector('.nutrition-edit-fat');
+            const sugarsInput  = modal.querySelector('.nutrition-edit-sugars');
             const saveCheckbox = modal.querySelector('.save-correction-checkbox');
             nutritionEdits = {
-              calories: parseFloat(calsInput.value) || 0,
-              protein: parseFloat(proteinInput.value) || 0,
-              carbs: parseFloat(carbsInput.value) || 0,
-              fat: parseFloat(fatInput.value) || 0,
+              calories: parseFloat(calsInput.value)    || 0,
+              protein:  parseFloat(proteinInput.value) || 0,
+              carbs:    parseFloat(carbsInput.value)   || 0,
+              fat:      parseFloat(fatInput.value)     || 0,
               saveToMyFoods: saveCheckbox?.checked ?? true,
             };
             if (sugarsInput) nutritionEdits.addedSugars = parseFloat(sugarsInput.value) || 0;
@@ -498,16 +614,15 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
 
   function enterEditMode() {
     modal.dataset.editMode = '1';
-
     const editLink = modal.querySelector('.edit-nutrition-link');
     if (editLink) editLink.style.display = 'none';
 
     const rows = modal.querySelectorAll('.nutrition-row');
     const nutrients = [
-      { cls: 'nutrition-edit-calories', val: currentCals, unit: '' },
-      { cls: 'nutrition-edit-protein', val: currentProtein, unit: 'g' },
-      { cls: 'nutrition-edit-carbs', val: currentCarbs, unit: 'g' },
-      { cls: 'nutrition-edit-fat', val: currentFat, unit: 'g' },
+      { cls: 'nutrition-edit-calories', val: currentCals,    unit: '' },
+      { cls: 'nutrition-edit-protein',  val: currentProtein, unit: 'g' },
+      { cls: 'nutrition-edit-carbs',    val: currentCarbs,   unit: 'g' },
+      { cls: 'nutrition-edit-fat',      val: currentFat,     unit: 'g' },
       ...(goals.addedSugars && goals.addedSugars > 0
         ? [{ cls: 'nutrition-edit-sugars', val: currentSugars, unit: 'g' }]
         : []),
@@ -520,9 +635,7 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
       const input = el('input', {
         type: 'number',
         className: `nutrition-row-input ${cls}`,
-        value: String(val),
-        min: '0',
-        step: '1',
+        value: String(val), min: '0', step: '1',
       });
       const unitSpan = unit ? el('span', { className: 'nutrition-edit-unit', textContent: unit }) : null;
       const wrapper = el('div', { className: 'nutrition-edit-cell' }, unitSpan ? [input, unitSpan] : [input]);
@@ -541,46 +654,66 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
   return modal;
 }
 
-// ── Water Chip ──
+// ── Water Chip (action-row version) ──
+// Returns the chip element that fits inside the .action-row
 
 export function renderWaterChip(water, { onAdd, onSet } = {}) {
-  const formatCount = (n) => n > 0 ? `${n} ${n === 1 ? 'glass' : 'glasses'}` : 'tap to log a glass';
+  const chip = el('div', { className: 'water-chip' });
 
-  const label = el('span', { className: 'water-label', textContent: 'Water' });
-  const countSpan = el('span', { className: 'water-count', textContent: formatCount(water) });
-  const plusSpan = el('span', { className: 'water-plus', textContent: '+' });
+  // Left: icon + label + value
+  const iconEl = el('span', {});
+  iconEl.appendChild(svgIcon('i-water', 18));
 
-  const chip = el('div', { className: 'water-chip' }, [
-    el('div', { className: 'water-left' }, [label, countSpan]),
-    water > 0 ? plusSpan : null,
-  ]);
+  const infoEl = el('div', { className: 'water-chip__info' });
+  infoEl.appendChild(el('div', { className: 'water-chip__label', textContent: 'WATER' }));
 
+  const valueEl = el('div', { className: 'water-chip__value' });
+  const boldEl = el('b', { textContent: String(water) });
+  valueEl.appendChild(boldEl);
+  valueEl.appendChild(el('span', { textContent: '/8 gl' }));
+  infoEl.appendChild(valueEl);
+
+  // Plus ghost button
+  const plusBtn = el('button', { className: 'round-ghost', type: 'button' });
+  plusBtn.appendChild(svgIcon('i-plus', 12));
+
+  chip.appendChild(iconEl);
+  chip.appendChild(infoEl);
+  chip.appendChild(plusBtn);
+
+  // Hold-to-decrement, tap-to-add (same as before, adapted for new structure)
   const HOLD_MS = 500;
   const TICK_MS = 200;
-
   let holdTimer = null;
   let tickInterval = null;
   let inHold = false;
   let displayed = water;
 
   function cleanup() {
-    if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+    if (holdTimer)    { clearTimeout(holdTimer);    holdTimer   = null; }
     if (tickInterval) { clearInterval(tickInterval); tickInterval = null; }
+  }
+
+  function updateDisplay(n) {
+    boldEl.textContent = String(n);
+    // pulse animation
+    boldEl.classList.add('pulse');
+    setTimeout(() => boldEl.classList.remove('pulse'), 150);
   }
 
   chip.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     chip.setPointerCapture?.(e.pointerId);
-    inHold = false;
+    inHold   = false;
     displayed = water;
     holdTimer = setTimeout(() => {
       holdTimer = null;
-      inHold = true;
+      inHold    = true;
       if (navigator.vibrate) navigator.vibrate(10);
       tickInterval = setInterval(() => {
         if (displayed > 0) {
           displayed -= 1;
-          countSpan.textContent = formatCount(displayed);
+          updateDisplay(displayed);
         } else {
           clearInterval(tickInterval);
           tickInterval = null;
@@ -598,8 +731,6 @@ export function renderWaterChip(water, { onAdd, onSet } = {}) {
     } else {
       cleanup();
       onAdd?.();
-      countSpan.classList.add('pulse');
-      setTimeout(() => countSpan.classList.remove('pulse'), 150);
     }
   });
 
@@ -618,13 +749,6 @@ export function capitalize(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-// Human-readable portion label, e.g. "1 burrito (170g)", "8 fl oz", "100 g".
-// Always inserts a space between size and unit. Returns '' when neither is present
-// (manual entries) so callers can omit the dash separator.
-//
-// When size is 1 and the unit already starts with a number (e.g. "16 fl oz bottle",
-// "8.4 fl oz can"), drop the leading "1" — the unit is self-describing and "1 16 fl oz"
-// reads awkwardly.
 export function formatServing(food) {
   const size = food.servingSize;
   const unit = (food.servingUnit || '').trim();
@@ -641,7 +765,6 @@ export function formatDate(dateStr) {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-// Header-friendly: omits the year so the date never wraps on narrow widths.
 export function formatDateCompact(dateStr) {
   const d = new Date(dateStr + 'T12:00:00');
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });

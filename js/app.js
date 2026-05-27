@@ -31,8 +31,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // ── Theme ──
 
 function initTheme() {
-  const saved = localStorage.getItem('mt_theme'); // 'dark' | 'light' | null
-  if (saved) document.documentElement.classList.add(saved);
+  // pulse-theme.js already applies the theme before paint.
+  // This is a no-op kept for structural symmetry.
 }
 
 function getCurrentTheme() {
@@ -43,13 +43,17 @@ function getCurrentTheme() {
 }
 
 function setTheme(theme) {
-  const root = document.documentElement;
-  root.classList.remove('dark', 'light');
-  if (theme === 'auto') {
-    localStorage.removeItem('mt_theme');
+  if (window.Pulse) {
+    window.Pulse.applyTheme(theme);
   } else {
-    root.classList.add(theme);
-    localStorage.setItem('mt_theme', theme);
+    const root = document.documentElement;
+    root.classList.remove('dark', 'light');
+    if (theme !== 'auto') {
+      root.classList.add(theme);
+      localStorage.setItem('mt_theme', theme);
+    } else {
+      localStorage.removeItem('mt_theme');
+    }
   }
 }
 
@@ -73,9 +77,15 @@ function initAuth() {
 function renderProfileButton() {
   const btn = ui.$('#btn-profile');
   if (!btn) return;
-  btn.textContent = currentUser
-    ? (currentUser.displayName?.split(' ')[0] || 'Account')
-    : 'Sign in';
+  if (currentUser) {
+    const name = currentUser.displayName?.split(' ')[0] || 'Account';
+    // Show single initial in the round button, full name on screen reader
+    btn.textContent = name.charAt(0).toUpperCase();
+    btn.setAttribute('aria-label', name);
+  } else {
+    btn.textContent = '?';
+    btn.setAttribute('aria-label', 'Sign in');
+  }
   btn.onclick = openProfileSheet;
 }
 
@@ -86,29 +96,39 @@ function openProfileSheet() {
 
   const sheet = ui.el('div', { className: 'profile-sheet' });
 
-  // Theme row with segmented control
-  const renderThemeOptions = () => {
-    const current = getCurrentTheme();
-    return ['light', 'dark', 'auto'].map(opt =>
-      ui.el('button', {
-        className: current === opt ? 'active' : '',
-        textContent: opt[0].toUpperCase() + opt.slice(1),
-        onClick: (e) => {
-          setTheme(opt);
-          // Re-render the theme row to update active state
-          const newOptions = renderThemeOptions();
-          const container = e.target.parentElement;
-          container.innerHTML = '';
-          newOptions.forEach(b => container.appendChild(b));
-        },
-      })
-    );
-  };
-
-  sheet.appendChild(ui.el('div', { className: 'profile-sheet-row' }, [
+  // Theme row — use Pulse.renderThemeToggle if available, fall back to inline
+  const themeRow = ui.el('div', { className: 'profile-sheet-row' }, [
     ui.el('span', { className: 'label', textContent: 'Theme' }),
-    ui.el('div', { className: 'theme-options' }, renderThemeOptions()),
-  ]));
+  ]);
+  const themeContainer = ui.el('div');
+  if (window.Pulse) {
+    window.Pulse.renderThemeToggle(themeContainer);
+  } else {
+    const current = getCurrentTheme();
+    const toggleGroup = ui.el('div', { className: 'toggle-group' });
+    ['light', 'dark', 'auto'].forEach(opt => {
+      const btn = ui.el('button', {
+        className: `toggle-btn${current === opt ? ' active' : ''}`,
+        textContent: opt[0].toUpperCase() + opt.slice(1),
+        onClick: () => { setTheme(opt); openProfileSheet(); },
+      });
+      toggleGroup.appendChild(btn);
+    });
+    themeContainer.appendChild(toggleGroup);
+  }
+  themeRow.appendChild(themeContainer);
+  sheet.appendChild(themeRow);
+
+  // Accent picker row
+  const accentRow = ui.el('div', { className: 'sheet-row sheet-row--block' }, [
+    ui.el('div', { className: 'sheet-row__label', textContent: 'ACCENT' }),
+  ]);
+  const accentContainer = ui.el('div', { className: 'accent-picker' });
+  if (window.Pulse) {
+    window.Pulse.renderAccentPicker(accentContainer);
+  }
+  accentRow.appendChild(accentContainer);
+  sheet.appendChild(accentRow);
 
   // Account row
   if (currentUser) {
@@ -194,10 +214,32 @@ function renderAgeGate() {
 function render() {
   const today = ui.todayStr();
   const isToday = currentDate === today;
-  // Compact format in the header (no year) — keeps the date on one line on iPhone widths.
-  ui.$('#date-display').textContent = isToday ? 'Today' : ui.formatDateCompact(currentDate);
+
+  // Date nav — title is compact date (no year), eyebrow is day-of-week or "TODAY"
+  const dateObj = new Date(currentDate + 'T12:00:00');
+  const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
+  const compactDate = ui.formatDateCompact(currentDate);
+
+  const titleEl = ui.$('#date-display');
+  const eyebrowEl = ui.$('#date-eyebrow');
+  if (titleEl) {
+    // Show month+day as title; eyebrow shows day name or "TODAY"
+    if (isToday) {
+      titleEl.textContent = 'Today';
+      if (eyebrowEl) eyebrowEl.textContent = dayName;
+    } else {
+      // e.g. "Mon, May 26" — strip the day from formatDateCompact for title
+      const d = new Date(currentDate + 'T12:00:00');
+      const monthDay = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      titleEl.textContent = monthDay;
+      if (eyebrowEl) eyebrowEl.textContent = dayName;
+    }
+  }
+
   ui.$('#btn-next').disabled = currentDate >= today;
-  ui.$('#btn-today').classList.toggle('hidden', isToday);
+  // "TODAY" streak pill hides when on today
+  const todayBtn = ui.$('#btn-today');
+  if (todayBtn) todayBtn.classList.toggle('hidden', isToday);
 
   if (currentView === 'daily') renderDaily();
   else if (currentView === 'goals') renderGoals();
@@ -210,29 +252,22 @@ function renderDaily() {
   const container = ui.$('#view-content');
   container.innerHTML = '';
 
-  const goals = store.getGoals();
+  const goals  = store.getGoals();
   const totals = store.getDayTotals(currentDate);
-  const day = store.getDay(currentDate);
+  const day    = store.getDay(currentDate);
 
-  // Get insights for analytics carousel
-  let insights = [];
+  // Get last-7-days totals for the insight card chart
+  let totals7 = [];
   try {
-    insights = analytics.analyzeFoodHistory(7, currentDate);
-  } catch (e) {
-    console.error('Analytics error:', e);
-  }
+    const last7 = store.getLast7Days(currentDate).slice(0, 7);
+    totals7 = last7.map(d => store.getDayTotals(d));
+  } catch (e) { /* graceful degradation */ }
 
-  // Summary carousel (rings + analytics)
-  const summary = ui.el('div', { className: 'daily-summary' }, [
-    ui.renderDailySummaryCarousel(totals, goals, insights, currentInsightIndex),
-  ]);
-  container.appendChild(summary);
+  // Carousel (rings card + insight card) — no wrapping .daily-summary needed
+  container.appendChild(ui.renderDailySummaryCarousel(totals, goals, [], 0, totals7));
 
-  // Increment insight index for next view (cycle through insights)
-  currentInsightIndex = (currentInsightIndex + 1) % Math.max(insights.length, 1);
-
-  // Water chip
-  container.appendChild(ui.renderWaterChip(store.getWater(currentDate), {
+  // Action row: water chip | scan | log
+  const waterChip = ui.renderWaterChip(store.getWater(currentDate), {
     onAdd: () => {
       store.addGlass(currentDate);
       fb.pushDay(currentDate, store.getDay(currentDate));
@@ -243,18 +278,53 @@ function renderDaily() {
       fb.pushDay(currentDate, store.getDay(currentDate));
       render();
     },
-  }));
+  });
+
+  const scanBtn = ui.el('button', {
+    className: 'action-btn',
+    type: 'button',
+    onClick: () => openBarcodeScanner(null),  // no meal preselected — scanner picks up from here
+  });
+  // SVG scan icon
+  const scanSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  scanSvg.setAttribute('width', '16'); scanSvg.setAttribute('height', '16');
+  const scanUse = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+  scanUse.setAttribute('href', '#i-scan');
+  scanSvg.appendChild(scanUse);
+  const scanIconEl = ui.el('span', { className: 'ico ico--accent' });
+  scanIconEl.appendChild(scanSvg);
+  scanBtn.appendChild(scanIconEl);
+  scanBtn.appendChild(document.createTextNode(' Scan'));
+
+  const logBtn = ui.el('button', {
+    className: 'action-btn action-btn--primary',
+    type: 'button',
+    onClick: () => openAddFoodModal(null),  // null = no meal preselected
+  });
+  const boltSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  boltSvg.setAttribute('width', '14'); boltSvg.setAttribute('height', '14');
+  const boltUse = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+  boltUse.setAttribute('href', '#i-bolt');
+  boltSvg.appendChild(boltUse);
+  logBtn.appendChild(boltSvg);
+  logBtn.appendChild(document.createTextNode(' Log'));
+
+  const actionRow = ui.el('div', { className: 'action-row' }, [waterChip, scanBtn, logBtn]);
+  container.appendChild(actionRow);
+
+  // Spacer
+  container.appendChild(ui.el('div', { style: 'height:12px' }));
 
   // Meals
   const favorites = store.getFavorites();
   const mealCallbacks = {
-    onAdd: (mealType) => openAddFoodModal(mealType),
-    onRemove: (mealType, foodId) => {
+    onAdd:        (mealType) => openAddFoodModal(mealType),
+    onRemove:     (mealType, foodId) => {
       store.removeFoodFromMeal(currentDate, mealType, foodId);
       fb.pushDay(currentDate, store.getDay(currentDate));
       render();
     },
-    onToggleFav: (food, adding, mealType) => {
+    onToggleFav:  (food, adding, mealType) => {
       if (adding) {
         store.addFavorite({ ...food, mealType });
         showToast('Added to favorites');
@@ -265,18 +335,16 @@ function renderDaily() {
       }
       fb.pushFavorites(store.getFavorites());
     },
-    onFoodClick: (mealType, food) => openFoodDetailsModal(mealType, food),
+    onFoodClick:  (mealType, food) => openFoodDetailsModal(mealType, food),
   };
 
   for (const mealType of ['breakfast', 'lunch', 'dinner', 'snacks']) {
-    // Enrich foods with latest COMMON_FOODS data (fills in missing fields like addedSugars)
     const enrichedFoods = day.meals[mealType].map(food => {
       const commonFood = getCommonFood(food.name);
       return commonFood ? { ...commonFood, ...food } : food;
     });
     container.appendChild(ui.renderMealSection(mealType, enrichedFoods, mealCallbacks, favorites));
   }
-
 }
 
 // ── Goals View ──
@@ -559,7 +627,7 @@ function renderWeight() {
 
   const section = ui.el('div', { className: 'weight-view' });
 
-  section.appendChild(ui.el('h2', { textContent: 'Weight Tracking' }));
+  section.appendChild(ui.el('h2', { textContent: 'Weight' }));
 
   // Weight entry for today
   const todayWeight = store.getWeight(ui.todayStr());
@@ -673,6 +741,27 @@ function openAddFoodModal(mealType) {
 
   modalBody.innerHTML = '';
 
+  // If mealType is null (from the global "Log" button), show a meal picker first
+  if (!mealType) {
+    const mealPickerHead = ui.el('h2', { textContent: 'Log to…' });
+    const mealPickerGrid = ui.el('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px' });
+    for (const mt of ['breakfast', 'lunch', 'dinner', 'snacks']) {
+      const btn = ui.el('button', {
+        className: 'btn-secondary',
+        style: 'padding:14px;font-size:15px;font-weight:600;border-radius:14px;',
+        textContent: ui.capitalize(mt),
+        onClick: () => openAddFoodModal(mt),
+      });
+      mealPickerGrid.appendChild(btn);
+    }
+    modalBody.appendChild(mealPickerHead);
+    modalBody.appendChild(mealPickerGrid);
+    modal.classList.add('open');
+    ui.$('#modal-close').onclick = closeModal;
+    modal.onclick = (e) => { if (e.target === modal) closeModal(); };
+    return;
+  }
+
   // Extract recent foods for this meal type
   const recents = store.getRecentFoodsByMealType(mealType, 20);
 
@@ -761,9 +850,9 @@ function openAddFoodModal(mealType) {
   const scanBtn = ui.el('button', {
     className: 'btn-scan',
     title: 'Scan barcode',
-    textContent: '📷',
     onClick: () => openBarcodeScanner(mealType),
   });
+  scanBtn.appendChild(ui.svgIcon('i-scan', 20));
 
   // const analyzeBtn = ui.el('button', { className: 'btn-scan', title: 'Analyze plate with AI', textContent: '📸', onClick: () => openPhotoAnalyzer(mealType) }); // paused
 
@@ -832,24 +921,32 @@ function openAddFoodModal(mealType) {
         const badge = ui.el('span', { className: 'my-food-badge', textContent: 'My Food' });
         nameEl.appendChild(badge);
       }
+      const removeBtnSearch = (() => {
+        const b = ui.el('button', {
+          className: 'btn-icon btn-remove',
+          title: 'Remove from My Foods',
+          onClick: (e) => {
+            e.stopPropagation();
+            store.deleteMyFood(food.myFoodId);
+            fb.pushMyFoods(store.getMyFoods());
+            doSearch.flush ? doSearch.flush() : renderResults();
+            state.results = state.results.filter(f => f.myFoodId !== food.myFoodId);
+            renderResults();
+          },
+        });
+        b.appendChild(ui.svgIcon('i-close', 14));
+        return b;
+      })();
+      const addBtnSearch = ui.el('button', { className: 'btn-icon' });
+      addBtnSearch.appendChild(ui.svgIcon('i-plus', 16));
+
       const actions = isMyFood
-        ? ui.el('div', { className: 'result-actions' }, [
-            ui.el('button', {
-              className: 'btn-icon btn-remove',
-              textContent: '×',
-              title: 'Remove from My Foods',
-              onClick: (e) => {
-                e.stopPropagation();
-                store.deleteMyFood(food.myFoodId);
-                fb.pushMyFoods(store.getMyFoods());
-                doSearch.flush ? doSearch.flush() : renderResults();
-                state.results = state.results.filter(f => f.myFoodId !== food.myFoodId);
-                renderResults();
-              },
-            }),
-            ui.el('button', { className: 'btn-icon', textContent: '+' }),
-          ])
-        : ui.el('button', { className: 'btn-icon', textContent: '+' });
+        ? ui.el('div', { className: 'result-actions' }, [removeBtnSearch, addBtnSearch])
+        : (() => {
+          const b = ui.el('button', { className: 'btn-icon' });
+          b.appendChild(ui.svgIcon('i-plus', 16));
+          return b;
+        })();
 
       const row = ui.el('div', { className: 'result-row', onClick: () => selectFood(food) }, [
         ui.el('div', { className: 'result-info' }, [
@@ -954,17 +1051,19 @@ function openAddFoodModal(mealType) {
                 }),
               ]),
               ui.el('div', { className: 'fav-actions' }, [
-                ui.el('button', {
-                  className: 'btn-icon btn-remove',
-                  textContent: '×',
-                  title: "Don't show this again",
-                  onClick: (e) => {
-                    e.stopPropagation();
-                    store.removeRecentFood(mealType, food.name);
-                    // Refresh modal to show updated recents
-                    openAddFoodModal(mealType);
-                  },
-                }),
+                (() => {
+                  const b = ui.el('button', {
+                    className: 'btn-icon btn-remove',
+                    title: "Don't show this again",
+                    onClick: (e) => {
+                      e.stopPropagation();
+                      store.removeRecentFood(mealType, food.name);
+                      openAddFoodModal(mealType);
+                    },
+                  });
+                  b.appendChild(ui.svgIcon('i-close', 14));
+                  return b;
+                })(),
               ]),
             ])
           );
@@ -992,20 +1091,23 @@ function openAddFoodModal(mealType) {
               }),
             ]),
             ui.el('div', { className: 'fav-actions' }, [
-              ui.el('button', {
-                className: 'btn-icon btn-remove',
-                textContent: '×',
-                title: "Remove favorite and don't show again",
-                onClick: (e) => {
-                  e.stopPropagation();
-                  store.removeFavorite(fav.favId);
-                  // Also suppress from recents in this meal type so the food doesn't pop
-                  // back tomorrow as a "recent" — matches the user's expectation that X means gone.
-                  store.removeRecentFood(mealType, fav.name);
-                  fb.pushFavorites(store.getFavorites());
-                  openAddFoodModal(mealType);
-                },
-              }),
+              (() => {
+                const b = ui.el('button', {
+                  className: 'btn-icon btn-remove',
+                  title: "Remove favorite and don't show again",
+                  onClick: (e) => {
+                    e.stopPropagation();
+                    store.removeFavorite(fav.favId);
+                    // Also suppress from recents in this meal type so the food doesn't pop
+                    // back tomorrow as a "recent" — matches the user's expectation that X means gone.
+                    store.removeRecentFood(mealType, fav.name);
+                    fb.pushFavorites(store.getFavorites());
+                    openAddFoodModal(mealType);
+                  },
+                });
+                b.appendChild(ui.svgIcon('i-close', 14));
+                return b;
+              })(),
             ]),
           ]);
         }),
@@ -1102,6 +1204,29 @@ function openFoodDetailsModal(mealType, food) {
 // ── Serving Picker (shared by text search and barcode scanner) ──
 
 function showServingPicker(food, mealType) {
+  // If no meal type yet (from action-row scan/log), redirect to picker then come back
+  if (!mealType) {
+    const modalBody = ui.$('#modal-body');
+    modalBody.innerHTML = '';
+    const modal = ui.$('#modal');
+    modalBody.appendChild(ui.el('h2', { textContent: 'Add to…' }));
+    const grid = ui.el('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px' });
+    for (const mt of ['breakfast', 'lunch', 'dinner', 'snacks']) {
+      const btn = ui.el('button', {
+        className: 'btn-secondary',
+        style: 'padding:14px;font-size:15px;font-weight:600;border-radius:14px;',
+        textContent: ui.capitalize(mt),
+        onClick: () => showServingPicker(food, mt),
+      });
+      grid.appendChild(btn);
+    }
+    modalBody.appendChild(grid);
+    modal.classList.add('open');
+    ui.$('#modal-close').onclick = closeModal;
+    modal.onclick = (e) => { if (e.target === modal) closeModal(); };
+    return;
+  }
+
   const modalBody = ui.$('#modal-body');
   modalBody.innerHTML = '';
   let servings = 1;
@@ -1168,7 +1293,8 @@ async function openBarcodeScanner(mealType) {
   const modalBody = ui.$('#modal-body');
   modalBody.innerHTML = '';
 
-  modalBody.appendChild(ui.el('h2', { textContent: `Add to ${ui.capitalize(mealType)}` }));
+  const scannerTitle = mealType ? `Scan for ${ui.capitalize(mealType)}` : 'Scan Barcode';
+  modalBody.appendChild(ui.el('h2', { textContent: scannerTitle }));
 
   const statusEl = ui.el('div', { className: 'scanner-status', textContent: 'Starting camera…' });
   const video = document.createElement('video');
