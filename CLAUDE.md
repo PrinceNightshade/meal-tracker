@@ -199,6 +199,20 @@ Run through these checks in the live preview server or on deployed staging:
 - [ ] Apple Health / Google Fit integration — **weight sync only**, explicitly NOT calorie-burn import. Crediting exercise calories triggers the well-documented compensation effect (people overestimate burn 2–4x and the resulting "earned it" snack flips a deficit day into a surplus). The app is intentionally one-sided: precise about intake, silent about burn.
 - [ ] Macro targets by meal type (not just daily totals)
 
+### Recently Completed (Phase 6, May 2026 — Pulse visual refresh)
+- [x] Full CSS rewrite to Pulse design system — OLED-first tokens (`--bg`, `--surface`, `--accent`, `--ink-*`), glass pill bottom nav, radial glow on daily summary card
+- [x] Geist font family (Geist + Geist Mono) via Google Fonts CDN
+- [x] Inline SVG sprite in `index.html` — all icons via `<use href="#i-name"/>`, no external icon library
+- [x] `js/pulse-theme.js` — before-paint IIFE for theme/accent; `window.Pulse.applyTheme()`, `applyAccent()`, `renderThemeToggle()`, `renderAccentPicker()`; 6 accent presets stored in `mt_accent`
+- [x] Macro-card grid — calorie ring stays large, 4-up `.macro-card` grid (Protein/Carbs/Fat/Sugar) replaces 3 small macro rings + separate sugar bar; sugar card inverse coloring preserved
+- [x] Action row — water chip | Scan | Log laid out in 3-column grid below hero carousel
+- [x] Insight carousel slide — protein-hit 7-bar chart from last 7 days; fat trend note if 3+ over days
+- [x] Meal section rails — `::before` left-border accent per meal type; "TAP TO COMPOSE" empty hint
+- [x] Log button opens meal picker (2×2 grid) when no meal preselected; same for Scan
+- [x] Profile sheet — accent swatch picker + theme 3-state toggle (Light/Dark/Auto) in bottom-sheet
+- [x] Ring fill colors class-based (`.ring-fill--good|warn|over`) instead of inline stroke attributes
+- [x] `manifest.json` updated — `theme_color: #C8FF3D`, `background_color: #000000`
+
 ### Recently Completed (Phase 5, Apr 2026 — UI/UX refresh)
 - [x] Header refresh — drop year from date, "Today" replaces date when on today, hide Today button on today, prev/next bumped to 44pt tap targets, theme + auth collapsed into a single Profile bottom-sheet
 - [x] Goals autosave — removed three Save buttons, save on blur with green border flash
