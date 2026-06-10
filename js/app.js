@@ -1,6 +1,6 @@
 // app.js — Main entry point
 import * as store from './store.js';
-import { searchCommonFoods, searchFoodsFromAPI, lookupBarcode, analyzePhoto, debounce, getCommonFood } from './api.js';
+import { searchCommonFoods, searchFoodsFromAPI, lookupBarcode, analyzePhoto, debounce, getCommonFood, normalizeFoodKey } from './api.js';
 import * as ui from './ui.js';
 import * as fb from './firebase.js';
 import * as analytics from './analytics.js';
@@ -890,14 +890,15 @@ function openAddFoodModal(mealType) {
     const historyResults = store.searchHistory(query);
     const commonResults = searchCommonFoods(query);
 
-    const seen = new Set(myFoodResults.map(f => f.name.toLowerCase()));
-    const historyDeduped = historyResults.filter(f => !seen.has(f.name.toLowerCase()));
-    historyDeduped.forEach(f => seen.add(f.name.toLowerCase()));
-    const commonDeduped = commonResults.filter(f => !seen.has(f.name.toLowerCase()));
-    commonDeduped.forEach(f => seen.add(f.name.toLowerCase()));
+    const seen = new Set(myFoodResults.map(f => normalizeFoodKey(f.name)));
+    const historyDeduped = historyResults.filter(f => !seen.has(normalizeFoodKey(f.name)));
+    historyDeduped.forEach(f => seen.add(normalizeFoodKey(f.name)));
+    const commonDeduped = commonResults.filter(f => !seen.has(normalizeFoodKey(f.name)));
+    commonDeduped.forEach(f => seen.add(normalizeFoodKey(f.name)));
 
     state.results = [...myFoodResults, ...historyDeduped, ...commonDeduped];
     renderResults();
+    setTimeout(() => { resultsList.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
 
     // ── Phase 2: augment with API results in the background ──
     // Skip API entirely if we already have plenty of local matches
@@ -924,8 +925,6 @@ function openAddFoodModal(mealType) {
   function renderResults() {
     resultsList.innerHTML = '';
     const modalContent = ui.$('#modal .modal-content');
-    // Scroll results into view after a brief delay to let DOM update
-    setTimeout(() => { resultsList.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
     if (state.results.length === 0) {
       resultsList.innerHTML = '<div class="no-results">No results found</div>';
       return;

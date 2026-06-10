@@ -199,6 +199,11 @@ Run through these checks in the live preview server or on deployed staging:
 - [ ] Apple Health / Google Fit integration — **weight sync only**, explicitly NOT calorie-burn import. Crediting exercise calories triggers the well-documented compensation effect (people overestimate burn 2–4x and the resulting "earned it" snack flips a deficit day into a surplus). The app is intentionally one-sided: precise about intake, silent about burn.
 - [ ] Macro targets by meal type (not just daily totals)
 
+### Recently Completed (Jun 2026 — add-food modal UX, also applied to gdm-tracker)
+- [x] Search results no longer hide under the sticky search row — scroll moved from `renderResults` (re-fired on phase-2 API append, yanking the view) to once per query in `doSearch`; `.search-results` got `scroll-margin-top: 64px` to clear the sticky row
+- [x] iOS focus auto-zoom fixed — all modal/Goals form inputs bumped to 16px (below that iOS Safari zooms on focus and the PWA stays zoomed), element-level `max(16px, 1em)` guard for unstyled inputs, `maximum-scale=1` in the viewport meta (suppresses auto-zoom only; user pinch still works on iOS ≥10)
+- [x] Search dedup normalized — `normalizeFoodKey` in api.js (lowercase, NFKD accent-strip, collapse punctuation/whitespace) used for every dedup `seen` key in api.js + app.js, so "Coca-Cola" / "coca cola " / OFF names with trailing spaces merge; store.js blocklist matching intentionally untouched (exact lowercase, consistent with stored data)
+
 ### Recently Completed (Phase 6, May 2026 — Pulse visual refresh)
 - [x] Full CSS rewrite to Pulse design system — OLED-first tokens (`--bg`, `--surface`, `--accent`, `--ink-*`), glass pill bottom nav, radial glow on daily summary card
 - [x] Geist font family (Geist + Geist Mono) via Google Fonts CDN

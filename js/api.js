@@ -86,6 +86,17 @@ function extractAddedSugarsFromOFF(product) {
 }
 
 
+// Canonical dedup key for a food name: lowercase, strip accents, collapse
+// punctuation/whitespace — so "Coca-Cola", "coca cola " and "Coca‑Cola" merge.
+export function normalizeFoodKey(name) {
+  return String(name || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
 export function searchCommonFoods(query) {
   const queryLower = query.toLowerCase();
   const queryWords = queryLower.split(/\s+/);
@@ -122,7 +133,7 @@ export async function searchFoodsFromAPI(query, pageSize = 15, alreadySeen = new
 
   function addAll(list) {
     for (const { _dataType, ...food } of list) {
-      const key = food.name.toLowerCase();
+      const key = normalizeFoodKey(food.name);
       if (!seen.has(key)) { seen.add(key); merged.push(food); }
     }
   }
@@ -138,7 +149,7 @@ export async function searchFoodsFromAPI(query, pageSize = 15, alreadySeen = new
 export async function searchFoods(query, pageSize = 15) {
   if (!query || query.trim().length < 2) return [];
   const commonResults = searchCommonFoods(query);
-  const seen = new Set(commonResults.map(f => f.name.toLowerCase()));
+  const seen = new Set(commonResults.map(f => normalizeFoodKey(f.name)));
   const apiResults = await searchFoodsFromAPI(query, pageSize, seen);
   return [...commonResults, ...apiResults].slice(0, pageSize);
 }
@@ -222,6 +233,7 @@ async function searchUSDA(query, pageSize = 15) {
 
 function formatFoodName(name) {
   if (!name) return 'Unknown';
+  name = name.trim();
   // USDA names are often ALL CAPS — title-case them
   if (name === name.toUpperCase() && name.length > 3) {
     return name.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());

@@ -141,6 +141,8 @@
 html, body { background: var(--bg); color: var(--ink); font-family: var(--font); }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-size: var(--t-body); line-height: 1.5; min-height: 100dvh; }
+/* iOS Safari auto-zooms on focus when a form control's font-size is <16px. */
+input, select, textarea { font-size: max(16px, 1em); }
 
 .app {
   max-width: 480px; margin: 0 auto;
@@ -730,7 +732,7 @@ body { font-size: var(--t-body); line-height: 1.5; min-height: 100dvh; }
   width: 80px; padding: 6px 8px;
   border: 1px solid var(--hair);
   border-radius: 8px;
-  font-size: 15px; background: var(--bg); color: var(--ink);
+  font-size: 16px; background: var(--bg); color: var(--ink);
   text-align: right; font-family: var(--font-mono);
 }
 
@@ -876,7 +878,7 @@ body { font-size: var(--t-body); line-height: 1.5; min-height: 100dvh; }
   border-radius: 12px;
   padding: 10px 14px;
   font-family: var(--font);
-  font-size: 14px; color: var(--ink);
+  font-size: 16px; color: var(--ink);
   outline: none;
 }
 .input-search:focus {
@@ -1049,14 +1051,14 @@ body { font-size: var(--t-body); line-height: 1.5; min-height: 100dvh; }
 .input-goal {
   width: 100px; padding: 6px 10px;
   border: 1px solid var(--hair);
-  border-radius: 8px; font-size: 15px;
+  border-radius: 8px; font-size: 16px;
   text-align: right; background: var(--bg); color: var(--ink);
   font-family: var(--font-mono);
 }
 .input-select {
   padding: 6px 10px;
   border: 1px solid var(--hair);
-  border-radius: 8px; font-size: 14px;
+  border-radius: 8px; font-size: 16px;
   background: var(--bg); color: var(--ink); max-width: 200px;
 }
 .height-inputs {
@@ -1066,7 +1068,7 @@ body { font-size: var(--t-body); line-height: 1.5; min-height: 100dvh; }
 .input-height {
   width: 48px; padding: 6px 8px;
   border: 1px solid var(--hair);
-  border-radius: 8px; font-size: 15px;
+  border-radius: 8px; font-size: 16px;
   text-align: center; background: var(--bg); color: var(--ink);
   font-family: var(--font-mono);
 }
@@ -1091,7 +1093,9 @@ body { font-size: var(--t-body); line-height: 1.5; min-height: 100dvh; }
 
 /* ── Search results ───────────────────────────────────────────────── */
 
-.search-results { margin-bottom: 10px; }
+/* scroll-margin-top matches the sticky .search-row height (~60px) so
+   scrollIntoView doesn't tuck the first result under it */
+.search-results { margin-bottom: 10px; scroll-margin-top: 64px; }
 .result-row {
   display: flex; justify-content: space-between; align-items: center;
   padding: 8px; border-radius: 8px; cursor: pointer;
@@ -1119,7 +1123,7 @@ body { font-size: var(--t-body); line-height: 1.5; min-height: 100dvh; }
 .input-servings {
   width: 80px; padding: 6px 10px;
   border: 1px solid var(--hair);
-  border-radius: 8px; font-size: 15px;
+  border-radius: 8px; font-size: 16px;
   background: var(--bg); color: var(--ink);
   font-family: var(--font-mono);
 }
@@ -1143,7 +1147,7 @@ body { font-size: var(--t-body); line-height: 1.5; min-height: 100dvh; }
 .input-manual {
   width: 100%; padding: 8px 10px;
   border: 1px solid var(--hair);
-  border-radius: 8px; font-size: 14px;
+  border-radius: 8px; font-size: 16px;
   margin-bottom: 6px; background: var(--bg); color: var(--ink);
 }
 
@@ -1269,7 +1273,7 @@ body { font-size: var(--t-body); line-height: 1.5; min-height: 100dvh; }
 .food-modal-section h3 { font-size: 14px; font-weight: 600; margin: 0; color: var(--ink); }
 .input-quantity {
   padding: 10px 12px; border: 1px solid var(--hair);
-  border-radius: 8px; font-size: 15px;
+  border-radius: 8px; font-size: 16px;
   background: var(--bg); color: var(--ink);
 }
 .nutrition-breakdown { display: flex; flex-direction: column; gap: 8px; }
@@ -1283,7 +1287,7 @@ body { font-size: var(--t-body); line-height: 1.5; min-height: 100dvh; }
 .nutrition-heading-row { display: flex; align-items: center; justify-content: space-between; }
 .edit-nutrition-link { font-size: 12px; color: var(--ink-3); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; user-select: none; }
 .nutrition-edit-cell { display: flex; align-items: center; gap: 2px; }
-.nutrition-row-input { width: 70px; padding: 4px 6px; border: 1px solid var(--hair); border-radius: 6px; font-size: 14px; font-weight: 600; text-align: right; background: var(--bg); color: var(--ink); }
+.nutrition-row-input { width: 70px; padding: 4px 6px; border: 1px solid var(--hair); border-radius: 6px; font-size: 16px; font-weight: 600; text-align: right; background: var(--bg); color: var(--ink); }
 .nutrition-edit-unit { font-size: 13px; color: var(--ink-2); font-weight: 600; }
 .save-correction-label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); margin: 4px 0 0; cursor: pointer; }
 .save-correction-label input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
