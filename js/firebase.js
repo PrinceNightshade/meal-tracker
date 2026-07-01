@@ -72,12 +72,13 @@ function userDoc(path) {
 export async function pullFromCloud(store) {
   if (!currentUser) return;
   try {
-    const [profileSnap, goalsSnap, weightSnap, favSnap, myFoodsSnap] = await Promise.all([
+    const [profileSnap, goalsSnap, weightSnap, favSnap, myFoodsSnap, diagSnap] = await Promise.all([
       getDoc(userDoc('data/profile')),
       getDoc(userDoc('data/goals')),
       getDoc(userDoc('data/weight')),
       getDoc(userDoc('data/favorites')),
       getDoc(userDoc('data/myfoods')),
+      getDoc(userDoc('data/diag')),
     ]);
 
     if (profileSnap.exists()) store.saveProfile(profileSnap.data());
@@ -96,6 +97,13 @@ export async function pullFromCloud(store) {
     if (myFoodsSnap.exists()) {
       const { items } = myFoodsSnap.data();
       if (items) store.replaceMyFoods(items);
+    }
+    // Diagnostic visibility log — stored under a separate key so a review on
+    // another device never collides with that device's own live mt_vis_log.
+    if (diagSnap.exists()) {
+      try {
+        localStorage.setItem('mt_vis_log_cloud', JSON.stringify(diagSnap.data().log || []));
+      } catch { /* quota — ignore */ }
     }
 
     // Pull days
@@ -136,4 +144,12 @@ export function pushMyFoods(items) {
 export function pushDay(date, dayData) {
   if (!currentUser) return;
   setDoc(doc(db, 'users', currentUser.uid, 'days', date), dayData).catch(e => console.warn(`Push day ${date} failed:`, e));
+}
+
+// Temporary — syncs the visibility diagnostic log so it can be reviewed off-device.
+// Remove alongside initVisibilityLog once the Screen Time question is settled.
+export function pushDiag(log) {
+  if (!currentUser) return;
+  setDoc(userDoc('data/diag'), { log, updatedAt: new Date().toISOString() })
+    .catch(e => console.warn('Push diag failed:', e));
 }

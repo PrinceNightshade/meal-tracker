@@ -46,9 +46,11 @@ export function initSW(querySelector) {
         });
       });
 
-      // Periodically check for updates
+      // Periodically check for updates — but only while the app is actually
+      // visible. Skipping the ping while backgrounded avoids needless network
+      // churn and keeps the page quiet when iOS has it suspended anyway.
       setInterval(() => {
-        reg.update();
+        if (document.visibilityState === 'visible') reg.update();
       }, 60000); // Check every minute
     })
     .catch(err => console.error('Service Worker registration failed:', err));

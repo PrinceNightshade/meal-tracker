@@ -10,6 +10,8 @@ let currentDate = ui.todayStr();
 let currentView = 'daily'; // daily | goals | weight
 let currentInsightIndex = 0; // for cycling through analytics insights
 let activeCameraStream = null; // track live camera so closeModal can stop it
+let activeScanTimer = null; // barcode poll loop — cleared alongside the camera
+let activeScanVideo = null; // <video> preview element — paused/detached on stop
 let currentUser = null; // tracked separately from button rendering
 
 // ── Init ──
@@ -18,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Deduplicate favorites that accumulated from the add-without-check bug
   store.replaceFavorites(store.getFavorites());
   initTheme();
+  initVisibilityLog();
   initSW(ui.$);
   if (store.isUnderage()) {
     renderAgeGate();
@@ -27,6 +30,33 @@ document.addEventListener('DOMContentLoaded', () => {
   bindNav();
   initAuth();
 });
+
+// ── Visibility diagnostics ──
+// Temporary instrument to check whether iOS Screen Time's multi-hour bars
+// reflect the page genuinely staying visible, or an iOS PWA mis-attribution.
+// Writes a rolling log of visibility/focus transitions to localStorage
+// (mt_vis_log). Inspect with: JSON.parse(localStorage.getItem('mt_vis_log'))
+// Safe to remove once the question is settled.
+function initVisibilityLog() {
+  const KEY = 'mt_vis_log';
+  const MAX = 200; // cap so the log can't grow unbounded
+
+  function record(event) {
+    let log;
+    try { log = JSON.parse(localStorage.getItem(KEY)) || []; } catch { log = []; }
+    log.push({ t: new Date().toISOString(), event, state: document.visibilityState });
+    if (log.length > MAX) log = log.slice(-MAX);
+    try { localStorage.setItem(KEY, JSON.stringify(log)); } catch { /* quota — ignore */ }
+    // Sync up so the log is reviewable off-device (no-op until signed in).
+    fb.pushDiag(log);
+  }
+
+  record('load');
+  document.addEventListener('visibilitychange', () => record('visibilitychange'));
+  window.addEventListener('focus', () => record('focus'));
+  window.addEventListener('blur', () => record('blur'));
+  window.addEventListener('pagehide', () => record('pagehide'));
+}
 
 // ── Theme ──
 
@@ -1154,6 +1184,15 @@ function closeModal() {
 }
 
 function stopActiveCamera() {
+  if (activeScanTimer) {
+    clearInterval(activeScanTimer);
+    activeScanTimer = null;
+  }
+  if (activeScanVideo) {
+    activeScanVideo.pause();
+    activeScanVideo.srcObject = null;
+    activeScanVideo = null;
+  }
   if (activeCameraStream) {
     activeCameraStream.getTracks().forEach(t => t.stop());
     activeCameraStream = null;
@@ -1319,6 +1358,7 @@ async function openBarcodeScanner(mealType) {
   video.setAttribute('muted', '');
   video.setAttribute('playsinline', '');  // required on iOS
   video.className = 'scanner-video';
+  activeScanVideo = video;
 
   const container = ui.el('div', { className: 'scanner-container' }, [
     video,
@@ -1363,14 +1403,15 @@ async function openBarcodeScanner(mealType) {
     statusEl.className = 'scanner-status scanning';
 
     // Poll every 250ms — gives CPU a break vs rAF
-    const scanInterval = setInterval(async () => {
+    activeScanTimer = setInterval(async () => {
       if (!activeCameraStream || video.readyState < 2) return;
       try {
         const barcodes = await detector.detect(video);
         if (!barcodes.length) return;
 
         const code = barcodes[0].rawValue;
-        clearInterval(scanInterval);
+        clearInterval(activeScanTimer);
+        activeScanTimer = null;
         if (navigator.vibrate) navigator.vibrate(60);
 
         statusEl.textContent = `Found ${code} — looking up…`;
