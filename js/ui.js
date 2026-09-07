@@ -452,45 +452,47 @@ export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFa
 
 // ── Weight Chart (simple SVG) ──
 
-export function renderWeightChart(history) {
-  if (history.length < 2) {
-    return el('div', { className: 'weight-chart-empty', textContent: 'Log at least 2 weights to see a chart.' });
+// series: [{ date, weight, trend }] (from store.getWeightSeries). The EMA trend
+// is the signal (accent line); raw dailies are faint dots around it; the goal is
+// a dashed line so progress toward it is visible at a glance.
+export function renderWeightChart(series, goal = null) {
+  if (!series || series.length < 2) {
+    return el('div', { className: 'weight-chart-empty', textContent: 'Log at least 2 weights to see your trend.' });
   }
 
-  const W = 320, H = 140, PAD = 30;
-  const weights = history.map(e => e.weight);
-  const min = Math.min(...weights) - 1;
-  const max = Math.max(...weights) + 1;
+  const W = 320, H = 150, PAD_L = 28, PAD_R = 10, PAD_T = 12, PAD_B = 22;
+  const vals = series.flatMap(e => [e.weight, e.trend]);
+  if (goal != null) vals.push(goal);
+  const min = Math.min(...vals) - 1;
+  const max = Math.max(...vals) + 1;
   const range = max - min || 1;
 
-  const points = history.map((e, i) => {
-    const x = PAD + (i / (history.length - 1)) * (W - PAD * 2);
-    const y = H - PAD - ((e.weight - min) / range) * (H - PAD * 2);
-    return { x, y, ...e };
-  });
+  const xAt = i => PAD_L + (i / (series.length - 1)) * (W - PAD_L - PAD_R);
+  const yAt = v => H - PAD_B - ((v - min) / range) * (H - PAD_T - PAD_B);
 
-  const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
-  const firstDate = formatShortDate(history[0].date);
-  const lastDate = formatShortDate(history[history.length - 1].date);
-  const lastPoint = points[points.length - 1];
+  const trendD = series.map((e, i) => `${i === 0 ? 'M' : 'L'}${xAt(i).toFixed(1)},${yAt(e.trend).toFixed(1)}`).join(' ');
+  const dots = series.map(e => `<circle cx="${xAt(series.indexOf(e)).toFixed(1)}" cy="${yAt(e.weight).toFixed(1)}" r="2" fill="var(--ink-3)"><title>${e.date}: ${e.weight} lbs</title></circle>`).join('');
+  const goalLine = goal != null
+    ? `<line x1="${PAD_L}" y1="${yAt(goal).toFixed(1)}" x2="${W - PAD_R}" y2="${yAt(goal).toFixed(1)}" stroke="var(--ink-3)" stroke-width="1" stroke-dasharray="4 4"/>`
+    : '';
+
+  const firstDate = formatShortDate(series[0].date);
+  const lastDate = formatShortDate(series[series.length - 1].date);
+  const last = series[series.length - 1];
 
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   svg.setAttribute('class', 'weight-chart');
   svg.innerHTML = `
-    <defs>
-      <linearGradient id="w-grad" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stop-color="#5BE9F0"/>
-        <stop offset="100%" stop-color="var(--accent)"/>
-      </linearGradient>
-    </defs>
-    <path d="${pathD}" fill="none" stroke="url(#w-grad)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-    ${points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3" fill="var(--accent)"><title>${p.date}: ${p.weight} lbs</title></circle>`).join('')}
-    <circle cx="${lastPoint.x}" cy="${lastPoint.y}" r="10" fill="var(--accent)" opacity="0.15"/>
-    <text x="${PAD}" y="${H - 5}" class="chart-label">${firstDate}</text>
-    <text x="${W - PAD}" y="${H - 5}" class="chart-label" text-anchor="end">${lastDate}</text>
-    <text x="5" y="${PAD}" class="chart-label">${max.toFixed(1)}</text>
-    <text x="5" y="${H - PAD}" class="chart-label">${min.toFixed(1)}</text>
+    ${goalLine}
+    ${dots}
+    <path d="${trendD}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${xAt(series.length - 1).toFixed(1)}" cy="${yAt(last.trend).toFixed(1)}" r="3.5" fill="var(--accent)"/>
+    <circle cx="${xAt(series.length - 1).toFixed(1)}" cy="${yAt(last.trend).toFixed(1)}" r="9" fill="var(--accent)" opacity="0.15"/>
+    <text x="${PAD_L}" y="${H - 5}" class="chart-label">${firstDate}</text>
+    <text x="${W - PAD_R}" y="${H - 5}" class="chart-label" text-anchor="end">${lastDate}</text>
+    <text x="4" y="${PAD_T + 4}" class="chart-label">${max.toFixed(0)}</text>
+    <text x="4" y="${H - PAD_B}" class="chart-label">${min.toFixed(0)}</text>
   `;
   return svg;
 }

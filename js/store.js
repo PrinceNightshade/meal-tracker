@@ -338,31 +338,65 @@ export function getWeightHistory(days = 30) {
   return days ? entries.slice(-days) : entries;
 }
 
+// ── Weight trend (EMA) ──
+// Daily weight bounces ±1–3 lb on water/food/glycogen. The trend line — an
+// exponential moving average — is the real signal; raw dailies are noise around
+// it. alpha 0.25 is responsive enough for sparse (non-daily) logging while
+// still smoothing the day-to-day swing. This is the primary number the UI shows.
+const WEIGHT_TREND_ALPHA = 0.25;
+
+function emaTrend(entries, alpha = WEIGHT_TREND_ALPHA) {
+  let prev = null;
+  return entries.map(e => {
+    const trend = prev === null ? e.weight : prev + alpha * (e.weight - prev);
+    prev = trend;
+    return { ...e, trend };
+  });
+}
+
+// Sorted entries with a `.trend` (EMA) alongside the raw `.weight`.
+export function getWeightSeries(days = 0) {
+  const series = emaTrend(getWeightHistory(0));
+  return days ? series.slice(-days) : series;
+}
+
 export function getWeightStats() {
-  const history = getWeightHistory(0); // all
-  if (history.length === 0) return null;
-  const current = history[history.length - 1].weight;
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  const weekAgoStr = weekAgo.toISOString().split('T')[0];
-  const weekEntry = history.find(e => e.date >= weekAgoStr);
-  const first = history[0];
+  const series = getWeightSeries(0); // all, with trend
+  if (series.length === 0) return null;
+  const last = series[series.length - 1];
+  const first = series[0];
+  const currentTrend = +last.trend.toFixed(1);
+
+  // 7-day change: compare the current trend to the trend at the entry NEAREST
+  // to 7 days ago (not merely the first entry inside the window, which was the
+  // old bug — with a recent cluster of weigh-ins it compared today to ~today).
+  // Suppress it unless that nearest entry is genuinely old enough to mean a week.
+  const weekAgoTime = Date.now() - 7 * 86400000;
+  let nearest = null, nearestDiff = Infinity;
+  for (const e of series) {
+    const diff = Math.abs(new Date(e.date + 'T12:00:00').getTime() - weekAgoTime);
+    if (diff < nearestDiff) { nearestDiff = diff; nearest = e; }
+  }
+  const nearestDaysOld = (Date.now() - new Date(nearest.date + 'T12:00:00').getTime()) / 86400000;
+  const weekChange = nearest && nearestDaysOld >= 4 ? +(currentTrend - nearest.trend).toFixed(1) : null;
+
   return {
-    current,
-    weekChange: weekEntry ? +(current - weekEntry.weight).toFixed(1) : null,
-    totalChange: +(current - first.weight).toFixed(1),
-    entries: history.length,
+    current: currentTrend,        // trend, not the noisy latest reading
+    currentRaw: last.weight,      // today's actual scale number
+    weekChange,
+    totalChange: +(currentTrend - first.trend).toFixed(1),
+    entries: series.length,
     startDate: first.date,
   };
 }
 
 export function getWeightProjection() {
-  const history = getWeightHistory(0);
   const goals = getGoals();
-  if (!goals.weightGoal || history.length < 2) return null;
+  const series = getWeightSeries(0);
+  if (!goals.weightGoal || series.length < 2) return null;
 
   const target = goals.weightGoal;
-  const current = history[history.length - 1].weight;
+  const current = +series[series.length - 1].trend.toFixed(1);
 
   // Already at or past goal
   const losing = target < current;
@@ -370,17 +404,33 @@ export function getWeightProjection() {
     return { reached: true, current, target };
   }
 
-  // Calculate average daily weight change using linear regression over all data
-  const first = history[0];
-  const last = history[history.length - 1];
-  const daysBetween = (new Date(last.date) - new Date(first.date)) / (1000 * 60 * 60 * 24);
-  if (daysBetween < 1) return null;
+  // Rate = least-squares slope of the TREND over a RECENT window (not the old
+  // 2-point first-vs-last-of-all-history slope, which ignored recent plateaus
+  // and swung on a single noisy endpoint). Falls back to the last few points
+  // when the window is sparse.
+  const WINDOW_DAYS = 21;
+  const lastTime = new Date(series[series.length - 1].date + 'T12:00:00').getTime();
+  const cutoff = lastTime - WINDOW_DAYS * 86400000;
+  let win = series.filter(e => new Date(e.date + 'T12:00:00').getTime() >= cutoff);
+  if (win.length < 3) win = series.slice(-Math.min(series.length, 5));
+  if (win.length < 2) return null;
 
-  const dailyChange = (last.weight - first.weight) / daysBetween;
+  const x0 = new Date(win[0].date + 'T12:00:00').getTime();
+  const xs = win.map(e => (new Date(e.date + 'T12:00:00').getTime() - x0) / 86400000);
+  const ys = win.map(e => e.trend);
+  const n = xs.length;
+  const sx = xs.reduce((a, b) => a + b, 0);
+  const sy = ys.reduce((a, b) => a + b, 0);
+  const sxx = xs.reduce((a, b) => a + b * b, 0);
+  const sxy = xs.reduce((a, b, i) => a + b * ys[i], 0);
+  const denom = n * sxx - sx * sx;
+  if (denom === 0) return null;
+  const dailyChange = (n * sxy - sx * sy) / denom; // lb/day
+  const windowDays = Math.max(1, Math.round(xs[xs.length - 1]));
 
-  // If trend is going the wrong direction, can't project
-  if (losing && dailyChange >= 0) return { noProgress: true, current, target, dailyChange };
-  if (!losing && dailyChange <= 0) return { noProgress: true, current, target, dailyChange };
+  // Trend headed the wrong way (or flat) — can't project toward the goal.
+  if (losing && dailyChange >= 0) return { noProgress: true, current, target, dailyChange: +dailyChange.toFixed(3), windowDays };
+  if (!losing && dailyChange <= 0) return { noProgress: true, current, target, dailyChange: +dailyChange.toFixed(3), windowDays };
 
   const remaining = target - current;
   const daysToGoal = Math.ceil(Math.abs(remaining / dailyChange));
@@ -392,10 +442,11 @@ export function getWeightProjection() {
   return {
     current,
     target,
-    dailyChange: +dailyChange.toFixed(2),
+    dailyChange: +dailyChange.toFixed(3),
     daysToGoal,
     estDate: estDateStr,
     lbsPerWeek: +(dailyChange * 7).toFixed(1),
+    windowDays,
   };
 }
 

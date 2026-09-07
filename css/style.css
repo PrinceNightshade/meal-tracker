@@ -747,6 +747,20 @@ input, select, textarea { font-size: max(16px, 1em); }
 .weight-stat--good .weight-stat__value, .stat-value.down { color: var(--good); }
 .weight-stat--over .weight-stat__value, .stat-value.up { color: var(--over); }
 
+/* Weight trend chart legend + hint */
+.weight-legend { display: flex; gap: 14px; margin: 4px 0 6px; }
+.weight-legend .legend-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--ink-2);
+}
+.weight-legend .legend-item::before {
+  content: ""; display: inline-block;
+}
+.legend-trend::before { width: 14px; height: 3px; border-radius: 2px; background: var(--accent); }
+.legend-daily::before { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3); }
+.legend-goal::before  { width: 14px; height: 0; border-top: 1px dashed var(--ink-3); }
+.weight-hint { font-size: 12px; color: var(--ink-3); line-height: 1.4; margin: 8px 2px 0; }
+
 .weight-today-entry {
   display: flex; justify-content: space-between; align-items: center;
   padding: 14px 18px;

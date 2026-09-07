@@ -751,7 +751,8 @@ function renderWeight() {
   container.innerHTML = '';
 
   const stats = store.getWeightStats();
-  const history = store.getWeightHistory(30);
+  const series = store.getWeightSeries(0);
+  const goals = store.getGoals();
 
   const section = ui.el('div', { className: 'weight-view' });
 
@@ -789,14 +790,13 @@ function renderWeight() {
       const dir = projection.target < projection.current ? 'losing' : 'gaining';
       projMsg = `Your trend isn't currently headed toward ${projection.target} lbs. Keep ${dir === 'losing' ? 'at a deficit' : 'at a surplus'} to start making progress.`;
     } else {
-      projMsg = `At ${Math.abs(projection.lbsPerWeek)} lbs/week, you'll reach ${projection.target} lbs around ${ui.formatDate(projection.estDate)} (~${projection.daysToGoal} days).`;
+      projMsg = `At your recent ${projection.windowDays}-day trend of ${Math.abs(projection.lbsPerWeek)} lbs/week, you'll reach ${projection.target} lbs around ${ui.formatDate(projection.estDate)} (~${projection.daysToGoal} days).`;
     }
     section.appendChild(ui.el('div', { className: 'weight-projection' }, [
       ui.el('span', { className: 'projection-label', textContent: 'Projection' }),
       ui.el('span', { className: 'projection-msg', textContent: projMsg }),
     ]));
   } else {
-    const goals = store.getGoals();
     if (goals.weightGoal) {
       section.appendChild(ui.el('div', { className: 'weight-projection muted' }, [
         ui.el('span', { textContent: 'Log at least 2 days of weight to see a projection.' }),
@@ -812,7 +812,7 @@ function renderWeight() {
     const statsEl = ui.el('div', { className: 'weight-stats' }, [
       ui.el('div', { className: 'stat' }, [
         ui.el('span', { className: 'stat-value', textContent: `${stats.current} lbs` }),
-        ui.el('span', { className: 'stat-label', textContent: 'Current' }),
+        ui.el('span', { className: 'stat-label', textContent: 'Trend weight' }),
       ]),
       stats.weekChange !== null
         ? ui.el('div', { className: 'stat' }, [
@@ -828,20 +828,26 @@ function renderWeight() {
           className: `stat-value ${stats.totalChange > 0 ? 'up' : stats.totalChange < 0 ? 'down' : ''}`,
           textContent: `${stats.totalChange > 0 ? '+' : ''}${stats.totalChange} lbs`,
         }),
-        ui.el('span', { className: 'stat-label', textContent: `Since ${stats.startDate}` }),
+        ui.el('span', { className: 'stat-label', textContent: `Since ${ui.formatDate(stats.startDate)}` }),
       ]),
     ]);
     section.appendChild(statsEl);
   }
 
-  // Chart
-  section.appendChild(ui.el('h3', { textContent: 'Last 30 Days' }));
-  section.appendChild(ui.renderWeightChart(history));
+  // Trend chart — EMA line is the signal, raw dailies faint, goal dashed
+  section.appendChild(ui.el('h3', { textContent: 'Trend' }));
+  section.appendChild(ui.el('div', { className: 'weight-legend' }, [
+    ui.el('span', { className: 'legend-item legend-trend', textContent: 'Trend' }),
+    ui.el('span', { className: 'legend-item legend-daily', textContent: 'Daily' }),
+    goals.weightGoal ? ui.el('span', { className: 'legend-item legend-goal', textContent: 'Goal' }) : null,
+  ]));
+  section.appendChild(ui.renderWeightChart(series.slice(-90), goals.weightGoal || null));
+  section.appendChild(ui.el('p', { className: 'weight-hint', textContent: 'Daily weight bounces a few pounds on water and food — the line is the real signal.' }));
 
-  // Weight log table
-  if (history.length > 0) {
+  // Weight log table (raw daily entries)
+  if (series.length > 0) {
     const table = ui.el('div', { className: 'weight-log' }, [
-      ...history.slice().reverse().map((entry, i, arr) => {
+      ...series.slice(-30).reverse().map((entry, i, arr) => {
         const prev = arr[i + 1];
         const diff = prev ? +(entry.weight - prev.weight).toFixed(1) : null;
         return ui.el('div', { className: 'weight-log-row' }, [
