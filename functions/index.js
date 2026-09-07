@@ -56,8 +56,14 @@ exports.syncWellness = onRequest(
         date = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
       }
     }
+    // No usable date from the client — default to yesterday (UTC). iOS Shortcuts'
+    // date-variable plumbing is finicky, and a nightly 3am-local run always means
+    // "yesterday," so the client can omit the date entirely and let the server
+    // stamp it. An explicit valid date is still honored.
     if (!DATE_RE.test(date)) {
-      return res.status(400).json({ error: `date must be YYYY-MM-DD (got: ${b.date ?? 'none'})` });
+      const p = (n) => String(n).padStart(2, '0');
+      const y = new Date(Date.now() - 86400000);
+      date = `${y.getUTCFullYear()}-${p(y.getUTCMonth() + 1)}-${p(y.getUTCDate())}`;
     }
 
     // Build a sanitized record. Every field except date is optional — the
