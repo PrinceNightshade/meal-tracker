@@ -39,9 +39,26 @@ exports.syncWellness = onRequest(
 
     const b = req.body || {};
     const uid = typeof b.uid === 'string' ? b.uid.trim() : '';
-    const date = typeof b.date === 'string' ? b.date.trim() : '';
     if (!uid) return res.status(400).json({ error: 'uid required' });
-    if (!DATE_RE.test(date)) return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+
+    // Normalize the date. iOS Shortcuts serializes a Date variable as a full
+    // ISO timestamp ("2026-09-06T03:00:00Z") even when it's displayed as a plain
+    // date, so accept either and keep just the calendar-date part. Fall back to
+    // parsing other date strings.
+    let date = typeof b.date === 'string' ? b.date.trim() : '';
+    const iso = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) {
+      date = `${iso[1]}-${iso[2]}-${iso[3]}`;
+    } else if (date) {
+      const d = new Date(date);
+      if (!isNaN(d.getTime())) {
+        const p = (n) => String(n).padStart(2, '0');
+        date = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+      }
+    }
+    if (!DATE_RE.test(date)) {
+      return res.status(400).json({ error: `date must be YYYY-MM-DD (got: ${b.date ?? 'none'})` });
+    }
 
     // Build a sanitized record. Every field except date is optional — the
     // Shortcut may report only what Apple Health had for that day.
