@@ -111,72 +111,6 @@ export function renderProgressBar(current, goal, label, unit = '', inverse = fal
   return wrapper;
 }
 
-// ── Macro card (replaces individual macro rings) ──
-
-export function renderMacroCard(label, current, goal, unit = 'g', inverse = false) {
-  const pct = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
-  const over = current > goal;
-
-  // Sugar card uses inverse coloring: low is good (green), high is bad
-  let barColorStyle = '';
-  let cardClass = 'macro-card';
-
-  if (label === 'SUGAR') {
-    cardClass += ' macro-card--sugar';
-    if (over) {
-      cardClass += ' sugar-purple';
-    } else if (pct >= 85) {
-      cardClass += ' sugar-over';
-    } else if (pct >= 40) {
-      cardClass += ' sugar-warn';
-    }
-    // else: green (default via CSS)
-  } else if (over) {
-    cardClass += ' over';
-  }
-
-  // Bar fill: accent by default; CSS handles sugar overrides via class
-  const barFillEl = el('div', {});
-  if (!inverse) {
-    barFillEl.style.width = `${pct}%`;
-  } else {
-    barFillEl.style.width = `${pct}%`;
-  }
-
-  const card = el('div', { className: cardClass }, [
-    el('div', { className: 'macro-card__label', textContent: label }),
-    el('div', { className: 'macro-card__value' }, [
-      el('b', { textContent: String(Math.round(current)) }),
-      el('span', { textContent: `/${goal}${unit}` }),
-    ]),
-    el('div', { className: 'macro-card__bar' }, [barFillEl]),
-  ]);
-
-  return card;
-}
-
-// ── Daily rings + macro card section ──
-
-export function renderDailySummaryRings(totals, goals) {
-  const container = el('div', {});
-
-  // Big calorie ring
-  const ringsContainer = el('div', { className: 'rings-container' });
-  ringsContainer.appendChild(renderRing(totals.calories, goals.calories, 'Calories', '', 120, 10));
-  container.appendChild(ringsContainer);
-
-  // 4-up macro card grid (protein / carbs / fat / sugar)
-  const macroRow = el('div', { className: 'macro-row' });
-  macroRow.appendChild(renderMacroCard('PROTEIN', totals.protein || 0, goals.protein || 150, 'g'));
-  macroRow.appendChild(renderMacroCard('CARBS',   totals.carbs   || 0, goals.carbs   || 200, 'g'));
-  macroRow.appendChild(renderMacroCard('FAT',     totals.fat     || 0, goals.fat     || 65,  'g'));
-  // Sugar card — only if goal set; fall back to 25g default
-  const sugarGoal = goals.addedSugars && goals.addedSugars > 0 ? goals.addedSugars : 25;
-  macroRow.appendChild(renderMacroCard('SUGAR', totals.addedSugars || 0, sugarGoal, 'g', true));
-  container.appendChild(macroRow);
-
-  return container;
-}
 
 // ── Opportunity card (Pulse carousel slide 2) ──
 // Driven by js/opportunity.js — one ranked insight across food/movement/sleep
@@ -188,11 +122,14 @@ const OPP_ICONS = {
   neutral: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="3"/></svg>',
 };
 
-export function renderOpportunityCard(opportunity) {
+export function renderOpportunityCard(opportunity, { standalone = false } = {}) {
   const opp = opportunity || { tone: 'neutral', eyebrow: 'THIS WEEK', headline: 'Keep logging to unlock insights', sub: 'A few more days of data sharpens your weekly opportunity.', series: null };
   const tone = opp.tone || 'neutral';
 
-  const card = el('div', { className: `daily-summary insight-card carousel-card insight-card--${tone}` });
+  // `standalone` renders it as a normal block (opportunity-first home); without
+  // it, the card is a slide inside the daily carousel.
+  const cls = standalone ? 'insight-card insight-card--hero' : 'daily-summary insight-card carousel-card';
+  const card = el('div', { className: `${cls} insight-card--${tone}` });
 
   // Head
   const headEl = el('div', { className: 'insight-card__head' });
@@ -239,101 +176,140 @@ function fmtSleep(mins) {
   return `${h}h ${String(m).padStart(2, '0')}m`;
 }
 
-export function renderWellnessStrip(stats, { onEmptyClick } = {}) {
-  if (!stats || !stats.daysWithData) {
-    const hint = el('button', {
+// ── Smart quick-log card (opportunity-first home) ──
+// One-tap re-log of the user's usual meal for the current slot. Returns null
+// when there's no consistent pattern yet (nothing to suggest).
+export function renderSmartLogCard(suggestion, mealType, { onLogUsual, onEdit } = {}) {
+  if (!suggestion || !suggestion.usual) return null;
+  const u = suggestion.usual;
+  const names = u.foods.map(f => f.name).join(' · ');
+  const slotLabel = capitalize(mealType);
+
+  const card = el('div', { className: 'smart-log' });
+
+  const head = el('div', { className: 'smart-log__head' }, [
+    el('span', { className: 'smart-log__eyebrow', textContent: `YOUR USUAL ${slotLabel.toUpperCase()}` }),
+    el('span', { className: 'smart-log__freq', textContent: `${u.dayCount} of last ${u.sampleSize} days` }),
+  ]);
+
+  const body = el('div', { className: 'smart-log__body' }, [
+    el('span', { className: 'smart-log__items', textContent: names }),
+    el('span', { className: 'smart-log__macros', textContent: `${u.totalCalories} cal · ${u.totalProtein}g protein` }),
+  ]);
+
+  const logBtn = el('button', {
+    className: 'smart-log__go',
+    type: 'button',
+    onClick: () => onLogUsual && onLogUsual(),
+  });
+  const check = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  check.setAttribute('width', '16'); check.setAttribute('height', '16');
+  check.setAttribute('viewBox', '0 0 24 24'); check.setAttribute('fill', 'none');
+  check.setAttribute('stroke', 'currentColor'); check.setAttribute('stroke-width', '2.4');
+  check.setAttribute('stroke-linecap', 'round'); check.setAttribute('stroke-linejoin', 'round');
+  check.innerHTML = '<path d="M20 6L9 17l-5-5"/>';
+  logBtn.appendChild(check);
+  logBtn.appendChild(document.createTextNode(' Log it'));
+
+  const editBtn = el('button', {
+    className: 'smart-log__edit',
+    type: 'button',
+    textContent: 'Edit',
+    onClick: () => onEdit && onEdit(),
+  });
+
+  card.appendChild(head);
+  card.appendChild(body);
+  card.appendChild(el('div', { className: 'smart-log__actions' }, [logBtn, editBtn]));
+  return card;
+}
+
+// ── Compact intake (opportunity-first home) ──
+// Slim calorie readout with a small ring + macro micro-row, carrying the
+// prev/next day nav that used to live in the ring carousel (#btn-prev/#btn-next
+// so render()'s disable logic keeps working).
+export function renderCompactIntake(totals, goals) {
+  const cal = totals.calories || 0;
+  const goalCal = goals.calories || 2000;
+  const pct = goalCal > 0 ? Math.min(cal / goalCal, 1) : 0;
+  const over = cal > goalCal;
+  const color = over ? 'var(--over)' : pct >= 0.85 ? 'var(--good)' : pct >= 0.5 ? 'var(--warn)' : 'var(--over)';
+  const left = goalCal - cal;
+  const C = 163.4; // 2πr, r=26
+  const offset = (C * (1 - pct)).toFixed(1);
+
+  // Day nav — ids match the delegated handler in app.js bindNav() (which
+  // survives re-renders); no per-instance click handler here or clicks double up.
+  const prevBtn = el('button', { id: 'btn-prev', className: 'compact-intake__nav', type: 'button' });
+  prevBtn.setAttribute('aria-label', 'Previous day');
+  prevBtn.innerHTML = '&#8249;';
+
+  const nextBtn = el('button', { id: 'btn-next', className: 'compact-intake__nav', type: 'button' });
+  nextBtn.setAttribute('aria-label', 'Next day');
+  nextBtn.innerHTML = '&#8250;';
+
+  const ring = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  ring.setAttribute('viewBox', '0 0 64 64');
+  ring.setAttribute('class', 'compact-intake__ring');
+  ring.innerHTML = `
+    <circle cx="32" cy="32" r="26" fill="none" stroke="var(--surface-2)" stroke-width="6"/>
+    <circle cx="32" cy="32" r="26" fill="none" stroke="${color}" stroke-width="6" stroke-linecap="round"
+      stroke-dasharray="${C}" stroke-dashoffset="${offset}" transform="rotate(-90 32 32)"/>
+    <text x="32" y="37" text-anchor="middle" fill="var(--ink)" font-size="14" font-weight="700" font-family="var(--font-mono)">${Math.round(pct * 100)}%</text>
+  `;
+
+  const macro = (label, val, goal, warn) => el('span', {
+    className: `compact-intake__macro${warn ? ' is-warn' : ''}`,
+    textContent: `${label} ${Math.round(val)}`,
+  });
+
+  const readout = el('div', { className: 'compact-intake__readout' }, [
+    el('div', { className: 'compact-intake__cals' }, [
+      el('span', { className: 'compact-intake__now', textContent: cal.toLocaleString() }),
+      el('span', { className: 'compact-intake__goal', textContent: `/ ${goalCal.toLocaleString()} · ${over ? `${Math.abs(Math.round(left))} over` : `${Math.round(left)} left`}` }),
+    ]),
+    el('div', { className: 'compact-intake__macros' }, [
+      macro('P', totals.protein || 0),
+      macro('C', totals.carbs || 0),
+      macro('F', totals.fat || 0),
+      macro('S', totals.addedSugars || 0, goals.addedSugars, (totals.addedSugars || 0) > (goals.addedSugars || 25)),
+    ]),
+  ]);
+
+  return el('div', { className: 'compact-intake' }, [prevBtn, ring, readout, nextBtn]);
+}
+
+// ── Vitals strip: movement + sleep + weight (opportunity-first home) ──
+export function renderVitalsStrip(wStats, weightStats, { onEmptyClick } = {}) {
+  const hasWellness = wStats && wStats.daysWithData;
+  const hasWeight = weightStats && typeof weightStats.current === 'number';
+
+  if (!hasWellness && !hasWeight) {
+    return el('button', {
       className: 'wellness-strip wellness-strip--empty',
       type: 'button',
       onClick: () => onEmptyClick && onEmptyClick(),
     }, [
       el('span', { className: 'wellness-strip__hint', textContent: 'Add movement & sleep — import in Goals →' }),
     ]);
-    return hint;
   }
 
-  const cell = (label, value) => el('div', { className: 'wellness-strip__cell' }, [
-    el('div', { className: 'wellness-strip__val', textContent: value }),
+  const cell = (label, value, extra) => el('div', { className: 'wellness-strip__cell' }, [
+    el('div', { className: 'wellness-strip__val', textContent: value }, extra ? [] : []),
     el('div', { className: 'wellness-strip__label', textContent: label }),
   ]);
 
+  const stepsVal = hasWellness && wStats.avgSteps != null ? Math.round(wStats.avgSteps).toLocaleString() : '—';
+  const sleepVal = hasWellness ? fmtSleep(wStats.avgSleepMinutes) : '—';
+  const weightVal = hasWeight ? `${weightStats.current}` : '—';
+
   return el('div', { className: 'wellness-strip' }, [
-    cell('STEPS / DAY', stats.avgSteps != null ? Math.round(stats.avgSteps).toLocaleString() : '—'),
-    cell('SLEEP / NIGHT', fmtSleep(stats.avgSleepMinutes)),
-    cell('WORKOUT DAYS', `${stats.workoutDays}`),
+    cell('STEPS / DAY', stepsVal),
+    cell('SLEEP / NIGHT', sleepVal),
+    cell('WEIGHT (TREND)', weightVal),
   ]);
 }
 
-export function renderDailySummaryCarousel(totals, goals, opportunity = null, totals7 = null) {
-  const carouselWrapper = el('div', { className: 'carousel-wrapper' });
-  const carousel = el('div', { className: 'daily-carousel' });
-
-  // Card 1: Calorie ring + macro cards (with prev/next nav overlays)
-  const ringsCard = el('div', { className: 'daily-summary carousel-card' });
-
-  const prevBtn = el('button', {
-    id: 'btn-prev',
-    className: 'daily-summary__nav daily-summary__nav--prev',
-    type: 'button',
-  });
-  prevBtn.setAttribute('aria-label', 'Previous day');
-  prevBtn.innerHTML = '&#8249;';
-
-  const nextBtn = el('button', {
-    id: 'btn-next',
-    className: 'daily-summary__nav daily-summary__nav--next',
-    type: 'button',
-  });
-  nextBtn.setAttribute('aria-label', 'Next day');
-  nextBtn.innerHTML = '&#8250;';
-
-  ringsCard.appendChild(prevBtn);
-  ringsCard.appendChild(nextBtn);
-  ringsCard.appendChild(renderDailySummaryRings(totals, goals));
-  carousel.appendChild(ringsCard);
-
-  // Card 2: opportunity card (real cross-domain insight)
-  const insightCard = renderOpportunityCard(opportunity);
-  carousel.appendChild(insightCard);
-
-  // Page indicator dots
-  const dotsContainer = el('div', { className: 'carousel-dots' }, [
-    el('div', { className: 'carousel-dot active' }),
-    el('div', { className: 'carousel-dot' }),
-  ]);
-
-  // Update dots on scroll
-  carousel.addEventListener('scroll', () => {
-    const scrollLeft = carousel.scrollLeft;
-    const cardWidth = carousel.offsetWidth;
-    const currentCard = Math.round(scrollLeft / cardWidth);
-    const dots = dotsContainer.querySelectorAll('.carousel-dot');
-    dots.forEach((dot, idx) => {
-      dot.classList.toggle('active', idx === currentCard);
-    });
-  });
-
-  carouselWrapper.appendChild(carousel);
-  carouselWrapper.appendChild(dotsContainer);
-
-  // Touch swipe support
-  let touchStartX = 0;
-  let touchEndX = 0;
-
-  carousel.addEventListener('touchstart', (e) => {
-    touchStartX = e.changedTouches[0].clientX;
-  }, false);
-
-  carousel.addEventListener('touchend', (e) => {
-    touchEndX = e.changedTouches[0].clientX;
-    const diff = touchStartX - touchEndX;
-    if (Math.abs(diff) > 50) {
-      const target = diff > 0 ? carousel.children[1] : carousel.children[0];
-      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
-    }
-  }, false);
-
-  return carouselWrapper;
-}
 
 // ── Meal Section ──
 

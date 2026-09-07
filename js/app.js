@@ -5,6 +5,7 @@ import * as ui from './ui.js';
 import * as fb from './firebase.js';
 import * as analytics from './analytics.js';
 import * as opp from './opportunity.js';
+import * as suggest from './suggest.js';
 import { initSW } from './sw-manager.js';
 
 let currentDate = ui.todayStr();
@@ -305,22 +306,42 @@ function renderDaily() {
   const totals = store.getDayTotals(currentDate);
   const day    = store.getDay(currentDate);
 
-  // Compute the rolling-window opportunity statement (food + movement + sleep)
+  const isToday = currentDate === ui.todayStr();
+
+  // ① Opportunity statement owns the top (opportunity-first dashboard)
   let opportunity = null;
   try {
     opportunity = opp.getOpportunity(currentDate, 7);
   } catch (e) { /* graceful degradation */ }
+  container.appendChild(ui.renderOpportunityCard(opportunity, { standalone: true }));
 
-  // Carousel (rings card + opportunity card)
-  container.appendChild(ui.renderDailySummaryCarousel(totals, goals, opportunity));
+  // ② Smart quick-log — predictive re-log for the current meal slot (today only)
+  if (isToday) {
+    const slot = suggest.currentMealSlot();
+    const suggestion = suggest.getSmartSuggestions(slot, { today: currentDate, excludeDate: currentDate });
+    const smartCard = ui.renderSmartLogCard(suggestion, slot, {
+      onLogUsual: () => {
+        suggestion.usual.foods.forEach(f => store.addFoodToMeal(currentDate, slot, { ...f }));
+        fb.pushDay(currentDate, store.getDay(currentDate));
+        showToast(`Logged your usual ${slot}`);
+        render();
+      },
+      onEdit: () => openAddFoodModal(slot),
+    });
+    if (smartCard) container.appendChild(smartCard);
+  }
 
-  // Movement + sleep strip (surfaces the new data streams; taps through to import)
+  // ③ Compact intake (its #btn-prev/#btn-next are driven by the delegated
+  //    day-nav handler in bindNav)
+  container.appendChild(ui.renderCompactIntake(totals, goals));
+
+  // ④ Vitals: movement + sleep + weight (taps through to import when empty)
   const wStats = store.getWellnessStats(7, currentDate);
-  container.appendChild(ui.renderWellnessStrip(wStats, {
+  container.appendChild(ui.renderVitalsStrip(wStats, store.getWeightStats(), {
     onEmptyClick: () => switchView('goals'),
   }));
 
-  // Action row: water chip | scan | log
+  // ⑤ Action row: water chip | scan | log
   const waterChip = ui.renderWaterChip(store.getWater(currentDate), {
     onAdd: () => {
       store.addGlass(currentDate);
