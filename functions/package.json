@@ -1,7 +1,7 @@
 {
   "name": "meal-tracker-functions",
   "description": "Wellness sync endpoint for the meal tracker PWA",
-  "engines": { "node": "20" },
+  "engines": { "node": "22" },
   "main": "index.js",
   "private": true,
   "dependencies": {
