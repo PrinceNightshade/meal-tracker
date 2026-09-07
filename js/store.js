@@ -2,6 +2,13 @@
 import { shiftDate, todayStr } from './ui.js';
 import { getCommonFood } from './api.js';
 
+// Wellness (movement + sleep) lives in its own module but is re-exported here
+// so the whole data layer is reachable through one `store` facade.
+export {
+  getWellness, getAllWellness, saveWellness, mergeWellness, deleteWellness,
+  replaceAllWellness, getWellnessForRange, getWellnessStats, importWellness,
+} from './wellness.js';
+
 const KEYS = {
   days: 'mt_days',
   goals: 'mt_goals',

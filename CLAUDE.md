@@ -43,6 +43,15 @@ Theme toggle and auth controls live in a single bottom-sheet opened from the top
 **Multi-add from recents/favorites.**
 Each row in the recents/favorites sections shows a checkbox. Selecting any row reveals a sticky bottom action bar (`.multi-add-bar`) inside the modal: "N selected | Clear | Add N to Breakfast." Bulk-add closes the modal after pushing all items. Tapping the row body (anywhere except the checkbox or X) still goes straight to the serving picker for the single-add flow.
 
+**Wellness expansion: movement + sleep from Apple Health, not Garmin directly.**
+The app is evolving from a meal tracker into a rounded wellness tracker (food + movement + sleep). Garmin has no consumer API and the browser can't read it (CORS + credentials), so we do **not** integrate Garmin directly. Instead we ingest from **Apple Health as the aggregation layer** — Garmin (or any watch) already writes to it. The chosen pipe: `Apple Health → nightly iOS Shortcuts automation → a small HTTP endpoint (a ~30-line Cloud Function w/ shared secret) → Firestore → PWA reads it`. This makes the underlying device swappable forever and keeps the app itself backendless (the endpoint is a thin worker, not an app backend). Chosen over GitHub Actions + `python-garminconnect`, which is simpler to stand up but Garmin-locked, credential-bearing, and ToS-gray/fragile.
+
+**Wellness data model.**
+Wellness records are keyed by date in their own store (`mt_wellness` localStorage key; `users/{uid}/wellness/{date}` Firestore collection), kept **separate from `days`** so the externally-written wellness data and the app-written meal data never clobber each other. Logic in `js/wellness.js` (re-exported through the `store` facade). Record shape: `{ date, steps, activeMinutes, sleepMinutes, sleepScore, restingHR, bodyBattery, workouts:[{type,durationMin,distanceKm,calories}], source }`. Manual import (CSV/JSON, file or paste) lives in the Goals view under "Wellness Data" — it's the Phase 1 ingest path and a permanent fallback; the future Shortcut hits the same shape.
+
+**Wellness guardrail: context, never a budget.**
+Movement/sleep are shown as behavioral context and never converted into "calories earned." A workout's `calories` field is display-only and must never touch the food calorie ring — crediting exercise calories triggers the compensation effect (see the Apple Health / Google Fit backlog note). The marquee wellness feature is an **"opportunity statement"** over a rolling window (default trailing 7 days, wider than 24h) — one ranked, actionable insight across food/movement/sleep, reusing the existing analytics/insight-carousel patterns.
+
 **UI/UX guiding principle: breathe freely.**
 Favor whitespace and reduce competing elements. When in doubt, remove chrome rather than add toggles. Examples: "Today" hides when on today; date drops the year in the header; whole empty meal cards are tappable instead of relying on the small "+ Add" button alone; tap targets ≥44pt for one-handed use.
 
@@ -178,6 +187,14 @@ Run through these checks in the live preview server or on deployed staging:
 ---
 
 ## Feature backlog
+
+### Wellness expansion (in progress — food + movement + sleep)
+- [x] **Phase 1 — data model + manual import.** `js/wellness.js` (CRUD, range/stats, CSV/JSON parser), Firestore `wellness` collection sync (`pushWellness` + pull), "Wellness Data" import section in Goals. Ships the data layer so the UI can be built before the sync is wired.
+- [x] **Phase 2 — opportunity-statement engine + wider-window UI.** `js/opportunity.js` ranks insights across food/movement/sleep over a trailing-7d window (detectors: sleep→calories cross-signal, short-sleep week, steps-down, low-movement week, calories-over, protein-short, + positive fallback; cross-signal ranks highest and uses all history for sample size). Surfaced as carousel slide 2 (`renderOpportunityCard`, replacing the old random-height insight card) + a movement/sleep strip (`renderWellnessStrip`) on Daily. Context only — no "calories earned." Degrades gracefully with no wellness data (strip becomes a tap-through-to-import hint).
+- [ ] **Phase 3 — Garmin auto-sync via Apple Health.** Nightly iOS Shortcut → small HTTP endpoint (Cloud Function w/ shared secret) → Firestore, replacing manual import. See architecture decision above.
+- [ ] **Layout rethink (design canvas, Sep 2026) — direction chosen: opportunity-first dashboard.** Single scrolling home; the weekly opportunity statement owns the top no-scroll zone; intake compact; movement/sleep/weight glance; meals condensed below; logging via a persistent floating `+`. Explored on a Claude Design canvas ("Wellness Rethink") alongside two rejected directions (Evolve, Split). **Time-aware home** (morning vs. evening top) parked for a future iteration.
+- [ ] **Smart logging suggestions.** Since logging moved below the fold, surface predictive quick-log from the user's own history: detect consistent per-meal-slot patterns (e.g. "your usual breakfast") and offer one-tap re-log on the home + at the top of the add-food sheet, above recents/search. Extends recents/favorites with frequency+recency+time-of-day scoring. Keeps the confirm tap on purpose — reduces tedium without automating away awareness (see [[project_value_prop]] thinking).
+- [ ] **Weight tracker rework (bugs, not cosmetics).** Adopt a smoothed EMA **trend line** as the primary signal (raw daily dots secondary); fix the projection to use a recent-window trend instead of the 2-point all-time slope in `getWeightProjection` (store.js); fix the 7-day-change baseline selection in `getWeightStats`; add a goal line; move weigh-in inline. Diagnosed Sep 2026.
 
 ### High priority
 - [ ] Calorie budget rollover option (unused calories carry forward)

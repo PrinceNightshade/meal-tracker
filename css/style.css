@@ -464,6 +464,37 @@ input, select, textarea { font-size: max(16px, 1em); }
 .insight-card__chart .bar.hit span {
   color: var(--ink); font-weight: 600;
 }
+.insight-card__chart .bar.warn::before {
+  background: var(--warn);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--warn) 55%, transparent);
+}
+.insight-card__chart .bar.warn span { color: var(--ink); font-weight: 600; }
+
+/* Movement + sleep strip (Daily) */
+.wellness-strip {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 8px; margin: 10px 0 2px;
+}
+.wellness-strip__cell {
+  background: var(--surface-2); border: 1px solid var(--hair);
+  border-radius: 14px; padding: 10px 8px; text-align: center;
+}
+.wellness-strip__val {
+  font-family: var(--font-mono); font-size: 17px; font-weight: 600;
+  color: var(--ink); line-height: 1.1;
+}
+.wellness-strip__label {
+  font-size: 9px; letter-spacing: 0.6px; color: var(--ink-3);
+  margin-top: 4px; font-weight: 600;
+}
+.wellness-strip--empty {
+  display: block; width: 100%; grid-template-columns: none;
+  background: var(--surface-2); border: 1px dashed var(--hair);
+  border-radius: 14px; padding: 12px; cursor: pointer;
+  color: var(--ink-2); font-size: 13px; text-align: center;
+}
+.wellness-strip--empty:active { background: var(--surface); }
+.wellness-strip__hint { color: var(--ink-2); }
 .insight-card__note {
   margin-top: 12px;
   padding: 10px 12px;
@@ -1074,6 +1105,19 @@ input, select, textarea { font-size: max(16px, 1em); }
 }
 .goal-divider { border-top: 1px solid var(--hair); margin: 16px 0; }
 .collapsible-content .btn-primary { margin-top: 8px; }
+
+/* Wellness data import */
+.wellness-import__hint { font-size: 13px; color: var(--ink-2); line-height: 1.4; margin-bottom: 12px; }
+.wellness-import__file { font-size: 13px; color: var(--ink-2); max-width: 200px; }
+.wellness-import__paste {
+  width: 100%; box-sizing: border-box; margin-top: 4px;
+  padding: 10px; border: 1px solid var(--hair); border-radius: 10px;
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-mono); font-size: 12px; line-height: 1.4;
+  resize: vertical;
+}
+.wellness-import__status { font-size: 13px; color: var(--ink-2); margin-top: 8px; min-height: 1em; }
+.wellness-import__status.is-error { color: var(--warn); }
 
 /* TDEE suggestion */
 .tdee-suggestion {

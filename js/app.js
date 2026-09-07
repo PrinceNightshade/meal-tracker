@@ -4,6 +4,7 @@ import { searchCommonFoods, searchFoodsFromAPI, lookupBarcode, analyzePhoto, deb
 import * as ui from './ui.js';
 import * as fb from './firebase.js';
 import * as analytics from './analytics.js';
+import * as opp from './opportunity.js';
 import { initSW } from './sw-manager.js';
 
 let currentDate = ui.todayStr();
@@ -304,15 +305,20 @@ function renderDaily() {
   const totals = store.getDayTotals(currentDate);
   const day    = store.getDay(currentDate);
 
-  // Get last-7-days totals for the insight card chart
-  let totals7 = [];
+  // Compute the rolling-window opportunity statement (food + movement + sleep)
+  let opportunity = null;
   try {
-    const last7 = store.getLast7Days(currentDate).slice(0, 7);
-    totals7 = last7.map(d => store.getDayTotals(d));
+    opportunity = opp.getOpportunity(currentDate, 7);
   } catch (e) { /* graceful degradation */ }
 
-  // Carousel (rings card + insight card) — no wrapping .daily-summary needed
-  container.appendChild(ui.renderDailySummaryCarousel(totals, goals, [], 0, totals7));
+  // Carousel (rings card + opportunity card)
+  container.appendChild(ui.renderDailySummaryCarousel(totals, goals, opportunity));
+
+  // Movement + sleep strip (surfaces the new data streams; taps through to import)
+  const wStats = store.getWellnessStats(7, currentDate);
+  container.appendChild(ui.renderWellnessStrip(wStats, {
+    onEmptyClick: () => switchView('goals'),
+  }));
 
   // Action row: water chip | scan | log
   const waterChip = ui.renderWaterChip(store.getWater(currentDate), {
@@ -654,6 +660,80 @@ function renderGoals() {
   ]);
 
   container.appendChild(ui.collapsible('Weight Goal', weightSummary, weightContent, { startOpen: !goals.weightGoal }));
+
+  // ── Wellness Data (movement + sleep import) ──
+  // Phase 1 ingest path: import steps/workouts/sleep from a CSV or JSON file
+  // (or pasted text) so the wellness UI can be built before the nightly Apple
+  // Health → Shortcut sync is wired up. Also a permanent manual fallback.
+  const wellnessStats = store.getWellnessStats(30);
+  const wellnessSummary = wellnessStats.daysWithData
+    ? `${wellnessStats.daysWithData} day${wellnessStats.daysWithData === 1 ? '' : 's'} · ~${wellnessStats.avgSteps ?? '—'} steps/day`
+    : 'No data yet';
+
+  const statusEl = ui.el('div', { className: 'wellness-import__status', textContent: '' });
+
+  const runImport = (text) => {
+    const result = store.importWellness(text);
+    if (result.error) {
+      statusEl.textContent = result.error;
+      statusEl.classList.add('is-error');
+      return;
+    }
+    statusEl.classList.remove('is-error');
+    // Push each imported day to the cloud (mirrors the manual-import fallback
+    // into Firestore so it survives reinstalls and reaches other devices).
+    for (const date of result.dates) {
+      fb.pushWellness(date, store.getWellness(date));
+    }
+    // Leave the section open with its status visible rather than re-rendering
+    // Goals (which would collapse it and drop this confirmation). The summary
+    // line refreshes next time Goals is opened.
+    const stats = store.getWellnessStats(30);
+    statusEl.textContent = `Imported ${result.imported} day${result.imported === 1 ? '' : 's'}. Now tracking ${stats.daysWithData} day${stats.daysWithData === 1 ? '' : 's'}.`;
+    showToast(`Imported ${result.imported} day${result.imported === 1 ? '' : 's'} of wellness data`);
+    pasteArea.value = '';
+  };
+
+  const fileInput = ui.el('input', {
+    type: 'file',
+    accept: '.csv,.json,.txt,text/csv,application/json',
+    className: 'wellness-import__file',
+    onChange: (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => runImport(String(reader.result || ''));
+      reader.onerror = () => { statusEl.textContent = 'Could not read file.'; statusEl.classList.add('is-error'); };
+      reader.readAsText(file);
+    },
+  });
+
+  const pasteArea = ui.el('textarea', {
+    className: 'wellness-import__paste',
+    rows: '4',
+    placeholder: 'date,steps,activeMinutes,sleepMinutes,sleepScore,restingHR,workout,workoutMin,workoutCalories\n2026-09-06,8432,47,412,78,54,run,32,410',
+  });
+
+  const wellnessContent = ui.el('div', { className: 'collapsible-content' }, [
+    ui.el('p', { className: 'wellness-import__hint', textContent: 'Import steps, workouts, and sleep from a CSV or JSON file — or paste rows below. Days merge, so a steps-only import won’t erase that day’s sleep.' }),
+    ui.el('div', { className: 'goal-row' }, [
+      ui.el('label', { textContent: 'Import file (.csv / .json)' }),
+      fileInput,
+    ]),
+    pasteArea,
+    ui.el('button', {
+      className: 'btn-secondary',
+      textContent: 'Import pasted rows',
+      onClick: () => {
+        const text = pasteArea.value.trim();
+        if (!text) { statusEl.textContent = 'Paste some rows first.'; statusEl.classList.add('is-error'); return; }
+        runImport(text);
+      },
+    }),
+    statusEl,
+  ]);
+
+  container.appendChild(ui.collapsible('Wellness Data', wellnessSummary, wellnessContent, { startOpen: false }));
 
   // AI Food Analysis collapsible — paused pending monetization decision
 }

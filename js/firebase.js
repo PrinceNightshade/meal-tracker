@@ -109,6 +109,15 @@ export async function pullFromCloud(store) {
     // Pull days
     const daysSnap = await getDocs(collection(db, 'users', currentUser.uid, 'days'));
     daysSnap.forEach(d => store.saveDay(d.id, d.data()));
+
+    // Pull wellness (movement + sleep). Written by the nightly sync worker and
+    // by manual import; kept in its own collection, separate from `days`.
+    if (store.replaceAllWellness) {
+      const wellnessSnap = await getDocs(collection(db, 'users', currentUser.uid, 'wellness'));
+      const wellness = {};
+      wellnessSnap.forEach(d => { wellness[d.id] = d.data(); });
+      store.replaceAllWellness(wellness);
+    }
   } catch (e) {
     console.warn('Cloud pull failed:', e);
   }
@@ -144,6 +153,13 @@ export function pushMyFoods(items) {
 export function pushDay(date, dayData) {
   if (!currentUser) return;
   setDoc(doc(db, 'users', currentUser.uid, 'days', date), dayData).catch(e => console.warn(`Push day ${date} failed:`, e));
+}
+
+// Wellness records live in their own collection (see wellness.js). The nightly
+// sync worker writes here server-side; the app writes here on manual import.
+export function pushWellness(date, record) {
+  if (!currentUser) return;
+  setDoc(doc(db, 'users', currentUser.uid, 'wellness', date), record).catch(e => console.warn(`Push wellness ${date} failed:`, e));
 }
 
 // Temporary — syncs the visibility diagnostic log so it can be reviewed off-device.

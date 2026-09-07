@@ -178,90 +178,92 @@ export function renderDailySummaryRings(totals, goals) {
   return container;
 }
 
-// ── Insight card (Pulse carousel slide 2) ──
+// ── Opportunity card (Pulse carousel slide 2) ──
+// Driven by js/opportunity.js — one ranked insight across food/movement/sleep
+// over a rolling window. Reuses the .insight-card visual language.
 
-export function renderInsightCard(totals7, goals) {
-  // Compute protein hit booleans for the last 7 days
-  const proteinGoal = goals.protein || 150;
-  const hits = (totals7 || []).map(t => t && (t.protein || 0) >= proteinGoal);
-  const hitCount = hits.filter(Boolean).length;
-  const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const OPP_ICONS = {
+  warn: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h7v8l9-12h-7V2z"/></svg>',
+  good: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
+  neutral: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="3"/></svg>',
+};
 
-  // Pick a secondary trend — fat (simplest to derive inline)
-  const fatGoal = goals.fat || 65;
-  const fatOver = (totals7 || []).filter(t => t && (t.fat || 0) > fatGoal).length;
-  const hasFatTrend = fatOver >= 3;
+export function renderOpportunityCard(opportunity) {
+  const opp = opportunity || { tone: 'neutral', eyebrow: 'THIS WEEK', headline: 'Keep logging to unlock insights', sub: 'A few more days of data sharpens your weekly opportunity.', series: null };
+  const tone = opp.tone || 'neutral';
 
-  // Build chart bars
-  const chartEl = el('div', { className: 'insight-card__chart' });
-  const maxHeight = 60;
-  const minHeight = 30;
-  hits.forEach((hit, i) => {
-    const h = minHeight + Math.round(Math.random() * (maxHeight - minHeight));
-    const bar = el('div', { className: `bar${hit ? ' hit' : ''}` });
-    bar.style.setProperty('--h', `${h}px`);
-    bar.appendChild(el('span', { textContent: dayLabels[i % 7] }));
-    chartEl.appendChild(bar);
-  });
-
-  // Insight headline
-  const hedText = hitCount >= 5
-    ? `Protein on goal ${hitCount} of ${hits.length} days`
-    : hitCount >= 3
-    ? `Protein hit ${hitCount} of ${hits.length} days`
-    : `Protein goal reached ${hitCount} of ${hits.length} days`;
-
-  const card = el('div', { className: 'daily-summary insight-card carousel-card' });
+  const card = el('div', { className: `daily-summary insight-card carousel-card insight-card--${tone}` });
 
   // Head
   const headEl = el('div', { className: 'insight-card__head' });
   const iconEl = el('span', { className: 'insight-card__icon' });
-  iconEl.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h7v8l9-12h-7V2z"/></svg>';
+  iconEl.innerHTML = OPP_ICONS[tone] || OPP_ICONS.neutral;
   headEl.appendChild(iconEl);
-  headEl.appendChild(el('span', { className: 'insight-card__eyebrow', textContent: 'INSIGHT · LAST 7 DAYS' }));
+  headEl.appendChild(el('span', { className: 'insight-card__eyebrow', textContent: opp.eyebrow || 'THIS WEEK' }));
   card.appendChild(headEl);
 
   // Headline
-  const hed = el('h2', { className: 'insight-card__hed' });
-  const parts = hedText.split(/([\d]+ of [\d]+ days)/);
-  parts.forEach(part => {
-    if (/\d+ of \d+ days/.test(part)) {
-      const em = el('em', { textContent: part });
-      hed.appendChild(em);
-    } else {
-      hed.appendChild(document.createTextNode(part));
-    }
-  });
-  card.appendChild(hed);
+  card.appendChild(el('h2', { className: 'insight-card__hed', textContent: opp.headline }));
 
   // Sub
-  const subText = hitCount >= 5
-    ? 'Strong week. Keep this up for steady progress.'
-    : hitCount >= 3
-    ? 'Getting there — a few more consistent days will lock in the habit.'
-    : 'Protein under target most days — try adding a source to each meal.';
-  card.appendChild(el('p', { className: 'insight-card__sub', textContent: subText }));
+  if (opp.sub) card.appendChild(el('p', { className: 'insight-card__sub', textContent: opp.sub }));
 
-  // Chart
-  card.appendChild(chartEl);
+  // Real chart from the winning insight's series
+  if (opp.series && opp.series.values && opp.series.values.length) {
+    const { values, labels, highlight } = opp.series;
+    const max = Math.max(...values, 1);
+    const min = Math.min(...values.filter(v => v > 0), 0);
+    const range = (max - min) || 1;
+    const hlClass = tone === 'good' ? 'hit' : 'warn';
 
-  // Secondary note (fat trend if present)
-  if (hasFatTrend) {
-    const noteEl = el('div', { className: 'insight-card__note' });
-    const trendEl = el('span', { className: 'trend trend-up' });
-    trendEl.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17l5-5 5 5M7 11l5-5 5 5"/></svg>';
-    noteEl.appendChild(trendEl);
-    const noteText = el('div');
-    noteText.appendChild(el('div', { className: 'note__title', textContent: 'Fat trending up' }));
-    noteText.appendChild(el('div', { className: 'note__sub', textContent: `${fatOver} DAYS OVER · CHECK SAUCES & OILS` }));
-    noteEl.appendChild(noteText);
-    card.appendChild(noteEl);
+    const chartEl = el('div', { className: 'insight-card__chart' });
+    values.forEach((v, i) => {
+      const h = v > 0 ? Math.round(20 + ((v - min) / range) * 44) : 6;
+      const bar = el('div', { className: `bar${highlight && highlight[i] ? ' ' + hlClass : ''}` });
+      bar.style.setProperty('--h', `${h}px`);
+      bar.appendChild(el('span', { textContent: (labels && labels[i]) || '' }));
+      chartEl.appendChild(bar);
+    });
+    card.appendChild(chartEl);
   }
 
   return card;
 }
 
-export function renderDailySummaryCarousel(totals, goals, insights = [], currentInsightIndex = 0, totals7 = null) {
+// ── Movement + sleep strip (surfaces the new data streams on Daily) ──
+
+function fmtSleep(mins) {
+  if (!mins) return '—';
+  const h = Math.floor(mins / 60);
+  const m = Math.round(mins % 60);
+  return `${h}h ${String(m).padStart(2, '0')}m`;
+}
+
+export function renderWellnessStrip(stats, { onEmptyClick } = {}) {
+  if (!stats || !stats.daysWithData) {
+    const hint = el('button', {
+      className: 'wellness-strip wellness-strip--empty',
+      type: 'button',
+      onClick: () => onEmptyClick && onEmptyClick(),
+    }, [
+      el('span', { className: 'wellness-strip__hint', textContent: 'Add movement & sleep — import in Goals →' }),
+    ]);
+    return hint;
+  }
+
+  const cell = (label, value) => el('div', { className: 'wellness-strip__cell' }, [
+    el('div', { className: 'wellness-strip__val', textContent: value }),
+    el('div', { className: 'wellness-strip__label', textContent: label }),
+  ]);
+
+  return el('div', { className: 'wellness-strip' }, [
+    cell('STEPS / DAY', stats.avgSteps != null ? Math.round(stats.avgSteps).toLocaleString() : '—'),
+    cell('SLEEP / NIGHT', fmtSleep(stats.avgSleepMinutes)),
+    cell('WORKOUT DAYS', `${stats.workoutDays}`),
+  ]);
+}
+
+export function renderDailySummaryCarousel(totals, goals, opportunity = null, totals7 = null) {
   const carouselWrapper = el('div', { className: 'carousel-wrapper' });
   const carousel = el('div', { className: 'daily-carousel' });
 
@@ -289,8 +291,8 @@ export function renderDailySummaryCarousel(totals, goals, insights = [], current
   ringsCard.appendChild(renderDailySummaryRings(totals, goals));
   carousel.appendChild(ringsCard);
 
-  // Card 2: Pulse insight card
-  const insightCard = renderInsightCard(totals7, goals);
+  // Card 2: opportunity card (real cross-domain insight)
+  const insightCard = renderOpportunityCard(opportunity);
   carousel.appendChild(insightCard);
 
   // Page indicator dots
