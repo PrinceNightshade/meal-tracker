@@ -735,6 +735,24 @@ function renderGoals() {
     placeholder: 'date,steps,activeMinutes,sleepMinutes,sleepScore,restingHR,workout,workoutMin,workoutCalories\n2026-09-06,8432,47,412,78,54,run,32,410',
   });
 
+  // Auto-sync setup: the nightly iOS Shortcut needs this Firebase user id.
+  const syncUser = fb.getCurrentUser();
+  const syncIdBlock = syncUser
+    ? ui.el('div', { className: 'sync-id-row' }, [
+        ui.el('code', { className: 'sync-id', textContent: syncUser.uid }),
+        ui.el('button', {
+          className: 'btn-secondary',
+          textContent: 'Copy',
+          onClick: (e) => {
+            const btn = e.target;
+            navigator.clipboard?.writeText(syncUser.uid)
+              .then(() => { btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = 'Copy'; }, 1500); })
+              .catch(() => { btn.textContent = 'Copy failed'; });
+          },
+        }),
+      ])
+    : ui.el('p', { className: 'wellness-import__status', textContent: 'Sign in (top-right) to see your Sync ID.' });
+
   const wellnessContent = ui.el('div', { className: 'collapsible-content' }, [
     ui.el('p', { className: 'wellness-import__hint', textContent: 'Import steps, workouts, and sleep from a CSV or JSON file — or paste rows below. Days merge, so a steps-only import won’t erase that day’s sleep.' }),
     ui.el('div', { className: 'goal-row' }, [
@@ -752,6 +770,9 @@ function renderGoals() {
       },
     }),
     statusEl,
+    ui.el('div', { className: 'goal-divider' }),
+    ui.el('p', { className: 'wellness-import__hint', textContent: 'Auto-sync (Apple Health → nightly): paste this Sync ID into your iOS Shortcut. Setup steps live in functions/README.md.' }),
+    syncIdBlock,
   ]);
 
   container.appendChild(ui.collapsible('Wellness Data', wellnessSummary, wellnessContent, { startOpen: false }));

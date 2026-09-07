@@ -1204,6 +1204,14 @@ input, select, textarea { font-size: max(16px, 1em); }
 }
 .wellness-import__status { font-size: 13px; color: var(--ink-2); margin-top: 8px; min-height: 1em; }
 .wellness-import__status.is-error { color: var(--warn); }
+.sync-id-row { display: flex; align-items: center; gap: 8px; }
+.sync-id {
+  flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap;
+  font-family: var(--font-mono); font-size: 12px; color: var(--ink-2);
+  background: var(--bg); border: 1px solid var(--hair);
+  border-radius: 8px; padding: 8px 10px;
+}
+.sync-id-row .btn-secondary { flex-shrink: 0; padding: 8px 12px; font-size: 13px; }
 
 /* TDEE suggestion */
 .tdee-suggestion {
