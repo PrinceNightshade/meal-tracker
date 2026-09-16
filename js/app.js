@@ -1,6 +1,6 @@
 // app.js — Main entry point
 import * as store from './store.js';
-import { searchCommonFoods, searchFoodsFromAPI, lookupBarcode, analyzePhoto, debounce, getCommonFood, normalizeFoodKey } from './api.js';
+import { searchCommonFoods, searchFoodsFromAPI, lookupBarcode, analyzePhoto, debounce, getCommonFood, normalizeFoodKey, findLowerSodiumSwap } from './api.js';
 import * as ui from './ui.js';
 import * as fb from './firebase.js';
 import * as analytics from './analytics.js';
@@ -614,8 +614,21 @@ function renderGoals() {
     flashSaved(input);
   };
 
-  const nutritionContent = ui.el('div', { className: 'collapsible-content' },
-    ['calories', 'protein', 'carbs', 'fat'].map(key => {
+  // Sodium goal — one-tap preset toggle between the standard DASH-adjacent
+  // 2300mg default and a tighter 1500mg "blood-pressure" target, plus the
+  // usual autosave-on-blur numeric input for a custom value.
+  const applySodiumPreset = (mg, btnEl) => {
+    const updated = { ...store.getGoals(), sodiumGoal: mg };
+    store.saveGoals(updated);
+    fb.pushGoals(updated);
+    const sodiumInput = ui.$('.input-goal[data-key="sodiumGoal"]', container);
+    if (sodiumInput) sodiumInput.value = String(mg);
+    flashSaved(btnEl);
+  };
+  const currentSodiumGoal = goals.sodiumGoal || 2300;
+
+  const nutritionContent = ui.el('div', { className: 'collapsible-content' }, [
+    ...['calories', 'protein', 'carbs', 'fat'].map(key => {
       const unitLabel = key === 'calories' ? 'cal' : 'g';
       return ui.el('div', { className: 'goal-row' }, [
         ui.el('label', { textContent: `${ui.capitalize(key)} (${unitLabel})` }),
@@ -628,7 +641,33 @@ function renderGoals() {
         }),
       ]);
     }),
-  );
+    ui.el('div', { className: 'goal-divider' }),
+    ui.el('div', { className: 'goal-row' }, [
+      ui.el('label', { textContent: 'Sodium (mg)' }),
+      ui.el('input', {
+        type: 'number',
+        className: 'input-goal',
+        value: String(currentSodiumGoal),
+        dataset: { key: 'sodiumGoal' },
+        onBlur: (e) => saveNutritionGoals(e.target),
+      }),
+    ]),
+    ui.el('div', { className: 'goal-row' }, [
+      ui.el('label', { textContent: 'Sodium target' }),
+      ui.el('div', { className: 'toggle-group' }, [
+        ui.el('button', {
+          className: `toggle-btn ${currentSodiumGoal === 2300 ? 'active' : ''}`,
+          textContent: 'Standard · 2300mg',
+          onClick: (e) => { selectToggle(e.target); applySodiumPreset(2300, e.target); },
+        }),
+        ui.el('button', {
+          className: `toggle-btn ${currentSodiumGoal === 1500 ? 'active' : ''}`,
+          textContent: 'Blood-pressure · 1500mg',
+          onClick: (e) => { selectToggle(e.target); applySodiumPreset(1500, e.target); },
+        }),
+      ]),
+    ]),
+  ]);
 
   container.appendChild(ui.collapsible('Nutrition Goals', goalsSummary, nutritionContent, { startOpen: !goalsCustomized }));
 
@@ -1331,6 +1370,9 @@ function openFoodDetailsModal(mealType, food) {
         if (nutritionEdits.addedSugars !== undefined) {
           updates.addedSugars = perServing(nutritionEdits.addedSugars);
         }
+        if (nutritionEdits.sodium !== undefined) {
+          updates.sodium = perServing(nutritionEdits.sodium);
+        }
         store.updateFoodInMeal(currentDate, mealType, food.id, updates);
         if (nutritionEdits.saveToMyFoods) {
           const existing = store.getMyFoods().find(
@@ -1406,6 +1448,43 @@ function showServingPicker(food, mealType) {
     preview.appendChild(document.createTextNode(` · ${p}p · ${c}c · ${f}f`));
   }
 
+  // ── Sodium flag — soft, non-blocking note when this pick runs salty ──
+  // Threshold: per-serving sodium ≥ 460mg (FDA "high sodium" = 20% DV) OR
+  // ≥ 20% of today's remaining sodium budget. Never fires on unknown sodium
+  // (undefined/null) — see the "never fake a zero" guardrail in CLAUDE.md.
+  const sodiumNote = ui.el('div', { className: 'sodium-note hidden' });
+  const goalsForNote = store.getGoals();
+  const sodiumGoal = goalsForNote.sodiumGoal && goalsForNote.sodiumGoal > 0 ? goalsForNote.sodiumGoal : 2300;
+  const todaySodium = store.getDayTotals(currentDate).sodium || 0;
+  const remainingBudget = sodiumGoal - todaySodium;
+
+  function updateSodiumNote() {
+    sodiumNote.innerHTML = '';
+    sodiumNote.classList.add('hidden');
+    if (food.sodium == null) return;
+    const loggedSodium = Math.round(food.sodium * servings);
+    const highAbs = loggedSodium >= 460;
+    const highShare = remainingBudget > 0 && loggedSodium >= remainingBudget * 0.2;
+    if (!highAbs && !highShare) return;
+
+    const wouldExceed = loggedSodium > remainingBudget;
+    const pctOfGoal = sodiumGoal > 0 ? Math.round((loggedSodium / sodiumGoal) * 100) : null;
+    const headline = wouldExceed
+      ? `Salty pick — ${loggedSodium} mg would push you over today's sodium budget.`
+      : `Salty pick — ${loggedSodium} mg, about ${pctOfGoal}% of today's sodium budget.`;
+
+    sodiumNote.classList.remove('hidden');
+    sodiumNote.appendChild(ui.el('p', { className: 'sodium-note__headline', textContent: headline }));
+
+    const swap = findLowerSodiumSwap(food);
+    if (swap) {
+      sodiumNote.appendChild(ui.el('p', {
+        className: 'sodium-note__swap',
+        textContent: `Lower-sodium swap: ${swap.name} (${swap.sodium} mg, ${swap.protein}g protein per ${ui.formatServing(swap) || 'serving'}).`,
+      }));
+    }
+  }
+
   const servingInput = ui.el('input', {
     type: 'number',
     className: 'input-servings',
@@ -1415,10 +1494,12 @@ function showServingPicker(food, mealType) {
     onInput: (e) => {
       servings = parseFloat(e.target.value) || 1;
       updatePreview();
+      updateSodiumNote();
     },
   });
 
   updatePreview();
+  updateSodiumNote();
 
   const label = food.brand ? `${food.name} (${food.brand})` : food.name;
   modalBody.appendChild(ui.el('div', { className: 'serving-picker' }, [
@@ -1429,6 +1510,7 @@ function showServingPicker(food, mealType) {
       servingInput,
     ]),
     preview,
+    sodiumNote,
     ui.el('div', { className: 'serving-actions' }, [
       ui.el('button', {
         className: 'btn-secondary',

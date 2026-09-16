@@ -25,6 +25,7 @@ export const DEFAULT_GOALS = {
   carbs: 200,
   fat: 65,
   addedSugars: 25,
+  sodiumGoal: 2300,
   weightGoal: null,
 };
 
@@ -159,6 +160,9 @@ export function getGoals() {
 export function goalsAreDefaults() {
   const g = read(KEYS.goals);
   if (!g) return true;
+  // Note: sodiumGoal intentionally excluded — it's a blood-pressure preference,
+  // not a macro target derived from TDEE, so a custom sodium goal shouldn't
+  // block the one-time TDEE auto-apply for calories/protein/carbs/fat.
   return g.calories === DEFAULT_GOALS.calories && g.protein === DEFAULT_GOALS.protein
     && g.carbs === DEFAULT_GOALS.carbs && g.fat === DEFAULT_GOALS.fat && g.addedSugars === DEFAULT_GOALS.addedSugars;
 }
@@ -548,7 +552,11 @@ export function hideFromAllRecents(foodName) {
 
 export function getDayTotals(dateStr) {
   const day = getDay(dateStr);
-  const totals = { calories: 0, protein: 0, carbs: 0, fat: 0, addedSugars: 0 };
+  // sodiumIncomplete: true if ANY logged food has no known sodium value. The
+  // sodium total only sums what's known — it must never silently read as a
+  // safe number when part of the day is actually unknown. See CLAUDE.md
+  // "never fake a zero" guardrail.
+  const totals = { calories: 0, protein: 0, carbs: 0, fat: 0, addedSugars: 0, sodium: 0, sodiumIncomplete: false };
   for (const mealType of Object.keys(day.meals)) {
     for (const food of day.meals[mealType]) {
       // Enrich food with latest COMMON_FOODS data (fills in missing fields like addedSugars)
@@ -561,6 +569,11 @@ export function getDayTotals(dateStr) {
       totals.carbs += (enriched.carbs || 0) * mult;
       totals.fat += (enriched.fat || 0) * mult;
       totals.addedSugars += (enriched.addedSugars || 0) * mult;
+      if (enriched.sodium === undefined || enriched.sodium === null) {
+        totals.sodiumIncomplete = true;
+      } else {
+        totals.sodium += enriched.sodium * mult;
+      }
     }
   }
   totals.calories = Math.round(totals.calories);
@@ -568,6 +581,7 @@ export function getDayTotals(dateStr) {
   totals.carbs = Math.round(totals.carbs);
   totals.fat = Math.round(totals.fat);
   totals.addedSugars = Math.round(totals.addedSugars);
+  totals.sodium = Math.round(totals.sodium);
   return totals;
 }
 
@@ -585,7 +599,7 @@ export function getLast7Days(fromDate = null) {
 }
 
 export function getTotalsForRange(startDate, endDate) {
-  const totals = { calories: 0, protein: 0, carbs: 0, fat: 0, addedSugars: 0 };
+  const totals = { calories: 0, protein: 0, carbs: 0, fat: 0, addedSugars: 0, sodium: 0, sodiumIncomplete: false };
 
   // Iterate through all dates between startDate and endDate
   const current = new Date(startDate + 'T12:00:00');
@@ -603,6 +617,8 @@ export function getTotalsForRange(startDate, endDate) {
     totals.carbs += dayTotals.carbs;
     totals.fat += dayTotals.fat;
     totals.addedSugars += dayTotals.addedSugars;
+    totals.sodium += dayTotals.sodium;
+    if (dayTotals.sodiumIncomplete) totals.sodiumIncomplete = true;
 
     current.setDate(current.getDate() + 1);
   }

@@ -60,6 +60,7 @@ const NUTRIENT_MAP = {
   1003: 'protein',   // Protein
   1005: 'carbs',     // Carbohydrate
   1004: 'fat',       // Total fat
+  1093: 'sodium',    // Sodium, Na (mg) — already in mg, no conversion needed
 };
 
 function extractNutrients(foodNutrients) {
@@ -82,6 +83,18 @@ function extractAddedSugarsFromOFF(product) {
     // A better source would be the NOVA classification, but OFF's added_sugars field is unreliable
     return Math.round(product.sugars_100g * 10) / 10;
   }
+  return null;
+}
+
+// Extract sodium (mg) from Open Food Facts data. OFF stores sodium in grams
+// (sodium_100g) or, more often, only salt (salt_100g). Salt is ~2.5x sodium
+// by mass (NaCl → Na), so sodium_g = salt_g / 2.5. Returns null (unknown),
+// never a fabricated 0 — see the "never fake a zero" guardrail in CLAUDE.md.
+function extractSodiumMgFromOFF(nutriments, suffix) {
+  const sodiumG = nutriments[`sodium_${suffix}`];
+  if (sodiumG != null) return Math.round(sodiumG * 1000);
+  const saltG = nutriments[`salt_${suffix}`];
+  if (saltG != null) return Math.round((saltG / 2.5) * 1000);
   return null;
 }
 
@@ -111,6 +124,33 @@ export function getCommonFood(foodName) {
   if (!foodName) return null;
   const nameLower = foodName.toLowerCase();
   return COMMON_FOODS.find(f => f.name.toLowerCase() === nameLower) || null;
+}
+
+// Lightweight protein-aware lower-sodium swap suggestion, shown as a soft note
+// in the serving picker for a salty pick. Looks for a COMMON_FOODS item that
+// shares vocabulary with the food's name (a rough category match), cuts
+// sodium meaningfully, and has comparable-or-better protein — the trap this
+// guards against is a salty high-protein convenience food. Returns null
+// (never a forced/bad suggestion) when nothing clean turns up.
+export function findLowerSodiumSwap(food) {
+  if (!food || food.sodium == null || food.sodium <= 0) return null;
+  const nameWords = normalizeFoodKey(food.name).split(' ').filter(w => w.length > 2);
+  if (nameWords.length === 0) return null;
+
+  let best = null;
+  let bestScore = 0;
+  for (const candidate of COMMON_FOODS) {
+    if (candidate.sodium == null) continue;
+    if (candidate.name.toLowerCase() === food.name.toLowerCase()) continue;
+    if (candidate.sodium >= food.sodium * 0.7) continue; // want a meaningful cut, not marginal
+    if ((candidate.protein || 0) < (food.protein || 0) * 0.85) continue; // comparable-or-better protein
+
+    const score = nameWords.reduce((s, w) => s + (candidate.tags.includes(w) ? 1 : 0), 0);
+    if (score > bestScore) { bestScore = score; best = candidate; }
+  }
+  if (!best || bestScore === 0) return null;
+  const { tags, ...clean } = best;
+  return clean;
 }
 
 // ── USDA FoodData Central ──
@@ -273,13 +313,14 @@ async function searchOpenFoodFacts(query, pageSize = 15) {
         const hasPer100g = nm['energy-kcal_100g'] != null;
         const hasPerServing = nm['energy-kcal_serving'] != null;
 
-        let calories, protein, carbs, fat, servingSize, servingUnit;
+        let calories, protein, carbs, fat, sodium, servingSize, servingUnit;
 
         if (hasPerServing) {
           calories = Math.round(nm['energy-kcal_serving'] || 0);
           protein = Math.round((nm.proteins_serving || 0) * 10) / 10;
           carbs = Math.round((nm.carbohydrates_serving || 0) * 10) / 10;
           fat = Math.round((nm.fat_serving || 0) * 10) / 10;
+          sodium = extractSodiumMgFromOFF(nm, 'serving');
           // Use the full `serving_size` label (e.g. "1 burrito (170g)") rather than
           // grafting the gram qty onto the first matched word (which produced "170 burrito").
           ({ size: servingSize, unit: servingUnit } = parseServingLabel(p.serving_size, p.serving_quantity));
@@ -288,6 +329,7 @@ async function searchOpenFoodFacts(query, pageSize = 15) {
           protein = Math.round((nm.proteins_100g || 0) * 10) / 10;
           carbs = Math.round((nm.carbohydrates_100g || 0) * 10) / 10;
           fat = Math.round((nm.fat_100g || 0) * 10) / 10;
+          sodium = extractSodiumMgFromOFF(nm, '100g');
           servingSize = 100;
           servingUnit = 'g';
         } else {
@@ -306,6 +348,7 @@ async function searchOpenFoodFacts(query, pageSize = 15) {
           protein,
           carbs,
           fat,
+          ...(sodium != null && { sodium }),
           source: 'openfoodfacts',
         };
       })
@@ -328,7 +371,7 @@ export async function lookupBarcode(barcode) {
   const p = data.product;
   const nm = p.nutriments || {};
 
-  let calories, protein, carbs, fat, servingSize, servingUnit;
+  let calories, protein, carbs, fat, sodium, servingSize, servingUnit;
 
   if (nm['energy-kcal_serving'] != null) {
     // Prefer per-serving values — calories shown match the package label
@@ -336,6 +379,7 @@ export async function lookupBarcode(barcode) {
     protein  = Math.round((nm.proteins_serving       || 0) * 10) / 10;
     carbs    = Math.round((nm.carbohydrates_serving  || 0) * 10) / 10;
     fat      = Math.round((nm.fat_serving            || 0) * 10) / 10;
+    sodium   = extractSodiumMgFromOFF(nm, 'serving');
     ({ size: servingSize, unit: servingUnit } = parseServingLabel(p.serving_size, p.serving_quantity));
   } else {
     // Fall back to per-100g
@@ -343,6 +387,7 @@ export async function lookupBarcode(barcode) {
     protein  = Math.round((nm.proteins_100g      || 0) * 10) / 10;
     carbs    = Math.round((nm.carbohydrates_100g || 0) * 10) / 10;
     fat      = Math.round((nm.fat_100g           || 0) * 10) / 10;
+    sodium   = extractSodiumMgFromOFF(nm, '100g');
     servingSize = 100;
     servingUnit = 'g';
   }
@@ -356,6 +401,7 @@ export async function lookupBarcode(barcode) {
     protein,
     carbs,
     fat,
+    ...(sodium != null && { sodium }),
     source: 'openfoodfacts',
     barcode,
   };

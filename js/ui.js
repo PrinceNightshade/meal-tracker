@@ -113,43 +113,44 @@ export function renderProgressBar(current, goal, label, unit = '', inverse = fal
 
 // ── Macro card (replaces individual macro rings) ──
 
-export function renderMacroCard(label, current, goal, unit = 'g', inverse = false) {
+// `inverse` cards (added sugar, sodium — the "keep under" row) use inverse
+// coloring: low is good (green), high is bad (warn/over/purple-over-goal).
+// `incomplete` shows a "~" prefix on the value + a muted dot, for totals built
+// from partially-unknown data (e.g. sodium when a logged food has no known
+// value) — see the "never fake a zero" guardrail in CLAUDE.md.
+export function renderMacroCard(label, current, goal, unit = 'g', inverse = false, { incomplete = false } = {}) {
   const pct = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
   const over = current > goal;
 
-  // Sugar card uses inverse coloring: low is good (green), high is bad
-  let barColorStyle = '';
   let cardClass = 'macro-card';
 
-  if (label === 'SUGAR') {
-    cardClass += ' macro-card--sugar';
+  if (inverse) {
+    cardClass += ' macro-card--inverse';
     if (over) {
-      cardClass += ' sugar-purple';
+      cardClass += ' inverse-purple';
     } else if (pct >= 85) {
-      cardClass += ' sugar-over';
+      cardClass += ' inverse-over';
     } else if (pct >= 40) {
-      cardClass += ' sugar-warn';
+      cardClass += ' inverse-warn';
     }
     // else: green (default via CSS)
   } else if (over) {
     cardClass += ' over';
   }
 
-  // Bar fill: accent by default; CSS handles sugar overrides via class
   const barFillEl = el('div', {});
-  if (!inverse) {
-    barFillEl.style.width = `${pct}%`;
-  } else {
-    barFillEl.style.width = `${pct}%`;
-  }
+  barFillEl.style.width = `${pct}%`;
+
+  const valueText = `${incomplete ? '~' : ''}${String(Math.round(current))}`;
 
   const card = el('div', { className: cardClass }, [
     el('div', { className: 'macro-card__label', textContent: label }),
     el('div', { className: 'macro-card__value' }, [
-      el('b', { textContent: String(Math.round(current)) }),
+      el('b', { textContent: valueText }),
       el('span', { textContent: `/${goal}${unit}` }),
     ]),
     el('div', { className: 'macro-card__bar' }, [barFillEl]),
+    ...(incomplete ? [el('div', { className: 'macro-card__hint', textContent: 'some items missing sodium' })] : []),
   ]);
 
   return card;
@@ -165,15 +166,22 @@ export function renderDailySummaryRings(totals, goals) {
   ringsContainer.appendChild(renderRing(totals.calories, goals.calories, 'Calories', '', 120, 10));
   container.appendChild(ringsContainer);
 
-  // 4-up macro card grid (protein / carbs / fat / sugar)
-  const macroRow = el('div', { className: 'macro-row' });
+  // Row 1 "build toward": protein / carbs / fat
+  const macroRow = el('div', { className: 'macro-row macro-row--build' });
   macroRow.appendChild(renderMacroCard('PROTEIN', totals.protein || 0, goals.protein || 150, 'g'));
   macroRow.appendChild(renderMacroCard('CARBS',   totals.carbs   || 0, goals.carbs   || 200, 'g'));
   macroRow.appendChild(renderMacroCard('FAT',     totals.fat     || 0, goals.fat     || 65,  'g'));
-  // Sugar card — only if goal set; fall back to 25g default
-  const sugarGoal = goals.addedSugars && goals.addedSugars > 0 ? goals.addedSugars : 25;
-  macroRow.appendChild(renderMacroCard('SUGAR', totals.addedSugars || 0, sugarGoal, 'g', true));
   container.appendChild(macroRow);
+
+  // Row 2 "keep under": added sugar / sodium — both inverse-colored (low = good).
+  // Faint uppercase group captions — trivially removable (this one element).
+  container.appendChild(el('div', { className: 'macro-group-caption', textContent: 'KEEP UNDER' }));
+  const limitRow = el('div', { className: 'macro-row macro-row--limit' });
+  const sugarGoal = goals.addedSugars && goals.addedSugars > 0 ? goals.addedSugars : 25;
+  limitRow.appendChild(renderMacroCard('SUGAR', totals.addedSugars || 0, sugarGoal, 'g', true));
+  const sodiumGoal = goals.sodiumGoal && goals.sodiumGoal > 0 ? goals.sodiumGoal : 2300;
+  limitRow.appendChild(renderMacroCard('SODIUM', totals.sodium || 0, sodiumGoal, 'mg', true, { incomplete: !!totals.sodiumIncomplete }));
+  container.appendChild(limitRow);
 
   return container;
 }
@@ -538,6 +546,11 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
   const currentCarbs   = Math.round((food.carbs       || 0) * (food.servings || 1));
   const currentFat     = Math.round((food.fat         || 0) * (food.servings || 1));
   const currentSugars  = Math.round((food.addedSugars || 0) * (food.servings || 1));
+  // Sodium: null means genuinely unknown (never coerced to 0) — see the
+  // "never fake a zero" guardrail in CLAUDE.md.
+  const currentSodium  = (food.sodium === undefined || food.sodium === null)
+    ? null
+    : Math.round(food.sodium * (food.servings || 1));
 
   const getPercent = (val, goal) => goal > 0 ? Math.round((val / goal) * 100) : 0;
 
@@ -593,6 +606,17 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
             el('span', { className: 'nutrition-value', textContent: `${currentSugars}g / ${goals.addedSugars}g (${getPercent(currentSugars, goals.addedSugars)}%)` }),
           ]),
         ] : []),
+        ...(goals.sodiumGoal && goals.sodiumGoal > 0 ? [
+          el('div', { className: 'nutrition-row' }, [
+            el('span', { textContent: 'Sodium' }),
+            el('span', {
+              className: 'nutrition-value',
+              textContent: currentSodium != null
+                ? `${currentSodium}mg / ${goals.sodiumGoal}mg (${getPercent(currentSodium, goals.sodiumGoal)}%)`
+                : 'Unknown — tap Edit nutrition to add',
+            }),
+          ]),
+        ] : []),
       ]),
     ]),
 
@@ -610,6 +634,7 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
             const carbsInput   = modal.querySelector('.nutrition-edit-carbs');
             const fatInput     = modal.querySelector('.nutrition-edit-fat');
             const sugarsInput  = modal.querySelector('.nutrition-edit-sugars');
+            const sodiumInput  = modal.querySelector('.nutrition-edit-sodium');
             const saveCheckbox = modal.querySelector('.save-correction-checkbox');
             nutritionEdits = {
               calories: parseFloat(calsInput.value)    || 0,
@@ -619,6 +644,7 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
               saveToMyFoods: saveCheckbox?.checked ?? true,
             };
             if (sugarsInput) nutritionEdits.addedSugars = parseFloat(sugarsInput.value) || 0;
+            if (sodiumInput) nutritionEdits.sodium = parseFloat(sodiumInput.value) || 0;
           }
           onSave?.(newServings, nutritionEdits);
         },
@@ -648,6 +674,9 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
       { cls: 'nutrition-edit-fat',      val: currentFat,     unit: 'g' },
       ...(goals.addedSugars && goals.addedSugars > 0
         ? [{ cls: 'nutrition-edit-sugars', val: currentSugars, unit: 'g' }]
+        : []),
+      ...(goals.sodiumGoal && goals.sodiumGoal > 0
+        ? [{ cls: 'nutrition-edit-sodium', val: currentSodium ?? 0, unit: 'mg' }]
         : []),
     ];
 

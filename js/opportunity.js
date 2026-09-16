@@ -203,6 +203,56 @@ function detectProteinShort(ctx) {
   };
 }
 
+// Sodium is tracked as behavioral context for a DASH-adjacent eating pattern —
+// plain, non-clinical framing, never a medical claim (no "this will lower
+// your blood pressure"). A day only counts toward "over" using KNOWN sodium
+// (totals.sodium sums only logged items with a value); a day with no sodium
+// data at all just won't fire here rather than being guessed at.
+function detectHighSodiumWeek(ctx) {
+  const logged = ctx.days.filter(d => d.hasFood);
+  if (logged.length < 3) return null;
+  const goal = ctx.goals.sodiumGoal || 2300;
+  const over = logged.filter(d => (d.totals.sodium || 0) > goal).length;
+  if (over < 4) return null;
+  return {
+    id: 'sodium-high-week',
+    domain: 'food',
+    severity: Math.min(0.85, 0.3 + (over / logged.length) * 0.5),
+    tone: 'warn',
+    eyebrow: `OPPORTUNITY · LAST ${ctx.windowDays} DAYS`,
+    headline: `Sodium ran over target ${over} of ${logged.length} days`,
+    sub: `Sauces, cured meats, and packaged snacks are usually the biggest levers. Trimming those is the DASH-pattern approach, and it's general wellness — not a medical claim.`,
+    series: seriesFrom(ctx.days, d => d.totals.sodium, d => d.hasFood && (d.totals.sodium || 0) > goal, 'mg'),
+  };
+}
+
+// Cross-signal: protein-short AND sodium-high on the same days. The pattern
+// worth naming is that salty convenience foods often crowd out protein
+// instead of adding it — so the fix (a plain protein source) addresses both
+// at once. Ranks as a top cross-signal insight, same tier as sleep-calories.
+function detectSodiumProteinCross(ctx) {
+  const logged = ctx.days.filter(d => d.hasFood);
+  if (logged.length < 4) return null;
+  const proteinGoal = ctx.goals.protein || 150;
+  const sodiumGoal = ctx.goals.sodiumGoal || 2300;
+  const proteinShort = logged.filter(d => (d.totals.protein || 0) < proteinGoal).length;
+  const sodiumHigh = logged.filter(d => (d.totals.sodium || 0) > sodiumGoal).length;
+  const both = logged.filter(d => (d.totals.protein || 0) < proteinGoal && (d.totals.sodium || 0) > sodiumGoal).length;
+  // Require the underlying trend on both sides, not just incidental overlap.
+  if (proteinShort < 4 || sodiumHigh < 3 || both < 3) return null;
+
+  return {
+    id: 'sodium-protein-cross',
+    domain: 'cross',
+    severity: Math.min(0.95, 0.55 + (both / logged.length) * 0.4),
+    tone: 'warn',
+    eyebrow: 'OPPORTUNITY · YOUR PATTERN',
+    headline: `Protein-short and sodium-high together on ${both} of the last ${logged.length} days`,
+    sub: `Plain protein sources — Greek yogurt, cottage cheese, edamame, lentils, chicken breast — tend to fix both at once, instead of a salty convenience food that crowds protein out.`,
+    series: seriesFrom(ctx.days, d => d.totals.sodium, d => (d.totals.protein || 0) < proteinGoal && (d.totals.sodium || 0) > sodiumGoal, 'mg'),
+  };
+}
+
 // Positive fallback — nothing pressing. Celebrate the strongest streak so the
 // card is never empty and never nags without cause.
 function detectPositive(ctx) {
@@ -233,11 +283,13 @@ function detectPositive(ctx) {
 
 const DETECTORS = [
   detectSleepCalories,
+  detectSodiumProteinCross,
   detectShortSleepWeek,
   detectStepsDown,
   detectLowMovementWeek,
   detectCaloriesOver,
   detectProteinShort,
+  detectHighSodiumWeek,
 ];
 
 // Domain preference for tie-breaking (cross-signal is the most compelling).

@@ -317,7 +317,19 @@ input, select, textarea { font-size: max(16px, 1em); }
 
 .macro-row {
   margin-top: 18px;
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+}
+.macro-row--limit {
+  margin-top: 8px;
+  grid-template-columns: repeat(2, 1fr);
+}
+/* Faint uppercase group caption above the "keep under" row — a single
+   element, trivial to remove if not wanted. */
+.macro-group-caption {
+  margin-top: 16px;
+  font-family: var(--font-mono);
+  font-size: 8.5px; color: var(--ink-3);
+  letter-spacing: 1.4px; opacity: 0.6;
 }
 .macro-card {
   padding: 10px 10px 12px;
@@ -352,11 +364,17 @@ input, select, textarea { font-size: max(16px, 1em); }
   border-radius: 100px;
   box-shadow: 0 0 8px var(--accent-glow);
 }
-/* sugar card bar uses status colors */
-.macro-card--sugar .macro-card__bar > div { background: var(--good); }
-.macro-card--sugar.sugar-warn .macro-card__bar > div { background: var(--warn); }
-.macro-card--sugar.sugar-over .macro-card__bar > div { background: var(--over); }
-.macro-card--sugar.sugar-purple .macro-card__bar > div { background: #a78bfa; }
+/* inverse cards (added sugar, sodium) use status colors: low is good */
+.macro-card--inverse .macro-card__bar > div { background: var(--good); }
+.macro-card--inverse.inverse-warn .macro-card__bar > div { background: var(--warn); }
+.macro-card--inverse.inverse-over .macro-card__bar > div { background: var(--over); }
+.macro-card--inverse.inverse-purple .macro-card__bar > div { background: #a78bfa; }
+/* incomplete-data hint (e.g. sodium when a logged food has no known value) */
+.macro-card__hint {
+  margin-top: 4px;
+  font-size: 8px; color: var(--ink-3);
+  letter-spacing: 0.2px;
+}
 
 /* ── Carousel dots ────────────────────────────────────────────────── */
 
@@ -1194,6 +1212,18 @@ input, select, textarea { font-size: max(16px, 1em); }
   font-family: var(--font-mono);
 }
 .serving-preview { font-size: 15px; padding: 8px 0; margin-bottom: 10px; color: var(--ink); }
+/* Soft, non-blocking sodium flag in the serving picker — informational, not an alert */
+.sodium-note {
+  background: var(--surface-2);
+  border: 1px solid var(--hair);
+  border-left: 3px solid var(--warn);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+}
+.sodium-note.hidden { display: none; }
+.sodium-note__headline { font-size: 13px; color: var(--ink); margin: 0; }
+.sodium-note__swap { font-size: 12px; color: var(--ink-2); margin: 4px 0 0; }
 .serving-actions {
   display: flex; gap: 8px; justify-content: flex-end;
   position: sticky; bottom: 0;
