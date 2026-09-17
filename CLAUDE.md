@@ -225,7 +225,8 @@ Run through these checks in the live preview server or on deployed staging:
 - [x] At-log salty flag in the serving picker (≥460 mg or ≥20% of remaining budget) with a protein-aware lower-sodium swap
 - [x] Two opportunity detectors — high-sodium week + protein-short × sodium-high cross-signal (top-tier ranking)
 - [x] Manual add-food form gained Sugar (g) + Sodium (mg) fields (sodium left blank = unknown, not 0)
-- [ ] **Deferred follow-ups:** potassium + Na:K ratio (poor data coverage); full DASH-pattern score; soften the insight copy's bolted-on "not a medical claim" phrasing to read less like a disclaimer
+- [x] Softened the high-sodium insight copy — dropped the bolted-on "not a medical claim" disclaimer, kept the DASH framing (which is inherently non-clinical)
+- [ ] **Deferred follow-ups:** potassium + Na:K ratio (poor data coverage); full DASH-pattern score
 
 ### Recently Completed (Jun 2026 — add-food modal UX, also applied to gdm-tracker)
 - [x] Search results no longer hide under the sticky search row — scroll moved from `renderResults` (re-fired on phase-2 API append, yanking the view) to once per query in `doSearch`; `.search-results` got `scroll-margin-top: 64px` to clear the sticky row

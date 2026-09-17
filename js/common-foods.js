@@ -231,7 +231,7 @@ export const COMMON_FOODS = [
   { name: 'Kidney Beans (cooked)', servingSize: 1, servingUnit: 'cup (177g)', calories: 225, protein: 15, carbs: 40, fat: 1, source: 'common', tags: 'kidney beans cooked legumes' },
   { name: 'Pinto Beans (cooked)', servingSize: 1, servingUnit: 'cup (171g)', calories: 245, protein: 15, carbs: 45, fat: 1, source: 'common', tags: 'pinto beans cooked legumes' },
   { name: 'White Beans / Cannellini', servingSize: 1, servingUnit: 'cup (179g)', calories: 255, protein: 17, carbs: 46, fat: 1, source: 'common', tags: 'white beans cannellini cooked legumes' },
-  { name: 'Edamame (in pod)', servingSize: 1, servingUnit: 'cup in pod (155g)', calories: 120, protein: 11, carbs: 11, fat: 5, source: 'common', tags: 'edamame soybeans pod vegetables protein' },
+  { name: 'Edamame (in pod)', servingSize: 1, servingUnit: 'cup in pod (155g)', calories: 120, protein: 11, carbs: 11, fat: 5, sodium: 13, source: 'common', tags: 'edamame soybeans pod vegetables protein' },
   { name: 'Hummus', servingSize: 2, servingUnit: 'tbsp (30g)', calories: 50, protein: 2, carbs: 5, fat: 3, source: 'common', tags: 'hummus chickpeas dip spread' , addedSugars: 2 },
   { name: 'Tofu (firm, cooked)', servingSize: 4, servingUnit: 'oz (113g)', calories: 90, protein: 10, carbs: 2, fat: 5, source: 'common', tags: 'tofu firm cooked plant protein' },
   { name: 'Tempeh', servingSize: 4, servingUnit: 'oz (113g)', calories: 220, protein: 21, carbs: 10, fat: 13, source: 'common', tags: 'tempeh fermented soy plant protein' },
@@ -579,7 +579,7 @@ export const COMMON_FOODS = [
   { name: 'Egg Fried Rice', servingSize: 1, servingUnit: 'cup (198g)', calories: 238, protein: 8, carbs: 38, fat: 6, sodium: 700, source: 'common', tags: 'egg fried rice chinese takeout' },
   { name: 'Spaghetti with Marinara', servingSize: 1, servingUnit: 'cup pasta + sauce (280g)', calories: 290, protein: 10, carbs: 56, fat: 4, source: 'common', tags: 'spaghetti marinara pasta tomato' },
   { name: 'Falafel (3 pieces)', servingSize: 3, servingUnit: 'pieces (90g)', calories: 210, protein: 8, carbs: 22, fat: 10, source: 'common', tags: 'falafel middle eastern chickpea fried' },
-  { name: 'Edamame', servingSize: 0.5, servingUnit: 'cup shelled (78g)', calories: 94, protein: 9, carbs: 7, fat: 4, source: 'common', tags: 'edamame soybean appetizer japanese snack' , addedSugars: 4 },
+  { name: 'Edamame', servingSize: 0.5, servingUnit: 'cup shelled (78g)', calories: 94, protein: 9, carbs: 7, fat: 4, sodium: 10, source: 'common', tags: 'edamame soybean appetizer japanese snack' , addedSugars: 4 },
   { name: 'Pad Thai (large plate)', servingSize: 1, servingUnit: 'plate (300g)', calories: 450, protein: 20, carbs: 55, fat: 17, sodium: 1050, source: 'common', tags: 'pad thai noodles thai restaurant large plate' , addedSugars: 12 },
   { name: 'Baby Carrots', servingSize: 1, servingUnit: 'cup (128g)', calories: 53, protein: 1, carbs: 12, fat: 0, source: 'common', tags: 'baby carrots raw snack vegetable' },
 

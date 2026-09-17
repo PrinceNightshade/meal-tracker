@@ -221,7 +221,7 @@ function detectHighSodiumWeek(ctx) {
     tone: 'warn',
     eyebrow: `OPPORTUNITY · LAST ${ctx.windowDays} DAYS`,
     headline: `Sodium ran over target ${over} of ${logged.length} days`,
-    sub: `Sauces, cured meats, and packaged snacks are usually the biggest levers. Trimming those is the DASH-pattern approach, and it's general wellness — not a medical claim.`,
+    sub: `Sauces, cured meats, and packaged snacks are usually the biggest levers — trimming those is the DASH-pattern approach to eating.`,
     series: seriesFrom(ctx.days, d => d.totals.sodium, d => d.hasFood && (d.totals.sodium || 0) > goal, 'mg'),
   };
 }
