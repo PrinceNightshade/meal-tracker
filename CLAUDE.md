@@ -52,6 +52,9 @@ Wellness records are keyed by date in their own store (`mt_wellness` localStorag
 **Wellness guardrail: context, never a budget.**
 Movement/sleep are shown as behavioral context and never converted into "calories earned." A workout's `calories` field is display-only and must never touch the food calorie ring — crediting exercise calories triggers the compensation effect (see the Apple Health / Google Fit backlog note). The marquee wellness feature is an **"opportunity statement"** over a rolling window (default trailing 7 days, wider than 24h) — one ranked, actionable insight across food/movement/sleep, reusing the existing analytics/insight-carousel patterns.
 
+**Sodium / blood-pressure awareness.**
+Eric is pre-hypertensive; sodium is tracked as the #1 dietary lever for BP (DASH pattern), alongside added sugar. Both are "keep under" limit nutrients, so the Daily macro grid is grouped **3+2** — Protein/Carbs/Fat ("build toward") over Sugar/Sodium ("keep under"), both inverse-colored via `renderMacroCard(..., inverse=true)` (green → amber → red → purple-when-over; sodium and sugar share the identical logic). `sodiumGoal` defaults to 2300 mg with a 1500 mg "blood-pressure" preset in Goals. Sodium is **context, never a budget** — no medical claims (framed as DASH / general wellness), no calories-earned. **Never fake a zero:** unknown sodium stays `null` (card shows a "~" prefix + a missing-data hint), never coerced to 0 — a fake 0 reads as "safe" when it's really "unknown." Values parsed from Open Food Facts (`sodium_100g`, `salt_100g/2.5` fallback) + USDA (nutrient 1093); ~318 `COMMON_FOODS` backfilled from real label/USDA data. The at-log flag (serving picker, ≥460 mg or ≥20% of remaining budget) suggests a **protein-aware** lower-sodium swap — deliberately avoiding salty high-protein convenience foods (the trap, since protein goals are often missed). Two `opportunity.js` detectors: high-sodium week + a protein-short × sodium-high cross-signal.
+
 **UI/UX guiding principle: breathe freely.**
 Favor whitespace and reduce competing elements. When in doubt, remove chrome rather than add toggles. Examples: "Today" hides when on today; date drops the year in the header; whole empty meal cards are tappable instead of relying on the small "+ Add" button alone; tap targets ≥44pt for one-handed use.
 
@@ -215,6 +218,14 @@ Run through these checks in the live preview server or on deployed staging:
 - [ ] Social / friend leaderboard
 - [ ] Apple Health / Google Fit integration — **weight sync only**, explicitly NOT calorie-burn import. Crediting exercise calories triggers the well-documented compensation effect (people overestimate burn 2–4x and the resulting "earned it" snack flips a deficit day into a surplus). The app is intentionally one-sided: precise about intake, silent about burn.
 - [ ] Macro targets by meal type (not just daily totals)
+
+### Recently Completed (Sep 2026 — sodium / blood-pressure awareness)
+- [x] Sodium tracking end-to-end: `sodium` field across the food schema, parsed from OFF + USDA; `sodiumGoal` (default 2300 mg, 1500 mg BP preset in Goals); ~318 `COMMON_FOODS` backfilled from real label/USDA values (unknowns left `null`, never faked to 0)
+- [x] Daily grid regrouped **3+2** — Protein/Carbs/Fat ("build toward") + Sugar/Sodium ("keep under", inverse-colored); sugar kept its full value/goal/bar
+- [x] At-log salty flag in the serving picker (≥460 mg or ≥20% of remaining budget) with a protein-aware lower-sodium swap
+- [x] Two opportunity detectors — high-sodium week + protein-short × sodium-high cross-signal (top-tier ranking)
+- [x] Manual add-food form gained Sugar (g) + Sodium (mg) fields (sodium left blank = unknown, not 0)
+- [ ] **Deferred follow-ups:** potassium + Na:K ratio (poor data coverage); full DASH-pattern score; soften the insight copy's bolted-on "not a medical claim" phrasing to read less like a disclaimer
 
 ### Recently Completed (Jun 2026 — add-food modal UX, also applied to gdm-tracker)
 - [x] Search results no longer hide under the sticky search row — scroll moved from `renderResults` (re-fired on phase-2 API append, yanking the view) to once per query in `doSearch`; `.search-results` got `scroll-margin-top: 64px` to clear the sticky row
