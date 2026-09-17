@@ -1170,6 +1170,10 @@ function openAddFoodModal(mealType) {
       ui.el('input', { type: 'number', className: 'input-manual', placeholder: 'Carbs', dataset: { field: 'carbs' } }),
       ui.el('input', { type: 'number', className: 'input-manual', placeholder: 'Fat', dataset: { field: 'fat' } }),
     ]),
+    ui.el('div', { className: 'manual-row manual-row--pair' }, [
+      ui.el('input', { type: 'number', className: 'input-manual', placeholder: 'Sugar (g)', dataset: { field: 'addedSugars' } }),
+      ui.el('input', { type: 'number', className: 'input-manual', placeholder: 'Sodium (mg)', dataset: { field: 'sodium' } }),
+    ]),
     ui.el('label', { className: 'save-to-library-label' }, [
       saveToLibraryCheckbox,
       ui.el('span', { textContent: 'Save to My Foods library' }),
@@ -1181,7 +1185,10 @@ function openAddFoodModal(mealType) {
         const fields = {};
         ui.$$('.input-manual', modalBody).forEach(input => {
           const val = input.value.trim();
-          fields[input.dataset.field] = input.type === 'number' ? (parseFloat(val) || 0) : val;
+          if (input.type !== 'number') { fields[input.dataset.field] = val; return; }
+          // Sodium left blank = unknown (never fake a zero); other numerics default to 0.
+          if (input.dataset.field === 'sodium' && val === '') return;
+          fields[input.dataset.field] = parseFloat(val) || 0;
         });
         if (!fields.name) {
           showToast('Please enter a food name');

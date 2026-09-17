@@ -1240,6 +1240,7 @@ input, select, textarea { font-size: max(16px, 1em); }
   display: grid; grid-template-columns: 1fr 1fr 1fr 1fr;
   gap: 6px; margin-bottom: 10px;
 }
+.manual-row--pair { grid-template-columns: 1fr 1fr; }
 .input-manual {
   width: 100%; padding: 8px 10px;
   border: 1px solid var(--hair);
