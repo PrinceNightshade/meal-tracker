@@ -2,7 +2,7 @@
 import { COMMON_FOODS } from './common-foods.js';
 
 const USDA_BASE = 'https://api.nal.usda.gov/fdc/v1';
-const OFF_BASE = 'https://world.openfoodfacts.net';
+const OFF_BASE = 'https://world.openfoodfacts.org'; // production API (CORS-enabled); the .net staging box 502s
 
 // Map locale region codes to Open Food Facts country tags
 const OFF_COUNTRY_TAGS = {
