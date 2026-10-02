@@ -1599,20 +1599,38 @@ async function openBarcodeScanner(mealType) {
     statusEl.className = 'scanner-status scanning';
 
     // Poll every 250ms — gives CPU a break vs rAF
+    let detectErrors = 0;
     activeScanTimer = setInterval(async () => {
       if (!activeCameraStream || video.readyState < 2) return;
+
+      let barcodes;
       try {
-        const barcodes = await detector.detect(video);
-        if (!barcodes.length) return;
+        barcodes = await detector.detect(video);
+        detectErrors = 0;
+      } catch (e) {
+        // One failure is usually just a not-ready frame. Repeated failures mean
+        // the detector itself is broken (e.g. the polyfill's WASM never loaded) —
+        // surface it and stop, so the camera doesn't hang on with no feedback.
+        if (++detectErrors >= 8) {
+          clearInterval(activeScanTimer);
+          activeScanTimer = null;
+          stopActiveCamera();
+          statusEl.textContent = `Scanner error: ${e.message || e.name || 'barcode detector failed to start'}. Use “← Search instead.”`;
+          statusEl.className = 'scanner-status error';
+        }
+        return;
+      }
+      if (!barcodes.length) return;
 
-        const code = barcodes[0].rawValue;
-        clearInterval(activeScanTimer);
-        activeScanTimer = null;
-        if (navigator.vibrate) navigator.vibrate(60);
+      const code = barcodes[0].rawValue;
+      clearInterval(activeScanTimer);
+      activeScanTimer = null;
+      if (navigator.vibrate) navigator.vibrate(60);
 
-        statusEl.textContent = `Found ${code} — looking up…`;
-        statusEl.className = 'scanner-status found';
+      statusEl.textContent = `Found ${code} — looking up…`;
+      statusEl.className = 'scanner-status found';
 
+      try {
         const food = await lookupBarcode(code);
         stopActiveCamera();
 
@@ -1621,7 +1639,6 @@ async function openBarcodeScanner(mealType) {
         } else {
           statusEl.textContent = `Barcode ${code} not found in database.`;
           statusEl.className = 'scanner-status error';
-          // Let user fall back to manual search
           modalBody.appendChild(ui.el('button', {
             className: 'btn-primary',
             textContent: 'Search manually',
@@ -1629,7 +1646,18 @@ async function openBarcodeScanner(mealType) {
             style: 'margin-top:12px',
           }));
         }
-      } catch { /* frame not ready */ }
+      } catch (e) {
+        // Lookup threw (network, etc.) — release the camera and let the user recover.
+        stopActiveCamera();
+        statusEl.textContent = `Lookup failed: ${e.message || 'network error'}.`;
+        statusEl.className = 'scanner-status error';
+        modalBody.appendChild(ui.el('button', {
+          className: 'btn-primary',
+          textContent: 'Search manually',
+          onClick: () => openAddFoodModal(mealType),
+          style: 'margin-top:12px',
+        }));
+      }
     }, 250);
 
   } catch (err) {
