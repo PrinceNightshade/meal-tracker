@@ -200,6 +200,7 @@ Run through these checks in the live preview server or on deployed staging:
 - [x] **Weight tracker rework (bugs, not cosmetics).** EMA **trend line** (`getWeightSeries`, alpha 0.25) is now the primary signal; `getWeightProjection` uses a 21-day recent-window least-squares slope on the trend instead of the old 2-point all-time slope; `getWeightStats` 7-day change compares to the entry *nearest* 7 days ago (suppressed under ~4 days old) and reports trend-based current/change; chart draws faint raw dots + accent trend line + dashed goal line; stat date formatted. Weigh-in already inline. Done Sep 2026.
 
 ### High priority
+- [ ] **BUG: barcode scanner broken on iOS (reported Oct 2026).** Camera turns on (persistent indicator) but never detects — "on but not working." Ruled out: not from the sodium work; `openBarcodeScanner`/`getUserMedia`/`sw.js` unchanged, `lookupBarcode` can't throw from the sodium parse. Likely cause: the runtime CDN polyfill `barcode-detector@3` (iOS Safari has no native `BarcodeDetector`) or its zxing WASM failing to load/decode — a version drift or an iOS/Safari change. Shipped a diagnostic/safety fix (`6e9daef`): repeated `detector.detect()` failures now surface the error + release the camera instead of hanging silently; lookup failures show a manual-search fallback. **Next:** get the on-device "Scanner error: …" string from Eric's iPhone, then likely pin the polyfill to a known-good version or swap the WASM source. Code in `js/app.js` `openBarcodeScanner`.
 - [ ] Calorie budget rollover option (unused calories carry forward)
 - [ ] Meal copy — duplicate yesterday's meals to today with one tap
 - [ ] Streak tracking — consecutive days logged
@@ -226,6 +227,7 @@ Run through these checks in the live preview server or on deployed staging:
 - [x] Two opportunity detectors — high-sodium week + protein-short × sodium-high cross-signal (top-tier ranking)
 - [x] Manual add-food form gained Sugar (g) + Sodium (mg) fields (sodium left blank = unknown, not 0)
 - [x] Softened the high-sodium insight copy — dropped the bolted-on "not a medical claim" disclaimer, kept the DASH framing (which is inherently non-clinical)
+- [x] Fixed a 3+2 regression (Oct 2026): the taller hero card dropped the top:50% prev/next arrows onto the Protein/Fat macro cards; pinned `.daily-summary__nav` to the ring center (80px) instead
 - [ ] **Deferred follow-ups:** potassium + Na:K ratio (poor data coverage); full DASH-pattern score
 
 ### Recently Completed (Jun 2026 — add-food modal UX, also applied to gdm-tracker)
