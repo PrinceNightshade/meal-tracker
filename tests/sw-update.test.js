@@ -221,6 +221,36 @@ describe('initSW', () => {
     assert.equal(intervalDuration, 60000, 'Should check for updates every 60 seconds');
   });
 
+  test('checks for updates when the app returns to the foreground', async () => {
+    const origDocument = global.document;
+    const listeners = {};
+    global.document = {
+      ...origDocument,
+      visibilityState: 'visible',
+      addEventListener: (event, handler) => { (listeners[event] ||= []).push(handler); },
+    };
+
+    let updateCalls = 0;
+    const registration = createMockRegistration();
+    registration.update = () => { updateCalls++; return Promise.resolve(); };
+    global.navigator = {
+      serviceWorker: {
+        register: () => Promise.resolve(registration),
+        ready: Promise.resolve(registration),
+      },
+    };
+
+    const $ = mockQuerySelector(createMockBanner(), createMockBtn());
+    initSW($);
+    await new Promise(resolve => setTimeout(resolve, 20));
+
+    assert.ok(listeners.visibilitychange?.length, 'Should register a visibilitychange listener');
+    listeners.visibilitychange[0](); // simulate the app coming to the foreground
+    assert.ok(updateCalls > 0, 'Foregrounding should trigger reg.update()');
+
+    global.document = origDocument;
+  });
+
   test('does nothing when serviceWorker not in navigator', () => {
     global.navigator = {};
     const $ = mockQuerySelector(createMockBanner(), createMockBtn());

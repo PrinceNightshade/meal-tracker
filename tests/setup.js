@@ -28,6 +28,8 @@ defineGlobal('document', {
     appendChild: () => {}, classList: { toggle: () => false, add: () => {}, remove: () => {} },
     style: {}, dataset: {}, children: [],
   }),
+  addEventListener: () => {},
+  visibilityState: 'visible',
 });
 
 defineGlobal('window', { matchMedia: () => ({ matches: false }) });

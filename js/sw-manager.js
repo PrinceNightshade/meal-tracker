@@ -46,6 +46,14 @@ export function initSW(querySelector) {
         });
       });
 
+      // Check the moment the app comes to the foreground, so the Reload banner
+      // appears right at launch instead of up to a minute later (the gap that
+      // made closing/reopening the PWA seem not to update). Still a prompt, not
+      // a forced reload. Guarded so an offline launch doesn't throw.
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update().catch(() => {});
+      });
+
       // Periodically check for updates — but only while the app is actually
       // visible. Skipping the ping while backgrounded avoids needless network
       // churn and keeps the page quiet when iOS has it suspended anyway.
