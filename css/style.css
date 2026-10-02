@@ -244,10 +244,13 @@ input, select, textarea { font-size: max(16px, 1em); }
 .daily-summary__corner--left  b { color: var(--accent); }
 .daily-summary__corner--right b { color: var(--ink); }
 
-/* Prev/next overlay buttons inside the rings hero card */
+/* Prev/next overlay buttons inside the rings hero card.
+   Pinned to the ring's vertical center (20px card padding + half of the
+   120px ring = 80px), NOT the card's 50% — the card grew taller with the
+   3+2 macro grid, which would otherwise drop these onto the top macro row. */
 .daily-summary__nav {
   position: absolute;
-  top: 50%;
+  top: 80px;
   transform: translateY(-50%);
   width: 36px; height: 36px;
   border-radius: 100px;
