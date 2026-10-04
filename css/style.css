@@ -322,10 +322,39 @@ input, select, textarea { font-size: max(16px, 1em); }
   margin-top: 18px;
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
 }
+.macro-row--build {
+  grid-template-columns: repeat(2, 1fr);
+}
 .macro-row--limit {
   margin-top: 8px;
   grid-template-columns: repeat(2, 1fr);
 }
+/* Carbs & fat footer — calm one-liner; expands to full cards. Escalates to an
+   amber, sodium-note-style alert only when carbs/fat run well over goal. */
+.macro-footer { margin-top: 12px; }
+.macro-footer__toggle {
+  width: 100%; min-height: 44px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 0 4px; background: none; border: 0;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.2px;
+  color: var(--ink-3); text-align: left; cursor: pointer;
+}
+.macro-footer__toggle--alert {
+  background: var(--surface-2);
+  border: 1px solid var(--hair);
+  border-left: 3px solid var(--warn);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-family: var(--font); font-size: 13px; letter-spacing: 0;
+  color: var(--ink);
+}
+.macro-footer__chevron {
+  flex: none; font-size: 16px; line-height: 1;
+  transition: transform 0.15s ease;
+}
+.macro-footer.is-open .macro-footer__chevron { transform: rotate(90deg); }
+.macro-row--footer { margin-top: 8px; grid-template-columns: repeat(2, 1fr); }
+.macro-row--footer[hidden] { display: none; }
 /* Faint uppercase group caption above the "keep under" row — a single
    element, trivial to remove if not wanted. */
 .macro-group-caption {
@@ -1244,6 +1273,8 @@ input, select, textarea { font-size: max(16px, 1em); }
   gap: 6px; margin-bottom: 10px;
 }
 .manual-row--pair { grid-template-columns: 1fr 1fr; }
+.manual-row--trio { grid-template-columns: 1fr 1fr 1fr; }
+.manual-row--trio .input-manual { padding-left: 4px; padding-right: 4px; }
 .input-manual {
   width: 100%; padding: 8px 10px;
   border: 1px solid var(--hair);

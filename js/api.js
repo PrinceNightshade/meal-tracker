@@ -61,6 +61,7 @@ const NUTRIENT_MAP = {
   1005: 'carbs',     // Carbohydrate
   1004: 'fat',       // Total fat
   1093: 'sodium',    // Sodium, Na (mg) — already in mg, no conversion needed
+  1079: 'fiber',     // Fiber, total dietary (g) — absent = unknown, never coerced to 0
 };
 
 function extractNutrients(foodNutrients) {
@@ -84,6 +85,15 @@ function extractAddedSugarsFromOFF(product) {
     return Math.round(product.sugars_100g * 10) / 10;
   }
   return null;
+}
+
+// Extract dietary fiber (g) from Open Food Facts data (fiber_100g / fiber_serving,
+// already in grams). Returns null (unknown), never a fabricated 0 — same
+// "never fake a zero" rule as sodium.
+function extractFiberGFromOFF(nutriments, suffix) {
+  const fiberG = nutriments[`fiber_${suffix}`];
+  if (fiberG == null || fiberG === '' || isNaN(Number(fiberG))) return null;
+  return Math.round(Number(fiberG) * 10) / 10;
 }
 
 // Extract sodium (mg) from Open Food Facts data. OFF stores sodium in grams
@@ -313,7 +323,7 @@ async function searchOpenFoodFacts(query, pageSize = 15) {
         const hasPer100g = nm['energy-kcal_100g'] != null;
         const hasPerServing = nm['energy-kcal_serving'] != null;
 
-        let calories, protein, carbs, fat, sodium, servingSize, servingUnit;
+        let calories, protein, carbs, fat, sodium, fiber, servingSize, servingUnit;
 
         if (hasPerServing) {
           calories = Math.round(nm['energy-kcal_serving'] || 0);
@@ -321,6 +331,7 @@ async function searchOpenFoodFacts(query, pageSize = 15) {
           carbs = Math.round((nm.carbohydrates_serving || 0) * 10) / 10;
           fat = Math.round((nm.fat_serving || 0) * 10) / 10;
           sodium = extractSodiumMgFromOFF(nm, 'serving');
+          fiber = extractFiberGFromOFF(nm, 'serving');
           // Use the full `serving_size` label (e.g. "1 burrito (170g)") rather than
           // grafting the gram qty onto the first matched word (which produced "170 burrito").
           ({ size: servingSize, unit: servingUnit } = parseServingLabel(p.serving_size, p.serving_quantity));
@@ -330,6 +341,7 @@ async function searchOpenFoodFacts(query, pageSize = 15) {
           carbs = Math.round((nm.carbohydrates_100g || 0) * 10) / 10;
           fat = Math.round((nm.fat_100g || 0) * 10) / 10;
           sodium = extractSodiumMgFromOFF(nm, '100g');
+          fiber = extractFiberGFromOFF(nm, '100g');
           servingSize = 100;
           servingUnit = 'g';
         } else {
@@ -349,6 +361,7 @@ async function searchOpenFoodFacts(query, pageSize = 15) {
           carbs,
           fat,
           ...(sodium != null && { sodium }),
+          ...(fiber != null && { fiber }),
           source: 'openfoodfacts',
         };
       })
@@ -371,7 +384,7 @@ export async function lookupBarcode(barcode) {
   const p = data.product;
   const nm = p.nutriments || {};
 
-  let calories, protein, carbs, fat, sodium, servingSize, servingUnit;
+  let calories, protein, carbs, fat, sodium, fiber, servingSize, servingUnit;
 
   if (nm['energy-kcal_serving'] != null) {
     // Prefer per-serving values — calories shown match the package label
@@ -380,6 +393,7 @@ export async function lookupBarcode(barcode) {
     carbs    = Math.round((nm.carbohydrates_serving  || 0) * 10) / 10;
     fat      = Math.round((nm.fat_serving            || 0) * 10) / 10;
     sodium   = extractSodiumMgFromOFF(nm, 'serving');
+    fiber    = extractFiberGFromOFF(nm, 'serving');
     ({ size: servingSize, unit: servingUnit } = parseServingLabel(p.serving_size, p.serving_quantity));
   } else {
     // Fall back to per-100g
@@ -388,6 +402,7 @@ export async function lookupBarcode(barcode) {
     carbs    = Math.round((nm.carbohydrates_100g || 0) * 10) / 10;
     fat      = Math.round((nm.fat_100g           || 0) * 10) / 10;
     sodium   = extractSodiumMgFromOFF(nm, '100g');
+    fiber    = extractFiberGFromOFF(nm, '100g');
     servingSize = 100;
     servingUnit = 'g';
   }
@@ -402,6 +417,7 @@ export async function lookupBarcode(barcode) {
     carbs,
     fat,
     ...(sodium != null && { sodium }),
+    ...(fiber != null && { fiber }),
     source: 'openfoodfacts',
     barcode,
   };

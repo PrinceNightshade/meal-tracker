@@ -275,3 +275,53 @@ describe.skip('hideRecentFood', () => {
     assert.equal(results.length, 0, 'removeRecentFood should hide the food');
   });
 });
+
+// ── Fiber totals + goals ──
+
+describe('Fiber', () => {
+  test('DEFAULT_GOALS has fiberGoal 30', () => {
+    assert.equal(store.DEFAULT_GOALS.fiberGoal, 30);
+  });
+
+  test('a custom fiberGoal does not block TDEE auto-apply (goalsAreDefaults)', () => {
+    store.saveGoals({ ...store.DEFAULT_GOALS, fiberGoal: 38 });
+    assert.equal(store.goalsAreDefaults(), true);
+  });
+
+  test('getDayTotals sums known fiber and is complete when all foods have it', () => {
+    store.addFoodToMeal('2026-04-01', 'breakfast', { id: 'a', name: 'Zzz Oats', calories: 150, protein: 5, carbs: 27, fat: 3, fiber: 4, servings: 1 });
+    store.addFoodToMeal('2026-04-01', 'lunch', { id: 'b', name: 'Zzz Beans', calories: 220, protein: 15, carbs: 40, fat: 1, fiber: 15, servings: 2 });
+    const t = store.getDayTotals('2026-04-01');
+    assert.equal(t.fiber, 34); // 4 + 15*2
+    assert.equal(t.fiberIncomplete, false);
+  });
+
+  test('unknown fiber is never coerced to 0: sums known values and flags incomplete', () => {
+    store.addFoodToMeal('2026-04-02', 'breakfast', { id: 'a', name: 'Zzz Oats', calories: 150, protein: 5, carbs: 27, fat: 3, fiber: 4, servings: 1 });
+    store.addFoodToMeal('2026-04-02', 'lunch', { id: 'b', name: 'Zzz Mystery', calories: 300, protein: 10, carbs: 30, fat: 10, servings: 1 });
+    const t = store.getDayTotals('2026-04-02');
+    assert.equal(t.fiber, 4);
+    assert.equal(t.fiberIncomplete, true);
+  });
+
+  test('explicit fiber: 0 counts as known (not incomplete)', () => {
+    store.addFoodToMeal('2026-04-03', 'dinner', { id: 'a', name: 'Zzz Steak', calories: 400, protein: 40, carbs: 0, fat: 25, fiber: 0, servings: 1 });
+    const t = store.getDayTotals('2026-04-03');
+    assert.equal(t.fiber, 0);
+    assert.equal(t.fiberIncomplete, false);
+  });
+
+  test('empty day: fiber 0 and not incomplete', () => {
+    const t = store.getDayTotals('2026-04-04');
+    assert.equal(t.fiber, 0);
+    assert.equal(t.fiberIncomplete, false);
+  });
+
+  test('getTotalsForRange aggregates fiber and propagates incomplete', () => {
+    store.addFoodToMeal('2026-04-05', 'breakfast', { id: 'a', name: 'Zzz Oats', calories: 150, protein: 5, carbs: 27, fat: 3, fiber: 4, servings: 1 });
+    store.addFoodToMeal('2026-04-06', 'breakfast', { id: 'b', name: 'Zzz Mystery', calories: 100, protein: 1, carbs: 10, fat: 1, servings: 1 });
+    const t = store.getTotalsForRange('2026-04-05', '2026-04-06');
+    assert.equal(t.fiber, 4);
+    assert.equal(t.fiberIncomplete, true);
+  });
+});
