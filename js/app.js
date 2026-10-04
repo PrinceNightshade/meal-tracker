@@ -627,6 +627,7 @@ function renderGoals() {
   };
   const currentSodiumGoal = goals.sodiumGoal || 2300;
   const currentFiberGoal = goals.fiberGoal || 30;
+  const currentSatFatGoal = goals.satFatGoal || 20;
 
   const nutritionContent = ui.el('div', { className: 'collapsible-content' }, [
     ...['calories', 'protein', 'carbs', 'fat'].map(key => {
@@ -675,6 +676,16 @@ function renderGoals() {
         className: 'input-goal',
         value: String(currentFiberGoal),
         dataset: { key: 'fiberGoal' },
+        onBlur: (e) => saveNutritionGoals(e.target),
+      }),
+    ]),
+    ui.el('div', { className: 'goal-row' }, [
+      ui.el('label', { textContent: 'Saturated fat (g)' }),
+      ui.el('input', {
+        type: 'number',
+        className: 'input-goal',
+        value: String(currentSatFatGoal),
+        dataset: { key: 'satFatGoal' },
         onBlur: (e) => saveNutritionGoals(e.target),
       }),
     ]),
@@ -1181,8 +1192,9 @@ function openAddFoodModal(mealType) {
       ui.el('input', { type: 'number', className: 'input-manual', placeholder: 'Carbs', dataset: { field: 'carbs' } }),
       ui.el('input', { type: 'number', className: 'input-manual', placeholder: 'Fat', dataset: { field: 'fat' } }),
     ]),
-    ui.el('div', { className: 'manual-row manual-row--trio' }, [
+    ui.el('div', { className: 'manual-row manual-row--pair' }, [
       ui.el('input', { type: 'number', className: 'input-manual', placeholder: 'Fiber (g)', dataset: { field: 'fiber' } }),
+      ui.el('input', { type: 'number', className: 'input-manual', placeholder: 'Sat fat (g)', dataset: { field: 'saturatedFat' } }),
       ui.el('input', { type: 'number', className: 'input-manual', placeholder: 'Sugar (g)', dataset: { field: 'addedSugars' } }),
       ui.el('input', { type: 'number', className: 'input-manual', placeholder: 'Sodium (mg)', dataset: { field: 'sodium' } }),
     ]),
@@ -1198,8 +1210,8 @@ function openAddFoodModal(mealType) {
         ui.$$('.input-manual', modalBody).forEach(input => {
           const val = input.value.trim();
           if (input.type !== 'number') { fields[input.dataset.field] = val; return; }
-          // Sodium/fiber left blank = unknown (never fake a zero); other numerics default to 0.
-          if ((input.dataset.field === 'sodium' || input.dataset.field === 'fiber') && val === '') return;
+          // Sodium/fiber/saturated fat left blank = unknown (never fake a zero); other numerics default to 0.
+          if ((input.dataset.field === 'sodium' || input.dataset.field === 'fiber' || input.dataset.field === 'saturatedFat') && val === '') return;
           fields[input.dataset.field] = parseFloat(val) || 0;
         });
         if (!fields.name) {
@@ -1395,6 +1407,10 @@ function openFoodDetailsModal(mealType, food) {
         // Fiber: undefined = left blank/unknown in the editor — leave it unknown.
         if (nutritionEdits.fiber !== undefined) {
           updates.fiber = perServing(nutritionEdits.fiber);
+        }
+        // Saturated fat: same rule — undefined = blank/unknown, stays unknown.
+        if (nutritionEdits.saturatedFat !== undefined) {
+          updates.saturatedFat = perServing(nutritionEdits.saturatedFat);
         }
         store.updateFoodInMeal(currentDate, mealType, food.id, updates);
         if (nutritionEdits.saveToMyFoods) {

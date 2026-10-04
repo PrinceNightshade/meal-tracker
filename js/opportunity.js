@@ -203,6 +203,30 @@ function detectProteinShort(ctx) {
   };
 }
 
+// Fiber is a BUILD-TOWARD nutrient: encouraging, non-nagging framing, and a
+// general-wellness (DASH-style) note — never a medical claim. Only days with
+// fully KNOWN fiber count (a logged day where any food has unknown fiber is
+// skipped rather than guessed at — an unknown is not a zero), and we need at
+// least MIN_FIBER_KNOWN_DAYS of them before saying anything.
+const MIN_FIBER_KNOWN_DAYS = 4;
+function detectLowFiberWeek(ctx) {
+  const known = ctx.days.filter(d => d.hasFood && !d.totals.fiberIncomplete);
+  if (known.length < MIN_FIBER_KNOWN_DAYS) return null;
+  const goal = ctx.goals.fiberGoal || 30;
+  const under = known.filter(d => (d.totals.fiber || 0) < goal).length;
+  if (under < 4) return null;
+  return {
+    id: 'fiber-low-week',
+    domain: 'food',
+    severity: Math.min(0.7, 0.2 + (under / known.length) * 0.4),
+    tone: 'warn',
+    eyebrow: `OPPORTUNITY \u00B7 LAST ${ctx.windowDays} DAYS`,
+    headline: `Fiber came in under target ${under} of the last ${ctx.windowDays} days`,
+    sub: `Beans, lentils, oats, and berries are the easiest lifts \u2014 and fiber steadies both blood sugar and blood pressure.`,
+    series: seriesFrom(ctx.days, d => d.totals.fiber, d => d.hasFood && !d.totals.fiberIncomplete && (d.totals.fiber || 0) < goal, 'g'),
+  };
+}
+
 // Sodium is tracked as behavioral context for a DASH-adjacent eating pattern —
 // plain, non-clinical framing, never a medical claim (no "this will lower
 // your blood pressure"). A day only counts toward "over" using KNOWN sodium
@@ -290,6 +314,7 @@ const DETECTORS = [
   detectCaloriesOver,
   detectProteinShort,
   detectHighSodiumWeek,
+  detectLowFiberWeek,
 ];
 
 // Domain preference for tie-breaking (cross-signal is the most compelling).

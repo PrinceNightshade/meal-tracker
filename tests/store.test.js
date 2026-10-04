@@ -325,3 +325,60 @@ describe('Fiber', () => {
     assert.equal(t.fiberIncomplete, true);
   });
 });
+
+// ── Saturated fat totals + goals ──
+
+describe('Saturated fat', () => {
+  test('DEFAULT_GOALS has satFatGoal 20', () => {
+    assert.equal(store.DEFAULT_GOALS.satFatGoal, 20);
+  });
+
+  test('a custom satFatGoal does not block TDEE auto-apply (goalsAreDefaults)', () => {
+    store.saveGoals({ ...store.DEFAULT_GOALS, satFatGoal: 15 });
+    assert.equal(store.goalsAreDefaults(), true);
+  });
+
+  test('getDayTotals sums known saturated fat (x servings) and is complete', () => {
+    store.addFoodToMeal('2026-05-01', 'breakfast', { id: 'a', name: 'Zzz Bacon', calories: 160, protein: 10, carbs: 0, fat: 12, saturatedFat: 4.1, servings: 1 });
+    store.addFoodToMeal('2026-05-01', 'lunch', { id: 'b', name: 'Zzz Cheese', calories: 115, protein: 7, carbs: 0, fat: 9, saturatedFat: 5.3, servings: 2 });
+    const t = store.getDayTotals('2026-05-01');
+    assert.equal(t.saturatedFat, 14.7); // 4.1 + 5.3*2
+    assert.equal(t.satFatIncomplete, false);
+  });
+
+  test('unknown saturated fat is never coerced to 0: sums known and flags incomplete', () => {
+    store.addFoodToMeal('2026-05-02', 'breakfast', { id: 'a', name: 'Zzz Bacon', calories: 160, protein: 10, carbs: 0, fat: 12, saturatedFat: 4.1, servings: 1 });
+    store.addFoodToMeal('2026-05-02', 'lunch', { id: 'b', name: 'Zzz Mystery', calories: 300, protein: 10, carbs: 30, fat: 10, servings: 1 });
+    const t = store.getDayTotals('2026-05-02');
+    assert.equal(t.saturatedFat, 4.1);
+    assert.equal(t.satFatIncomplete, true);
+  });
+
+  test('explicit saturatedFat: 0 counts as known (not incomplete)', () => {
+    store.addFoodToMeal('2026-05-03', 'dinner', { id: 'a', name: 'Zzz Apple', calories: 95, protein: 0, carbs: 25, fat: 0, saturatedFat: 0, servings: 1 });
+    const t = store.getDayTotals('2026-05-03');
+    assert.equal(t.saturatedFat, 0);
+    assert.equal(t.satFatIncomplete, false);
+  });
+
+  test('empty day: saturated fat 0 and not incomplete', () => {
+    const t = store.getDayTotals('2026-05-04');
+    assert.equal(t.saturatedFat, 0);
+    assert.equal(t.satFatIncomplete, false);
+  });
+
+  test('getTotalsForRange aggregates saturated fat and propagates incomplete', () => {
+    store.addFoodToMeal('2026-05-05', 'breakfast', { id: 'a', name: 'Zzz Bacon', calories: 160, protein: 10, carbs: 0, fat: 12, saturatedFat: 4, servings: 1 });
+    store.addFoodToMeal('2026-05-06', 'breakfast', { id: 'b', name: 'Zzz Mystery', calories: 100, protein: 1, carbs: 10, fat: 1, servings: 1 });
+    const t = store.getTotalsForRange('2026-05-05', '2026-05-06');
+    assert.equal(t.saturatedFat, 4);
+    assert.equal(t.satFatIncomplete, true);
+  });
+
+  test('COMMON_FOODS enrichment fills saturatedFat for a logged food that lacks it', () => {
+    store.addFoodToMeal('2026-05-07', 'breakfast', { id: 'a', name: 'Butter', calories: 102, protein: 0, carbs: 0, fat: 12, servings: 1 });
+    const t = store.getDayTotals('2026-05-07');
+    assert.equal(t.saturatedFat, 7.3);
+    assert.equal(t.satFatIncomplete, false);
+  });
+});

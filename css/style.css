@@ -35,6 +35,7 @@
 
   /* status */
   --good: #3F9F3C;
+  --good-rgb: 63, 159, 60;
   --warn: #D97A0A;
   --over: #D44747;
 
@@ -90,6 +91,7 @@
   --accent-glow:  rgba(var(--accent-rgb), 0.18);
 
   --good: #7DE07A;
+  --good-rgb: 125, 224, 122;
   --warn: #FFB547;
   --over: #FF6E6E;
 
@@ -122,6 +124,7 @@
     --accent-glow:  rgba(var(--accent-rgb), 0.18);
 
     --good: #7DE07A;
+    --good-rgb: 125, 224, 122;
     --warn: #FFB547;
     --over: #FF6E6E;
 
@@ -354,6 +357,8 @@ input, select, textarea { font-size: max(16px, 1em); }
 }
 .macro-footer.is-open .macro-footer__chevron { transform: rotate(90deg); }
 .macro-row--footer { margin-top: 8px; grid-template-columns: repeat(2, 1fr); }
+/* Saturated fat sits beneath the Carbs/Fat pair, full width — no 3-up cramming. */
+.macro-row--footer .macro-card--span { grid-column: 1 / -1; }
 .macro-row--footer[hidden] { display: none; }
 /* Faint uppercase group caption above the "keep under" row — a single
    element, trivial to remove if not wanted. */
@@ -385,6 +390,13 @@ input, select, textarea { font-size: max(16px, 1em); }
   font-size: 9px; color: var(--ink-3);
 }
 .macro-card.over .macro-card__value b { color: var(--over); }
+/* Bloom-at-goal: a soft green glow when a BUILD-TOWARD card (protein, fiber)
+   reaches its goal — a finish-line reward, not a meter. Never on keep-under. */
+.macro-card { transition: box-shadow 0.4s ease, border-color 0.4s ease; }
+.macro-card--bloom {
+  border-color: rgba(var(--good-rgb), 0.35);
+  box-shadow: 0 0 18px rgba(var(--good-rgb), 0.28);
+}
 .macro-card__bar {
   margin-top: 6px; height: 4px;
   background: var(--hair);

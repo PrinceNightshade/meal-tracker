@@ -62,6 +62,7 @@ const NUTRIENT_MAP = {
   1004: 'fat',       // Total fat
   1093: 'sodium',    // Sodium, Na (mg) — already in mg, no conversion needed
   1079: 'fiber',     // Fiber, total dietary (g) — absent = unknown, never coerced to 0
+  1258: 'saturatedFat', // Fatty acids, total saturated (g) — absent = unknown, never coerced to 0
 };
 
 function extractNutrients(foodNutrients) {
@@ -94,6 +95,15 @@ function extractFiberGFromOFF(nutriments, suffix) {
   const fiberG = nutriments[`fiber_${suffix}`];
   if (fiberG == null || fiberG === '' || isNaN(Number(fiberG))) return null;
   return Math.round(Number(fiberG) * 10) / 10;
+}
+
+// Extract saturated fat (g) from Open Food Facts data (saturated-fat_serving /
+// saturated-fat_100g — note the HYPHEN in OFF's key — already in grams). Returns
+// null (unknown), never a fabricated 0 — same "never fake a zero" rule as sodium.
+function extractSaturatedFatGFromOFF(nutriments, suffix) {
+  const satG = nutriments[`saturated-fat_${suffix}`];
+  if (satG == null || satG === '' || isNaN(Number(satG))) return null;
+  return Math.round(Number(satG) * 10) / 10;
 }
 
 // Extract sodium (mg) from Open Food Facts data. OFF stores sodium in grams
@@ -323,7 +333,7 @@ async function searchOpenFoodFacts(query, pageSize = 15) {
         const hasPer100g = nm['energy-kcal_100g'] != null;
         const hasPerServing = nm['energy-kcal_serving'] != null;
 
-        let calories, protein, carbs, fat, sodium, fiber, servingSize, servingUnit;
+        let calories, protein, carbs, fat, sodium, fiber, saturatedFat, servingSize, servingUnit;
 
         if (hasPerServing) {
           calories = Math.round(nm['energy-kcal_serving'] || 0);
@@ -332,6 +342,7 @@ async function searchOpenFoodFacts(query, pageSize = 15) {
           fat = Math.round((nm.fat_serving || 0) * 10) / 10;
           sodium = extractSodiumMgFromOFF(nm, 'serving');
           fiber = extractFiberGFromOFF(nm, 'serving');
+          saturatedFat = extractSaturatedFatGFromOFF(nm, 'serving');
           // Use the full `serving_size` label (e.g. "1 burrito (170g)") rather than
           // grafting the gram qty onto the first matched word (which produced "170 burrito").
           ({ size: servingSize, unit: servingUnit } = parseServingLabel(p.serving_size, p.serving_quantity));
@@ -342,6 +353,7 @@ async function searchOpenFoodFacts(query, pageSize = 15) {
           fat = Math.round((nm.fat_100g || 0) * 10) / 10;
           sodium = extractSodiumMgFromOFF(nm, '100g');
           fiber = extractFiberGFromOFF(nm, '100g');
+          saturatedFat = extractSaturatedFatGFromOFF(nm, '100g');
           servingSize = 100;
           servingUnit = 'g';
         } else {
@@ -362,6 +374,7 @@ async function searchOpenFoodFacts(query, pageSize = 15) {
           fat,
           ...(sodium != null && { sodium }),
           ...(fiber != null && { fiber }),
+          ...(saturatedFat != null && { saturatedFat }),
           source: 'openfoodfacts',
         };
       })
@@ -384,7 +397,7 @@ export async function lookupBarcode(barcode) {
   const p = data.product;
   const nm = p.nutriments || {};
 
-  let calories, protein, carbs, fat, sodium, fiber, servingSize, servingUnit;
+  let calories, protein, carbs, fat, sodium, fiber, saturatedFat, servingSize, servingUnit;
 
   if (nm['energy-kcal_serving'] != null) {
     // Prefer per-serving values — calories shown match the package label
@@ -394,6 +407,7 @@ export async function lookupBarcode(barcode) {
     fat      = Math.round((nm.fat_serving            || 0) * 10) / 10;
     sodium   = extractSodiumMgFromOFF(nm, 'serving');
     fiber    = extractFiberGFromOFF(nm, 'serving');
+    saturatedFat = extractSaturatedFatGFromOFF(nm, 'serving');
     ({ size: servingSize, unit: servingUnit } = parseServingLabel(p.serving_size, p.serving_quantity));
   } else {
     // Fall back to per-100g
@@ -403,6 +417,7 @@ export async function lookupBarcode(barcode) {
     fat      = Math.round((nm.fat_100g           || 0) * 10) / 10;
     sodium   = extractSodiumMgFromOFF(nm, '100g');
     fiber    = extractFiberGFromOFF(nm, '100g');
+    saturatedFat = extractSaturatedFatGFromOFF(nm, '100g');
     servingSize = 100;
     servingUnit = 'g';
   }
@@ -418,6 +433,7 @@ export async function lookupBarcode(barcode) {
     fat,
     ...(sodium != null && { sodium }),
     ...(fiber != null && { fiber }),
+    ...(saturatedFat != null && { saturatedFat }),
     source: 'openfoodfacts',
     barcode,
   };

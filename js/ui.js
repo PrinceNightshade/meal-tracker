@@ -113,14 +113,18 @@ export function renderProgressBar(current, goal, label, unit = '', inverse = fal
 
 // ── Macro card (replaces individual macro rings) ──
 
-// `inverse` cards (added sugar, sodium — the "keep under" row) use inverse
+// `inverse` cards (added sugar, sodium, saturated fat — the "keep under" row) use inverse
 // coloring: low is good (green), high is bad (warn/over/purple-over-goal).
 // `incomplete` shows a "~" prefix on the value + a muted hint, for totals built
 // from partially-unknown data (e.g. sodium/fiber when a logged food has no known
 // value; `missing` names the nutrient in the hint) — see the "never fake a zero"
 // guardrail in CLAUDE.md. `overIsFine` skips the red over-goal treatment on
-// non-inverse cards for nutrients where exceeding the goal isn't a problem (fiber).
-export function renderMacroCard(label, current, goal, unit = 'g', inverse = false, { incomplete = false, missing = 'sodium', overIsFine = false } = {}) {
+// non-inverse cards for nutrients where exceeding the goal isn't a problem (fiber,
+// protein). `bloom` (default on) gives a BUILD-TOWARD card (non-inverse) a soft
+// green glow once it reaches its goal — a finish-line reward, never a live
+// meter. Keep-under (inverse) cards never bloom; the quiet carbs/fat footer
+// cards pass `bloom: false` so only Protein and Fiber ever do.
+export function getMacroCardClass(current, goal, inverse = false, { overIsFine = false, bloom = true } = {}) {
   const pct = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
   const over = current > goal;
 
@@ -136,9 +140,16 @@ export function renderMacroCard(label, current, goal, unit = 'g', inverse = fals
       cardClass += ' inverse-warn';
     }
     // else: green (default via CSS)
-  } else if (over && !overIsFine) {
-    cardClass += ' over';
+  } else {
+    if (over && !overIsFine) cardClass += ' over';
+    if (bloom && goal > 0 && current >= goal) cardClass += ' macro-card--bloom';
   }
+  return cardClass;
+}
+
+export function renderMacroCard(label, current, goal, unit = 'g', inverse = false, { incomplete = false, missing = 'sodium', overIsFine = false, bloom = true } = {}) {
+  const pct = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
+  const cardClass = getMacroCardClass(current, goal, inverse, { overIsFine, bloom });
 
   const barFillEl = el('div', {});
   barFillEl.style.width = `${pct}%`;
@@ -159,9 +170,10 @@ export function renderMacroCard(label, current, goal, unit = 'g', inverse = fals
 }
 
 // ── Carbs & fat footer (demoted macros) ──
-// A calm one-liner by default; escalates to an amber, sodium-note-style alert
-// only when carbs or fat runs OVER goal by more than MACRO_FOOTER_THRESHOLD.
-// Under-goal never flags. Tapping expands full progress cards for both.
+// A calm one-liner by default ("Carbs Xg · Fat Yg" totals); escalates to an
+// amber, sodium-note-style alert only when CARBS run over carbGoal * 1.1 or
+// SATURATED fat (not total fat) runs over satFatGoal * 1.1. Under-goal never
+// flags. Tapping expands full cards: Carbs + Fat (total) + Saturated fat.
 
 export const MACRO_FOOTER_THRESHOLD = 1.1; // flag when current > goal * 1.1
 
@@ -172,31 +184,48 @@ let macroFooterOpen = false;
 export function getMacroFooterStatus(totals, goals) {
   const carbs = totals.carbs || 0;
   const fat = totals.fat || 0;
+  const satFat = totals.saturatedFat || 0;
+  const satFatIncomplete = !!totals.satFatIncomplete;
   const carbsGoal = goals.carbs && goals.carbs > 0 ? goals.carbs : 200;
   const fatGoal = goals.fat && goals.fat > 0 ? goals.fat : 65;
+  const satFatGoal = goals.satFatGoal && goals.satFatGoal > 0 ? goals.satFatGoal : 20;
   return {
-    carbs, fat, carbsGoal, fatGoal,
+    carbs, fat, satFat, satFatIncomplete, carbsGoal, fatGoal, satFatGoal,
     carbsHigh: carbs > carbsGoal * MACRO_FOOTER_THRESHOLD,
-    fatHigh: fat > fatGoal * MACRO_FOOTER_THRESHOLD,
+    // Keys off KNOWN saturated fat only (unknowns are never guessed at). The
+    // total sums known values, so when some items are unknown it is a floor:
+    // exceeding the limit on known data alone is a genuine overage, never a
+    // false alarm.
+    satFatHigh: satFat > satFatGoal * MACRO_FOOTER_THRESHOLD,
   };
 }
 
-export function renderMacroFooter(totals, goals) {
-  const { carbs, fat, carbsGoal, fatGoal, carbsHigh, fatHigh } = getMacroFooterStatus(totals, goals);
-  const alert = carbsHigh || fatHigh;
+// The footer's one-line text (calm totals by default; alert copy when high).
+export function getMacroFooterText(totals, goals) {
+  const { carbs, fat, satFat, satFatIncomplete, carbsGoal, satFatGoal, carbsHigh, satFatHigh } = getMacroFooterStatus(totals, goals);
 
-  let text;
-  if (carbsHigh && fatHigh) {
-    text = `Carbs and fat running high — ${carbs}g vs ${carbsGoal}g carbs, ${fat}g vs ${fatGoal}g fat.`;
-  } else if (fatHigh) {
-    text = `Fat running high — ${fat}g vs ${fatGoal}g target. Carbs are fine.`;
+  // When sat fat is partly unknown the total is a floor, so say "at least".
+  const satFatText = satFatIncomplete ? `at least ${satFat}g` : `${satFat}g`;
+
+  if (carbsHigh && satFatHigh) {
+    return `Carbs and saturated fat running high \u2014 ${carbs}g vs ${carbsGoal}g carbs, ${satFatText} vs ${satFatGoal}g saturated fat limit.`;
+  } else if (satFatHigh) {
+    return `Saturated fat running high \u2014 ${satFatText} vs ${satFatGoal}g limit. Carbs are fine.`;
   } else if (carbsHigh) {
-    text = `Carbs running high — ${carbs}g vs ${carbsGoal}g target. Fat is fine.`;
+    return `Carbs running high \u2014 ${carbs}g vs ${carbsGoal}g target.${satFatIncomplete ? '' : ' Saturated fat is fine.'}`;
   } else if (carbs === 0 && fat === 0) {
-    text = 'Carbs 0g · Fat 0g';
-  } else {
-    text = `\u2713 Carbs ${carbs}g \u00B7 Fat ${fat}g \u2014 in range`;
+    return 'Carbs 0g \u00B7 Fat 0g';
+  } else if (satFatIncomplete) {
+    // Don't claim "in range" while saturated fat is partly unknown.
+    return `Carbs ${carbs}g \u00B7 Fat ${fat}g`;
   }
+  return `\u2713 Carbs ${carbs}g \u00B7 Fat ${fat}g \u2014 in range`;
+}
+
+export function renderMacroFooter(totals, goals) {
+  const { carbs, fat, satFat, satFatIncomplete, carbsGoal, fatGoal, satFatGoal, carbsHigh, satFatHigh } = getMacroFooterStatus(totals, goals);
+  const alert = carbsHigh || satFatHigh;
+  const text = getMacroFooterText(totals, goals);
 
   const chevron = el('span', { className: 'macro-footer__chevron', textContent: '\u203A' });
   chevron.setAttribute('aria-hidden', 'true');
@@ -208,9 +237,14 @@ export function renderMacroFooter(totals, goals) {
     chevron,
   ]);
 
+  // Carbs + Fat (total) side by side; Saturated fat (keep-under, inverse-colored
+  // like sodium/sugar) spans the row beneath. None of these ever bloom.
+  const satFatCard = renderMacroCard('SATURATED FAT', satFat, satFatGoal, 'g', true, { incomplete: satFatIncomplete, missing: 'saturated fat' });
+  satFatCard.classList.add('macro-card--span');
   const detail = el('div', { className: 'macro-row macro-row--footer' }, [
-    renderMacroCard('CARBS', carbs, carbsGoal, 'g'),
-    renderMacroCard('FAT', fat, fatGoal, 'g'),
+    renderMacroCard('CARBS', carbs, carbsGoal, 'g', false, { bloom: false }),
+    renderMacroCard('FAT', fat, fatGoal, 'g', false, { bloom: false }),
+    satFatCard,
   ]);
 
   const wrapper = el('div', { className: 'macro-footer' }, [toggle, detail]);
@@ -238,11 +272,11 @@ export function renderDailySummaryRings(totals, goals) {
   container.appendChild(ringsContainer);
 
   // Row 1 "build toward": protein / fiber — normal coloring. Fiber's "~" +
-  // hint shows when any logged food has unknown fiber (never faked to 0), and
-  // exceeding the fiber goal isn't flagged red.
+  // hint shows when any logged food has unknown fiber (never faked to 0).
+  // Exceeding either goal is fine (never red), and each blooms green on hitting it.
   container.appendChild(el('div', { className: 'macro-group-caption', textContent: 'BUILD TOWARD' }));
   const macroRow = el('div', { className: 'macro-row macro-row--build' });
-  macroRow.appendChild(renderMacroCard('PROTEIN', totals.protein || 0, goals.protein || 150, 'g'));
+  macroRow.appendChild(renderMacroCard('PROTEIN', totals.protein || 0, goals.protein || 150, 'g', false, { overIsFine: true }));
   const fiberGoal = goals.fiberGoal && goals.fiberGoal > 0 ? goals.fiberGoal : 30;
   macroRow.appendChild(renderMacroCard('FIBER', totals.fiber || 0, fiberGoal, 'g', false, { incomplete: !!totals.fiberIncomplete, missing: 'fiber', overIsFine: true }));
   container.appendChild(macroRow);
@@ -629,6 +663,10 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
   const currentFiber   = (food.fiber === undefined || food.fiber === null)
     ? null
     : Math.round(food.fiber * (food.servings || 1) * 10) / 10;
+  // Saturated fat: same rule as fiber — null = unknown, never coerced to 0.
+  const currentSatFat  = (food.saturatedFat === undefined || food.saturatedFat === null)
+    ? null
+    : Math.round(food.saturatedFat * (food.servings || 1) * 10) / 10;
   // Sodium: null means genuinely unknown (never coerced to 0) — see the
   // "never fake a zero" guardrail in CLAUDE.md.
   const currentSodium  = (food.sodium === undefined || food.sodium === null)
@@ -637,6 +675,7 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
 
   const getPercent = (val, goal) => goal > 0 ? Math.round((val / goal) * 100) : 0;
   const fiberGoal = goals.fiberGoal && goals.fiberGoal > 0 ? goals.fiberGoal : 30;
+  const satFatGoal = goals.satFatGoal && goals.satFatGoal > 0 ? goals.satFatGoal : 20;
 
   const servLabel = formatServing(food);
 
@@ -685,6 +724,15 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
           el('span', { className: 'nutrition-value', textContent: `${currentFat}g / ${goals.fat}g (${getPercent(currentFat, goals.fat)}%)` }),
         ]),
         el('div', { className: 'nutrition-row' }, [
+          el('span', { textContent: 'Saturated fat' }),
+          el('span', {
+            className: 'nutrition-value',
+            textContent: currentSatFat != null
+              ? `${currentSatFat}g / ${satFatGoal}g (${getPercent(currentSatFat, satFatGoal)}%)`
+              : 'Unknown \u2014 tap Edit nutrition to add',
+          }),
+        ]),
+        el('div', { className: 'nutrition-row' }, [
           el('span', { textContent: 'Fiber' }),
           el('span', {
             className: 'nutrition-value',
@@ -727,6 +775,7 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
             const carbsInput   = modal.querySelector('.nutrition-edit-carbs');
             const fatInput     = modal.querySelector('.nutrition-edit-fat');
             const fiberInput   = modal.querySelector('.nutrition-edit-fiber');
+            const satFatInput  = modal.querySelector('.nutrition-edit-satfat');
             const sugarsInput  = modal.querySelector('.nutrition-edit-sugars');
             const sodiumInput  = modal.querySelector('.nutrition-edit-sodium');
             const saveCheckbox = modal.querySelector('.save-correction-checkbox');
@@ -739,6 +788,8 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
             };
             // Blank fiber stays unknown rather than being saved as 0.
             if (fiberInput && fiberInput.value.trim() !== '') nutritionEdits.fiber = parseFloat(fiberInput.value) || 0;
+            // Blank saturated fat stays unknown rather than being saved as 0.
+            if (satFatInput && satFatInput.value.trim() !== '') nutritionEdits.saturatedFat = parseFloat(satFatInput.value) || 0;
             if (sugarsInput) nutritionEdits.addedSugars = parseFloat(sugarsInput.value) || 0;
             // Blank sodium stays unknown rather than being saved as 0 (mirrors fiber).
             if (sodiumInput && sodiumInput.value.trim() !== '') nutritionEdits.sodium = parseFloat(sodiumInput.value) || 0;
@@ -769,6 +820,7 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
       { cls: 'nutrition-edit-protein',  val: currentProtein, unit: 'g' },
       { cls: 'nutrition-edit-carbs',    val: currentCarbs,   unit: 'g' },
       { cls: 'nutrition-edit-fat',      val: currentFat,     unit: 'g' },
+      { cls: 'nutrition-edit-satfat',   val: currentSatFat ?? '', unit: 'g', step: '0.1' },
       { cls: 'nutrition-edit-fiber',    val: currentFiber ?? '', unit: 'g', step: '0.1' },
       ...(goals.addedSugars && goals.addedSugars > 0
         ? [{ cls: 'nutrition-edit-sugars', val: currentSugars, unit: 'g' }]
