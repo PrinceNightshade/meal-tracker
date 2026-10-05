@@ -232,12 +232,27 @@ function detectLowFiberWeek(ctx) {
 // your blood pressure"). A day only counts toward "over" using KNOWN sodium
 // (totals.sodium sums only logged items with a value); a day with no sodium
 // data at all just won't fire here rather than being guessed at.
+// Potassium is the counterweight to sodium — it helps the kidneys clear sodium
+// and relaxes vessel walls, lowering BP. We don't TRACK potassium (its data
+// coverage, esp. for packaged/restaurant foods, is too sparse to total honestly),
+// so instead we surface a few genuinely potassium-rich WHOLE foods (reliable USDA
+// values) as guidance when sodium is high — the moment it matters most.
+const POTASSIUM_RICH = [
+  'a baked potato with skin (~925mg)',
+  '½ cup white beans (~600mg)',
+  '½ an avocado (~485mg)',
+  'a banana (~420mg)',
+  '½ cup cooked spinach (~420mg)',
+  'plain yogurt (~380mg)',
+];
+
 function detectHighSodiumWeek(ctx) {
   const logged = ctx.days.filter(d => d.hasFood);
   if (logged.length < 3) return null;
   const goal = ctx.goals.sodiumGoal || 2300;
   const over = logged.filter(d => (d.totals.sodium || 0) > goal).length;
   if (over < 4) return null;
+  const adds = POTASSIUM_RICH.slice(0, 3).join(', ');
   return {
     id: 'sodium-high-week',
     domain: 'food',
@@ -245,7 +260,7 @@ function detectHighSodiumWeek(ctx) {
     tone: 'warn',
     eyebrow: `OPPORTUNITY · LAST ${ctx.windowDays} DAYS`,
     headline: `Sodium ran over target ${over} of ${logged.length} days`,
-    sub: `Sauces, cured meats, and packaged snacks are usually the biggest levers — trimming those is the DASH-pattern approach to eating.`,
+    sub: `Sauces, cured meats, and packaged snacks are the usual levers. Potassium also helps your body clear sodium — easy adds: ${adds}.`,
     series: seriesFrom(ctx.days, d => d.totals.sodium, d => d.hasFood && (d.totals.sodium || 0) > goal, 'mg'),
   };
 }
