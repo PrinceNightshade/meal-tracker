@@ -683,4 +683,15 @@ export const COMMON_FOODS = [
   { name: 'Kabab Koobideh', servingSize: 2, servingUnit: 'skewers (150g)', calories: 380, protein: 42, carbs: 2, fat: 20, source: 'common', tags: 'kabab koobideh persian kebab ground lamb beef' },
   { name: 'Loubia Polo (Bean Rice)', servingSize: 1.5, servingUnit: 'cups (330g)', calories: 420, protein: 18, carbs: 52, fat: 15, source: 'common', tags: 'loubia polo persian bean rice kidney bean kidney bean' },
   { name: 'Khoresht Gharch (Mushroom Stew)', servingSize: 1.5, servingUnit: 'cups (350g)', calories: 300, protein: 9, carbs: 35, fat: 13, source: 'common', tags: 'khoresht gharch persian mushroom stew herb stew' },
+
+  // ── PCC Hot Bar ──
+  // From PCC Deli nutrition panels (per ¼ lb, which is how PCC labels hot bar
+  // items). Sold by weight, so a half-pound scoop = 2 servings. addedSugars is
+  // set from each item's ingredient list: 0 when there's no sweetener, a small
+  // value bounded by the label's total sugars when there is one.
+  { name: 'PCC Grilled Chicken Breast', servingSize: 4, servingUnit: 'oz (¼ lb)', calories: 200, protein: 36, carbs: 1, fat: 5, sodium: 170, addedSugars: 0, fiber: 0, saturatedFat: 1, source: 'common', tags: 'pcc hot bar deli grilled chicken breast lemon garlic oregano' },
+  { name: 'PCC Oven Roasted Free Range Chicken', servingSize: 4, servingUnit: 'oz (¼ lb)', calories: 160, protein: 15, carbs: 7, fat: 8, sodium: 200, addedSugars: 0, fiber: 0.5, saturatedFat: 2.5, source: 'common', tags: 'pcc hot bar deli oven roasted free range chicken bone-in floured' },
+  { name: 'PCC Pecorino Quinoa and Kale', servingSize: 4, servingUnit: 'oz (¼ lb)', calories: 240, protein: 8, carbs: 24, fat: 14, sodium: 250, addedSugars: 0, fiber: 4.5, saturatedFat: 1.5, source: 'common', tags: 'pcc hot bar deli pecorino quinoa kale romano salad grain' },
+  { name: 'PCC Chicken Breast Salad', servingSize: 4, servingUnit: 'oz (¼ lb)', calories: 260, protein: 21, carbs: 1, fat: 19, sodium: 320, addedSugars: 0.5, fiber: 0.5, saturatedFat: 1.5, source: 'common', tags: 'pcc deli chicken breast salad vegenaise mayo celery cold case' },
+  { name: 'PCC Roasted Fingerling Potatoes', servingSize: 4, servingUnit: 'oz (¼ lb)', calories: 110, protein: 2, carbs: 22, fat: 2.5, sodium: 95, addedSugars: 0, fiber: 3.5, saturatedFat: 0, source: 'common', tags: 'pcc hot bar deli roasted fingerling potatoes balsamic thyme' },
 ];
