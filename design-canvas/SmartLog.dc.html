@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@500;600;700&display=swap");
+    body { margin: 0; }
+    a { color: #C8FF3D; } a:hover { color: #b6e636; }
+  </style>
+</helmet>
+
+<!-- Add-food sheet, smart-suggestions first -->
+<div style="width: 390px; min-height: 844px; background: #000; color: #F4F4F5; font-family: 'Geist', -apple-system, sans-serif; box-sizing: border-box; position: relative;">
+
+  <!-- dimmed context peeking behind the sheet -->
+  <div style="height: 70px; opacity: 0.35; padding: 22px 18px 0;">
+    <span style="font-size: 10px; letter-spacing: 1.4px; color: #5F5F69; font-weight: 600;">MONDAY · SEP 7</span>
+    <div style="font-size: 24px; font-weight: 600; margin-top: 2px;">Good morning</div>
+  </div>
+
+  <!-- sheet -->
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; top: 58px; background: #0B0B0D; border-top: 1px solid #22222A; border-radius: 24px 24px 0 0; padding: 12px 18px 24px; box-sizing: border-box;">
+    <div style="width: 38px; height: 4px; border-radius: 999px; background: #2b2b33; margin: 2px auto 16px;"></div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+      <span style="font-size: 18px; font-weight: 600;">Add to Breakfast</span>
+      <div style="width: 30px; height: 30px; border-radius: 50%; background: #16161A; border: 1px solid #22222A; display: flex; align-items: center; justify-content: center;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A0A0AA" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </div>
+    </div>
+
+    <!-- search -->
+    <div style="display: flex; align-items: center; gap: 10px; background: #16161A; border: 1px solid #22222A; border-radius: 14px; padding: 12px 14px; margin-bottom: 20px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5F5F69" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+      <span style="font-size: 14px; color: #5F5F69;">Search foods…</span>
+    </div>
+
+    <!-- SMART: your usual -->
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C8FF3D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>
+      <span style="font-size: 10px; letter-spacing: 1px; color: #C8FF3D; font-weight: 600;">SUGGESTED FOR YOU</span>
+    </div>
+
+    <div style="background: linear-gradient(160deg, rgba(200,255,61,0.07), rgba(14,14,16,0.3)); border: 1px solid #2b3320; border-radius: 18px; padding: 15px; margin-bottom: 12px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+        <span style="font-size: 15px; font-weight: 600;">Your usual breakfast</span>
+        <span style="font-size: 14px; font-weight: 600; font-family: 'Geist Mono', monospace; color: #A0A0AA;">420</span>
+      </div>
+      <div style="font-size: 12px; color: #A0A0AA; margin-bottom: 12px;">Greek yogurt + berries · Coffee, oat milk</div>
+      <button style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: #C8FF3D; color: #0A0A0A; border: none; border-radius: 13px; padding: 12px; font-family: 'Geist', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Add both
+      </button>
+    </div>
+
+    <!-- SMART: frequent single items, one tap each -->
+    <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 22px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; background: #0E0E10; border: 1px solid #22222A; border-radius: 13px; padding: 11px 14px;">
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-size: 14px;">Greek yogurt + berries</span>
+          <span style="font-size: 11px; color: #5F5F69;">most mornings · 220 cal</span>
+        </div>
+        <div style="width: 30px; height: 30px; border-radius: 50%; background: #16161A; border: 1px solid #2b3320; display: flex; align-items: center; justify-content: center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C8FF3D" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; background: #0E0E10; border: 1px solid #22222A; border-radius: 13px; padding: 11px 14px;">
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-size: 14px;">Coffee, oat milk</span>
+          <span style="font-size: 11px; color: #5F5F69;">daily · 200 cal</span>
+        </div>
+        <div style="width: 30px; height: 30px; border-radius: 50%; background: #16161A; border: 1px solid #2b3320; display: flex; align-items: center; justify-content: center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C8FF3D" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; background: #0E0E10; border: 1px solid #22222A; border-radius: 13px; padding: 11px 14px;">
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-size: 14px;">Banana</span>
+          <span style="font-size: 11px; color: #5F5F69;">often · 105 cal</span>
+        </div>
+        <div style="width: 30px; height: 30px; border-radius: 50%; background: #16161A; border: 1px solid #2b3320; display: flex; align-items: center; justify-content: center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C8FF3D" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+      </div>
+    </div>
+
+    <!-- RECENT (existing pattern, secondary now) -->
+    <div style="font-size: 10px; letter-spacing: 1px; color: #5F5F69; font-weight: 600; margin-bottom: 10px;">RECENT</div>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 4px 2px;">
+        <span style="font-size: 14px; color: #A0A0AA;">Scrambled eggs (2)</span>
+        <span style="font-size: 12px; color: #5F5F69; font-family: 'Geist Mono', monospace;">180</span>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 4px 2px;">
+        <span style="font-size: 14px; color: #A0A0AA;">Protein shake</span>
+        <span style="font-size: 12px; color: #5F5F69; font-family: 'Geist Mono', monospace;">160</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

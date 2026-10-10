@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@500;600;700&display=swap");
+    body { margin: 0; }
+    a { color: #C8FF3D; } a:hover { color: #b6e636; }
+  </style>
+</helmet>
+
+<div style="width: 390px; min-height: 844px; background: #000; color: #F4F4F5; font-family: 'Geist', -apple-system, sans-serif; box-sizing: border-box; padding: 22px 18px 40px; position: relative;">
+
+  <!-- Header -->
+  <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px;">
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <span style="font-size: 10px; letter-spacing: 1.4px; color: #5F5F69; font-weight: 600;">MONDAY · SEP 7 · DAY 28</span>
+      <span style="font-size: 28px; font-weight: 600; letter-spacing: -0.5px;">Good morning, Eric</span>
+    </div>
+    <div style="width: 34px; height: 34px; border-radius: 50%; background: #16161A; border: 1px solid #22222A; flex-shrink: 0; margin-top: 2px;"></div>
+  </div>
+
+  <!-- ①  OPPORTUNITY — owns the top no-scroll zone -->
+  <div style="background: linear-gradient(160deg, rgba(255,181,71,0.11), rgba(14,14,16,0.4)); border: 1px solid #3a2f1c; border-radius: 20px; padding: 16px 18px; margin-bottom: 12px;">
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="#FFB547"><path d="M13 2L4 14h7v8l9-12h-7V2z"/></svg>
+      <span style="font-size: 10px; letter-spacing: 1.2px; color: #FFB547; font-weight: 600;">YOUR BIGGEST OPPORTUNITY · THIS WEEK</span>
+    </div>
+    <div style="font-size: 21px; font-weight: 600; line-height: 1.25; letter-spacing: -0.3px; margin-bottom: 8px;">You eat about 487 more calories after a short night</div>
+    <div style="font-size: 12.5px; color: #A0A0AA; line-height: 1.45; margin-bottom: 14px;">Protecting sleep may be your easiest lever right now — 3 short nights so far.</div>
+    <!-- slim 7-night indicator -->
+    <div style="display: flex; align-items: flex-end; gap: 5px; height: 30px;">
+      <div style="flex:1; height:70%; border-radius:3px; background:#22222A;"></div>
+      <div style="flex:1; height:40%; border-radius:3px; background:#FFB547;"></div>
+      <div style="flex:1; height:66%; border-radius:3px; background:#22222A;"></div>
+      <div style="flex:1; height:38%; border-radius:3px; background:#FFB547;"></div>
+      <div style="flex:1; height:74%; border-radius:3px; background:#22222A;"></div>
+      <div style="flex:1; height:35%; border-radius:3px; background:#FFB547;"></div>
+      <div style="flex:1; height:80%; border-radius:3px; background:#22222A;"></div>
+    </div>
+  </div>
+
+  <!-- ②  SMART QUICK-LOG — brings the most-likely log up top, one tap -->
+  <div style="background: #0E0E10; border: 1px solid #2b3320; border-radius: 20px; padding: 16px; margin-bottom: 12px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C8FF3D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>
+        <span style="font-size: 10px; letter-spacing: 1px; color: #C8FF3D; font-weight: 600;">YOUR USUAL BREAKFAST</span>
+      </div>
+      <span style="font-size: 10px; color: #5F5F69;">12 of last 14 mornings</span>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px;">
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <span style="font-size: 14px; color: #F4F4F5;">Greek yogurt + berries · Coffee, oat milk</span>
+        <span style="font-size: 12px; color: #5F5F69; font-family: 'Geist Mono', monospace;">420 cal · 24g protein</span>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px;">
+      <button style="display: flex; align-items: center; justify-content: center; gap: 8px; background: #C8FF3D; color: #0A0A0A; border: none; border-radius: 14px; padding: 13px; font-family: 'Geist', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+        Log it
+      </button>
+      <button style="display: flex; align-items: center; justify-content: center; background: #16161A; border: 1px solid #22222A; color: #A0A0AA; border-radius: 14px; padding: 13px 18px; font-family: 'Geist', sans-serif; font-size: 13px; cursor: pointer;">Edit</button>
+    </div>
+  </div>
+
+  <!-- ③  Intake status — compact -->
+  <div style="background:#0E0E10; border:1px solid #22222A; border-radius:18px; padding:14px 16px; margin-bottom:10px; display:flex; align-items:center; gap:15px;">
+    <svg width="64" height="64" viewBox="0 0 64 64" style="flex-shrink:0;">
+      <circle cx="32" cy="32" r="26" fill="none" stroke="#16161A" stroke-width="6"/>
+      <circle cx="32" cy="32" r="26" fill="none" stroke="#C8FF3D" stroke-width="6" stroke-linecap="round" stroke-dasharray="163.4" stroke-dashoffset="34" transform="rotate(-90 32 32)"/>
+      <text x="32" y="36" text-anchor="middle" fill="#F4F4F5" font-size="14" font-weight="700" font-family="'Geist Mono',monospace">79%</text>
+    </svg>
+    <div style="flex:1;">
+      <div style="display:flex; align-items:baseline; gap:6px; margin-bottom:5px;"><span style="font-size:21px; font-weight:700; font-family:'Geist Mono',monospace;">1,574</span><span style="font-size:12px; color:#5F5F69;">/ 2,000 · 426 left</span></div>
+      <div style="display:flex; gap:12px; font-size:11px; color:#A0A0AA; font-family:'Geist Mono',monospace;"><span>P 112</span><span>C 168</span><span>F 52</span><span style="color:#FFB547;">S 21</span></div>
+    </div>
+  </div>
+
+  <!-- ④  Vitals glance -->
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:10px;">
+    <div style="background:#0E0E10; border:1px solid #22222A; border-radius:14px; padding:12px 10px;"><div style="font-size:9px; letter-spacing:0.5px; color:#5F5F69; margin-bottom:5px;">STEPS</div><div style="font-size:16px; font-weight:700; font-family:'Geist Mono',monospace;">8,764</div></div>
+    <div style="background:#0E0E10; border:1px solid #22222A; border-radius:14px; padding:12px 10px;"><div style="font-size:9px; letter-spacing:0.5px; color:#5F5F69; margin-bottom:5px;">SLEEP</div><div style="font-size:16px; font-weight:700; font-family:'Geist Mono',monospace;">6h 26m</div></div>
+    <div style="background:#0E0E10; border:1px solid #22222A; border-radius:14px; padding:12px 10px;"><div style="font-size:9px; letter-spacing:0.5px; color:#5F5F69; margin-bottom:5px;">WEIGHT</div><div style="font-size:16px; font-weight:700; font-family:'Geist Mono',monospace;">181.4<span style="font-size:9px; color:#7DE07A;"> ↓</span></div></div>
+  </div>
+
+  <!-- ⑤  Meals condensed (below the fold is fine) -->
+  <div style="font-size:10px; letter-spacing:1px; color:#5F5F69; font-weight:600; margin:6px 2px 8px;">TODAY'S MEALS</div>
+  <div style="display:flex; flex-direction:column; gap:8px;">
+    <div style="background:#0E0E10; border:1px solid #22222A; border-radius:14px; padding:12px 15px; border-left:3px solid #FFB547; display:flex; justify-content:space-between; align-items:center;"><span style="font-size:13px;">Breakfast · 2 items</span><span style="font-size:12px; color:#5F5F69; font-family:'Geist Mono',monospace;">420</span></div>
+    <div style="background:#0E0E10; border:1px solid #22222A; border-radius:14px; padding:12px 15px; border-left:3px solid #C8FF3D; display:flex; justify-content:space-between; align-items:center;"><span style="font-size:13px;">Lunch · 1 item</span><span style="font-size:12px; color:#5F5F69; font-family:'Geist Mono',monospace;">640</span></div>
+    <div style="background:#0E0E10; border:1px dashed #22222A; border-radius:14px; padding:12px 15px; border-left:3px solid #5BE9F0; display:flex; justify-content:space-between; align-items:center; color:#5F5F69;"><span style="font-size:13px;">Dinner</span><span style="font-size:12px;">tap to add</span></div>
+  </div>
+
+  <!-- Floating log button -->
+  <div style="position:absolute; right:22px; bottom:28px; width:58px; height:58px; border-radius:50%; background:#C8FF3D; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 24px rgba(200,255,61,0.28);">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

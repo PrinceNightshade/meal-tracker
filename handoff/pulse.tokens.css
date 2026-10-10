@@ -1,0 +1,125 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Pulse design tokens — drop-in replacement for the :root + .dark blocks
+   in css/style.css. See handoff/HANDOFF.md §2 for the full breakdown.
+   ──────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* type */
+  --font: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* light surfaces — warm, not cool */
+  --bg:         #F8F7F2;
+  --surface:    #FFFFFF;
+  --surface-2:  #F2F1EB;
+  --hair:       #E4E2DA;
+  --hair-2:     #EEECE5;
+  --ink:        #15171A;
+  --ink-2:      #5B6066;
+  --ink-3:      #9AA0A6;
+
+  --glass:        rgba(255, 255, 255, 0.78);
+  --glass-shadow: 0 8px 28px rgba(20, 22, 25, 0.08);
+  --backdrop:     rgba(20, 22, 25, 0.22);
+
+  --card-shadow:  0 1px 2px rgba(20, 22, 25, 0.04);
+
+  /* accent — user-selectable. JS in handoff/accent-picker.js
+     overrides these via inline style on <html>. */
+  --accent:      #C8FF3D;
+  --accent-rgb:  200, 255, 61;
+  --accent-ink:  #0A0A0A;
+  --accent-dim:  rgba(var(--accent-rgb), 0.65);
+  --accent-soft: rgba(var(--accent-rgb), 0.12);
+  --accent-glow: rgba(var(--accent-rgb), 0.14);
+
+  /* status */
+  --good: #3F9F3C;
+  --warn: #D97A0A;
+  --over: #D44747;
+
+  /* meal accents */
+  --meal-breakfast: #D97A0A;
+  --meal-lunch:     var(--accent);
+  --meal-dinner:    #1B96B0;
+  --meal-snacks:    #B83AA0;
+
+  /* geometry */
+  --radius-sm: 12px;
+  --radius:    18px;
+  --radius-lg: 24px;
+  --radius-xl: 28px;
+
+  /* type scale */
+  --t-display:  56px;
+  --t-stat:     32px;
+  --t-h1:       28px;
+  --t-h2:       22px;
+  --t-body:     14px;
+  --t-small:    13px;
+  --t-micro:    11px;
+  --t-eyebrow:  10px;
+}
+
+.dark, :root.dark {
+  --bg:         #000000;
+  --surface:    #0E0E10;
+  --surface-2:  #16161A;
+  --hair:       #22222A;
+  --hair-2:     #1A1A20;
+  --ink:        #F4F4F5;
+  --ink-2:      #A0A0AA;
+  --ink-3:      #5F5F69;
+
+  --glass:        rgba(20, 20, 24, 0.85);
+  --glass-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  --backdrop:     rgba(0, 0, 0, 0.55);
+
+  --card-shadow:  none;
+
+  --accent-dim:   rgba(var(--accent-rgb), 0.55);
+  --accent-soft:  rgba(var(--accent-rgb), 0.10);
+  --accent-glow:  rgba(var(--accent-rgb), 0.18);
+
+  --good: #7DE07A;
+  --warn: #FFB547;
+  --over: #FF6E6E;
+
+  --meal-breakfast: #FFB547;
+  --meal-lunch:     var(--accent);
+  --meal-dinner:    #5BE9F0;
+  --meal-snacks:    #FF6BE5;
+}
+
+/* Auto-follow OS pref when no explicit theme class is set */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light):not(.dark) {
+    --bg:         #000000;
+    --surface:    #0E0E10;
+    --surface-2:  #16161A;
+    --hair:       #22222A;
+    --hair-2:     #1A1A20;
+    --ink:        #F4F4F5;
+    --ink-2:      #A0A0AA;
+    --ink-3:      #5F5F69;
+
+    --glass:        rgba(20, 20, 24, 0.85);
+    --glass-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    --backdrop:     rgba(0, 0, 0, 0.55);
+
+    --card-shadow:  none;
+
+    --accent-dim:   rgba(var(--accent-rgb), 0.55);
+    --accent-soft:  rgba(var(--accent-rgb), 0.10);
+    --accent-glow:  rgba(var(--accent-rgb), 0.18);
+
+    --good: #7DE07A;
+    --warn: #FFB547;
+    --over: #FF6E6E;
+
+    --meal-breakfast: #FFB547;
+    --meal-lunch:     var(--accent);
+    --meal-dinner:    #5BE9F0;
+    --meal-snacks:    #FF6BE5;
+  }
+}

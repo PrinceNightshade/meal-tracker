@@ -1,0 +1,125 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@500;600&display=swap");
+    body { margin: 0; }
+    a { color: #C8FF3D; } a:hover { color: #b6e636; }
+  </style>
+</helmet>
+
+<div style="width: 390px; min-height: 844px; background: #000; color: #F4F4F5; font-family: 'Geist', -apple-system, sans-serif; box-sizing: border-box; padding: 24px 18px 108px; position: relative;">
+
+  <!-- Header + window toggle -->
+  <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px;">
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <span style="font-size: 10px; letter-spacing: 1.4px; color: #5F5F69; font-weight: 600;">HOW YOU'RE TRENDING</span>
+      <span style="font-size: 30px; font-weight: 600; letter-spacing: -0.5px;">Pulse</span>
+    </div>
+    <div style="display: flex; background: #16161A; border: 1px solid #22222A; border-radius: 999px; padding: 3px;">
+      <span style="font-size: 12px; font-weight: 600; color: #0A0A0A; background: #C8FF3D; border-radius: 999px; padding: 6px 11px;">7d</span>
+      <span style="font-size: 12px; color: #A0A0AA; padding: 6px 11px;">14d</span>
+      <span style="font-size: 12px; color: #A0A0AA; padding: 6px 11px;">30d</span>
+    </div>
+  </div>
+
+  <!-- Opportunity hero -->
+  <div style="background: linear-gradient(160deg, rgba(255,181,71,0.10), rgba(14,14,16,0.4)); border: 1px solid #3a2f1c; border-radius: 22px; padding: 18px; margin-bottom: 12px;">
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+      <span style="display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; border: 1px solid #FFB547;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="#FFB547"><path d="M13 2L4 14h7v8l9-12h-7V2z"/></svg>
+      </span>
+      <span style="font-size: 10px; letter-spacing: 1.2px; color: #FFB547; font-weight: 600;">OPPORTUNITY · YOUR PATTERN</span>
+    </div>
+    <div style="font-size: 23px; font-weight: 600; line-height: 1.2; letter-spacing: -0.4px; margin-bottom: 8px;">You eat about 487 more calories after a short night</div>
+    <div style="font-size: 13px; color: #A0A0AA; line-height: 1.45; margin-bottom: 16px;">On days after under-6h sleep you average +487 cal. Protecting sleep may be your easiest lever right now.</div>
+    <!-- sleep bars, 7 nights, short ones flagged -->
+    <div style="display: flex; align-items: flex-end; gap: 6px; height: 74px; background: #0d0d0f; border: 1px solid #1c1c22; border-radius: 14px; padding: 12px 10px 8px;">
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;"><div style="width:70%; height:52px; border-radius:3px; background:#22222A;"></div><span style="font-size:9px;color:#5F5F69;font-family:'Geist Mono',monospace;">T</span></div>
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;"><div style="width:70%; height:30px; border-radius:3px; background:#FFB547; box-shadow:0 0 8px rgba(255,181,71,0.4);"></div><span style="font-size:9px;color:#F4F4F5;font-weight:600;font-family:'Geist Mono',monospace;">W</span></div>
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;"><div style="width:70%; height:50px; border-radius:3px; background:#22222A;"></div><span style="font-size:9px;color:#5F5F69;font-family:'Geist Mono',monospace;">T</span></div>
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;"><div style="width:70%; height:28px; border-radius:3px; background:#FFB547; box-shadow:0 0 8px rgba(255,181,71,0.4);"></div><span style="font-size:9px;color:#F4F4F5;font-weight:600;font-family:'Geist Mono',monospace;">F</span></div>
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;"><div style="width:70%; height:54px; border-radius:3px; background:#22222A;"></div><span style="font-size:9px;color:#5F5F69;font-family:'Geist Mono',monospace;">S</span></div>
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;"><div style="width:70%; height:26px; border-radius:3px; background:#FFB547; box-shadow:0 0 8px rgba(255,181,71,0.4);"></div><span style="font-size:9px;color:#F4F4F5;font-weight:600;font-family:'Geist Mono',monospace;">S</span></div>
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;"><div style="width:70%; height:58px; border-radius:3px; background:#22222A;"></div><span style="font-size:9px;color:#5F5F69;font-family:'Geist Mono',monospace;">M</span></div>
+    </div>
+  </div>
+
+  <!-- Movement + Sleep tiles -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+    <div style="background:#0E0E10; border:1px solid #22222A; border-radius:18px; padding:14px;">
+      <div style="display:flex; align-items:center; gap:7px; margin-bottom:10px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C8FF3D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-9M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM16 20l-1-6 3-2M15 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
+        <span style="font-size:10px; letter-spacing:0.8px; color:#5F5F69; font-weight:600;">MOVEMENT</span>
+      </div>
+      <div style="display:flex; align-items:baseline; gap:5px;"><span style="font-size:24px; font-weight:700; font-family:'Geist Mono',monospace;">8,764</span><span style="font-size:11px; color:#5F5F69;">/day</span></div>
+      <div style="display:flex; align-items:end; gap:3px; height:26px; margin-top:10px;">
+        <div style="flex:1;background:#22222A;height:60%;border-radius:2px;"></div><div style="flex:1;background:#22222A;height:80%;border-radius:2px;"></div><div style="flex:1;background:#22222A;height:50%;border-radius:2px;"></div><div style="flex:1;background:#22222A;height:55%;border-radius:2px;"></div><div style="flex:1;background:#22222A;height:90%;border-radius:2px;"></div><div style="flex:1;background:#22222A;height:70%;border-radius:2px;"></div><div style="flex:1;background:#C8FF3D;height:85%;border-radius:2px;"></div>
+      </div>
+      <div style="font-size:11px; color:#A0A0AA; margin-top:8px;">3 workouts this week</div>
+    </div>
+    <div style="background:#0E0E10; border:1px solid #22222A; border-radius:18px; padding:14px;">
+      <div style="display:flex; align-items:center; gap:7px; margin-bottom:10px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5BE9F0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <span style="font-size:10px; letter-spacing:0.8px; color:#5F5F69; font-weight:600;">SLEEP</span>
+      </div>
+      <div style="display:flex; align-items:baseline; gap:5px;"><span style="font-size:24px; font-weight:700; font-family:'Geist Mono',monospace;">6h 26m</span></div>
+      <div style="display:flex; align-items:baseline; gap:6px; margin-top:10px;">
+        <span style="font-size:12px; color:#FFB547; font-weight:600;">3 short nights</span>
+      </div>
+      <div style="font-size:11px; color:#A0A0AA; margin-top:8px;">Avg score 68 · trending down</div>
+    </div>
+  </div>
+
+  <!-- Weight trend card (outcome metric now lives here) -->
+  <div style="background:#0E0E10; border:1px solid #22222A; border-radius:18px; padding:16px; margin-bottom:10px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+      <div style="display:flex; align-items:center; gap:7px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C8FF3D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 7-7"/></svg>
+        <span style="font-size:10px; letter-spacing:0.8px; color:#5F5F69; font-weight:600;">WEIGHT TREND</span>
+      </div>
+      <span style="font-size:11px; color:#7DE07A; font-weight:600;">−0.9 lb / wk</span>
+    </div>
+    <svg viewBox="0 0 320 70" style="width:100%; height:64px; display:block;">
+      <!-- goal line -->
+      <line x1="0" y1="58" x2="320" y2="58" stroke="#3a3a44" stroke-width="1" stroke-dasharray="4 4"/>
+      <!-- raw dots (faint) -->
+      <g fill="#3a3a44"><circle cx="10" cy="16" r="2"/><circle cx="40" cy="22" r="2"/><circle cx="70" cy="14" r="2"/><circle cx="100" cy="26" r="2"/><circle cx="130" cy="22" r="2"/><circle cx="160" cy="30" r="2"/><circle cx="190" cy="26" r="2"/><circle cx="220" cy="36" r="2"/><circle cx="250" cy="32" r="2"/><circle cx="280" cy="40" r="2"/><circle cx="310" cy="38" r="2"/></g>
+      <!-- EMA trend (accent) -->
+      <path d="M10,19 C50,21 90,22 130,25 C170,28 210,31 250,34 C280,36 300,38 310,39" fill="none" stroke="#C8FF3D" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+    <div style="display:flex; align-items:baseline; justify-content:space-between; margin-top:10px;">
+      <div style="display:flex; align-items:baseline; gap:5px;"><span style="font-size:20px; font-weight:700; font-family:'Geist Mono',monospace;">181.4</span><span style="font-size:11px; color:#5F5F69;">lb trend</span></div>
+      <span style="font-size:11px; color:#A0A0AA;">Goal 175 · ~Nov 3</span>
+    </div>
+  </div>
+
+  <!-- secondary insight teaser -->
+  <div style="display:flex; align-items:center; gap:10px; background:#0E0E10; border:1px solid #22222A; border-radius:16px; padding:12px 14px;">
+    <span style="font-size:11px; color:#5F5F69;">NEXT</span>
+    <span style="font-size:12px; color:#A0A0AA;">Protein fell short 4 of 7 days →</span>
+  </div>
+
+  <!-- Bottom nav -->
+  <div style="position: absolute; left: 18px; right: 18px; bottom: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: rgba(20,20,24,0.85); backdrop-filter: blur(20px); border: 1px solid #22222A; border-radius: 999px; padding: 8px;">
+    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; color: #A0A0AA; padding: 11px; font-size: 14px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A0A0AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h7v8l9-12h-7V2z"/></svg> Log
+    </div>
+    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; background: #C8FF3D; color: #0A0A0A; border-radius: 999px; padding: 11px; font-size: 14px; font-weight: 600;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2 5 4-14 2 9h6"/></svg> Pulse
+    </div>
+    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; color: #A0A0AA; padding: 11px; font-size: 14px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A0A0AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg> Goals
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

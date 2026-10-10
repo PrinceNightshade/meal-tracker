@@ -1,0 +1,23 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Home" },
+    { "id": "page-2", "name": "Deep dives" },
+    { "id": "page-3", "name": "Alternates" }
+  ],
+  "artboards": [
+    { "file": "Main.dc.html",    "title": "Home — opportunity-first",        "page": "page-1", "x": 0,    "y": 0, "w": 390, "h": 844 },
+    { "file": "SmartLog.dc.html","title": "Smart logging — suggested first",  "page": "page-1", "x": 480,  "y": 0, "w": 390, "h": 844 },
+    { "file": "Pulse.dc.html",   "title": "Pulse — the reflect surface",      "page": "page-2", "x": 0,    "y": 0, "w": 390, "h": 844 },
+    { "file": "Weight.dc.html",  "title": "Weight, reworked",                 "page": "page-2", "x": 480,  "y": 0, "w": 390, "h": 844 },
+    { "file": "Evolve.dc.html",  "title": "① Evolve (not chosen)",            "page": "page-3", "x": 0,    "y": 0, "w": 390, "h": 844 },
+    { "file": "Split.dc.html",   "title": "② Split: Log + Pulse (not chosen)","page": "page-3", "x": 480,  "y": 0, "w": 390, "h": 844 }
+  ],
+  "annotations": [
+    { "id": "note-home",  "page": "page-1", "x": 0,   "y": -168, "w": 360, "text": "HOME — opportunity-first (chosen)\nThe weekly opportunity owns the top no-scroll zone. Under it, a SMART quick-log card brings your most-likely entry up top — one tap to log your usual breakfast — so logging stays fast even though meals moved below the fold. Intake + vitals glance below; full logging via the floating +." },
+    { "id": "note-smart", "page": "page-1", "x": 480, "y": -168, "w": 360, "text": "SMART LOGGING\nThe add-food sheet leads with suggestions from your own history: your usual meal for this slot (one tap = add all) and your most-frequent single items, each one tap. Recents & search sit below. This is recents/favorites made predictive — it removes redundant taps, but you still confirm, so the awareness stays." },
+    { "id": "note-pulse", "page": "page-2", "x": 0,   "y": -150, "w": 360, "text": "THE REFLECT SURFACE\nReached from the opportunity card or a Pulse tab. Window toggle (7/14/30d), movement, sleep, and the weight TREND together — the 'more than remaining macros' view." },
+    { "id": "note-weight","page": "page-2", "x": 480, "y": -150, "w": 360, "text": "WEIGHT, REWORKED\nA smoothed TREND line (not raw daily) is the signal; the projection uses your recent-window trend, not a 2-point all-time slope; weigh-in is inline. Daily dots stay faint." },
+    { "id": "note-alt",   "page": "page-3", "x": 0,   "y": -130, "w": 500, "text": "ALTERNATES (kept for reference)\nThe two directions we didn't pick. ③ Dashboard-first became the Home above. Time-aware mix is parked for a future iteration." }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}

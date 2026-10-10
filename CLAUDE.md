@@ -76,11 +76,13 @@ Favor whitespace and reduce competing elements. When in doubt, remove chrome rat
 - Verify in Firebase Console > Firestore > Rules that these rules are active
 
 **Rollback strategy:**
-- No automated rollback workflow exists. To roll back a deployment, manually re-run the deploy workflow at a previous git SHA via GitHub Actions > "Run workflow" or by reverting the commit on `main`. This is acceptable for a single-developer PWA.
+- No automated rollback. To roll back, **revert the bad commit on `main` and push** (preferred — CI redeploys). The workflow also has a manual **Actions → "Test and Deploy" → Run workflow** button (`workflow_dispatch`) that redeploys the current `main`. Acceptable for a small personal PWA.
 
 ## Deploy pipeline
 
 **SW cache versioning** is automated: the CI deploy step replaces `meal-tracker-vN` in `sw.js` with `meal-tracker-<git-short-sha>` before upload. No manual version bumps needed.
+
+**Docs/CI-only pushes don't redeploy.** Tests run on every push, but the deploy job first diffs the push and only redeploys if a shipped file changed (`js/`, `css/`, `icons/`, `index.html`, `manifest.json`, `sw.js`). Otherwise users would get a new SW cache key and a pointless Reload banner.
 
 **Deploy artifacts** are filtered: only `js/`, `css/`, `icons/`, `index.html`, `manifest.json`, and `sw.js` are deployed. `.git/`, `.claude/`, `.md` files, and `tests/` are excluded.
 
