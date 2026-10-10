@@ -298,9 +298,116 @@ export function replaceMyFoods(items) {
   write(KEYS.myFoods, items);
 }
 
+// Saved meals live in the same My Foods array (so they sync with it) but are
+// tagged `kind: 'meal'`. They are NOT single foods: every consumer that treats
+// My Foods entries as foods must go through isMealTemplate()/the helpers below.
+export function isMealTemplate(entry) {
+  return !!entry && entry.kind === 'meal';
+}
+
+// Single-food search only — saved meals are searched separately (searchSavedMeals).
 export function searchMyFoods(query) {
   const q = query.toLowerCase();
-  return getMyFoods().filter(f => f.name && f.name.toLowerCase().includes(q));
+  return getMyFoods().filter(f => !isMealTemplate(f) && f.name && f.name.toLowerCase().includes(q));
+}
+
+// ── Saved meals (named combos stored inside My Foods) ──
+
+const OPTIONAL_NUTRIENTS = ['sodium', 'fiber', 'saturatedFat', 'addedSugars'];
+
+// Snapshot a logged food for a saved meal. Optional nutrients are copied only
+// when present — a missing value stays missing (never coerced to 0).
+function snapshotMealItem(food) {
+  const item = {
+    name: food.name,
+    servings: food.servings > 0 ? food.servings : 1,
+    calories: Number(food.calories) || 0,
+    protein: Number(food.protein) || 0,
+    carbs: Number(food.carbs) || 0,
+    fat: Number(food.fat) || 0,
+  };
+  if (food.brand) item.brand = food.brand;
+  if (food.servingSize !== undefined) item.servingSize = food.servingSize;
+  if (food.servingUnit !== undefined) item.servingUnit = food.servingUnit;
+  for (const key of OPTIONAL_NUTRIENTS) {
+    if (food[key] !== undefined && food[key] !== null && Number.isFinite(Number(food[key]))) {
+      item[key] = Number(food[key]);
+    }
+  }
+  return item;
+}
+
+// Save (or replace, by case-insensitive name) a saved meal.
+// Returns { entry, replaced }.
+export function saveMealTemplate({ name, mealType, items }) {
+  const cleanName = (name || '').trim();
+  const snapshot = (items || []).map(snapshotMealItem);
+  const all = getMyFoods();
+  const idx = all.findIndex(f => isMealTemplate(f) && f.name && f.name.toLowerCase() === cleanName.toLowerCase());
+  const entry = {
+    myFoodId: idx !== -1 ? all[idx].myFoodId : crypto.randomUUID(),
+    source: 'myfoods',
+    kind: 'meal',
+    name: cleanName,
+    mealType: mealType || null,
+    items: snapshot,
+    createdAt: new Date().toISOString(),
+  };
+  if (idx !== -1) all[idx] = entry; else all.push(entry);
+  write(KEYS.myFoods, all);
+  return { entry, replaced: idx !== -1 };
+}
+
+// Saved meals for a meal type (plus any saved with no meal type), newest first.
+// With no mealType, returns all of them.
+export function getSavedMeals(mealType) {
+  return getMyFoods()
+    .filter(f => isMealTemplate(f) && (!mealType || !f.mealType || f.mealType === mealType))
+    .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+}
+
+// Name search across ALL meal types. Every whitespace-separated token must appear
+// in the name (case-insensitive), so "oat" matches "Oatmeal+".
+export function searchSavedMeals(query) {
+  const tokens = (query || '').toLowerCase().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return [];
+  return getSavedMeals().filter(m => {
+    const name = (m.name || '').toLowerCase();
+    return tokens.every(t => name.includes(t));
+  });
+}
+
+export function deleteSavedMeal(myFoodId) {
+  write(KEYS.myFoods, getMyFoods().filter(f => !(isMealTemplate(f) && f.myFoodId === myFoodId)));
+}
+
+// Pure: macro totals for a saved meal (per-serving x servings). Display only.
+// Pass `{ items }` to total an arbitrary subset (e.g. just the checked items).
+export function getMealTemplateTotals(meal) {
+  const totals = { calories: 0, protein: 0, carbs: 0, fat: 0, count: 0 };
+  for (const item of (meal && meal.items) || []) {
+    const mult = item.servings > 0 ? item.servings : 1;
+    totals.calories += (item.calories || 0) * mult;
+    totals.protein += (item.protein || 0) * mult;
+    totals.carbs += (item.carbs || 0) * mult;
+    totals.fat += (item.fat || 0) * mult;
+    totals.count += 1;
+  }
+  return totals;
+}
+
+// Pure: expand a saved meal into fresh day-food objects (no id — addFoodToMeal
+// assigns one). `skipIndexes` = items unchecked for this time.
+export function mealTemplateToFoods(meal, skipIndexes = []) {
+  const skip = new Set(skipIndexes);
+  return ((meal && meal.items) || [])
+    .map((item, i) => ({ item, i }))
+    .filter(({ i }) => !skip.has(i))
+    .map(({ item }) => {
+      const food = { ...item };
+      delete food.id;
+      return food;
+    });
 }
 
 export function getAllWeightEntries() {

@@ -382,3 +382,129 @@ describe('Saturated fat', () => {
     assert.equal(t.satFatIncomplete, false);
   });
 });
+
+// ── Saved meals (stored inside My Foods as kind: 'meal') ──
+
+describe('Saved meals', () => {
+  const oats   = { id: 'day-1', name: 'Oatmeal',     calories: 150, protein: 5, carbs: 27, fat: 3, servings: 1, servingSize: 0.5, servingUnit: 'cup dry', fiber: 4, source: 'common' };
+  const banana = { id: 'day-2', name: 'Banana',      calories: 105, protein: 1, carbs: 27, fat: 0, servings: 2, servingSize: 1, servingUnit: 'medium' };
+  const blues  = { id: 'day-3', name: 'Blueberries', calories: 84,  protein: 1, carbs: 21, fat: 0, servings: 1, servingSize: 1, servingUnit: 'cup', sodium: 1 };
+
+  test('saveMealTemplate stores a meal inside My Foods with the decided shape', () => {
+    const { entry, replaced } = store.saveMealTemplate({ name: 'Oatmeal+', mealType: 'breakfast', items: [oats, banana, blues] });
+    assert.equal(replaced, false);
+    assert.equal(entry.kind, 'meal');
+    assert.equal(entry.source, 'myfoods');
+    assert.equal(entry.mealType, 'breakfast');
+    assert.ok(entry.myFoodId);
+    assert.ok(entry.createdAt);
+    assert.equal(entry.items.length, 3);
+    assert.equal(store.getMyFoods().length, 1);
+    assert.ok(entry.items.every(i => !('id' in i)));
+  });
+
+  test('unknown nutrients stay absent in saved items (never coerced to 0)', () => {
+    const { entry } = store.saveMealTemplate({ name: 'Oatmeal+', mealType: 'breakfast', items: [oats, banana, blues] });
+    const [o, b, bl] = entry.items;
+    assert.equal(o.fiber, 4);
+    for (const key of ['sodium', 'saturatedFat', 'addedSugars']) assert.ok(!(key in o), `oats.${key}`);
+    for (const key of ['sodium', 'fiber', 'saturatedFat', 'addedSugars']) assert.ok(!(key in b), `banana.${key}`);
+    assert.equal(bl.sodium, 1);
+    assert.ok(!('fiber' in bl));
+    // survives the localStorage round trip too
+    assert.ok(!('sodium' in store.getSavedMeals()[0].items[0]));
+  });
+
+  test('an explicit 0 nutrient is kept (known zero is not unknown)', () => {
+    const { entry } = store.saveMealTemplate({ name: 'Zero', mealType: 'snacks', items: [{ ...oats, sodium: 0 }, banana] });
+    assert.equal(entry.items[0].sodium, 0);
+  });
+
+  test('saving the same name (case-insensitive) replaces instead of duplicating', () => {
+    const first = store.saveMealTemplate({ name: 'Oatmeal+', mealType: 'breakfast', items: [oats, banana, blues] });
+    const second = store.saveMealTemplate({ name: ' oatmeal+ ', mealType: 'breakfast', items: [oats, banana] });
+    assert.equal(second.replaced, true);
+    assert.equal(second.entry.myFoodId, first.entry.myFoodId);
+    assert.equal(store.getSavedMeals().length, 1);
+    assert.equal(store.getSavedMeals()[0].items.length, 2);
+  });
+
+  test('same name as a single My Food is not treated as a replace', () => {
+    store.saveMyFood({ name: 'Oatmeal+', calories: 100, protein: 1, carbs: 1, fat: 1 });
+    const { replaced } = store.saveMealTemplate({ name: 'Oatmeal+', mealType: 'breakfast', items: [oats, banana] });
+    assert.equal(replaced, false);
+    assert.equal(store.getMyFoods().length, 2);
+  });
+
+  test('getSavedMeals filters by meal type, keeping meals with no mealType', () => {
+    store.saveMealTemplate({ name: 'Brekkie', mealType: 'breakfast', items: [oats, banana] });
+    store.saveMealTemplate({ name: 'Dinner combo', mealType: 'dinner', items: [oats, banana] });
+    store.saveMealTemplate({ name: 'Anywhere', mealType: null, items: [oats, banana] });
+    store.saveMyFood({ name: 'Plain food', calories: 1, protein: 1, carbs: 1, fat: 1 });
+    assert.deepEqual(store.getSavedMeals('breakfast').map(m => m.name).sort(), ['Anywhere', 'Brekkie']);
+    assert.deepEqual(store.getSavedMeals('dinner').map(m => m.name).sort(), ['Anywhere', 'Dinner combo']);
+    assert.equal(store.getSavedMeals().length, 3); // single foods never included
+  });
+
+  test('searchSavedMeals matches by substring/tokens across all meal types', () => {
+    store.saveMealTemplate({ name: 'Oatmeal+', mealType: 'breakfast', items: [oats, banana] });
+    store.saveMealTemplate({ name: 'Late Night Oats', mealType: 'snacks', items: [oats, banana] });
+    assert.deepEqual(store.searchSavedMeals('oat').map(m => m.name).sort(), ['Late Night Oats', 'Oatmeal+']);
+    assert.deepEqual(store.searchSavedMeals('night oat').map(m => m.name), ['Late Night Oats']);
+    assert.deepEqual(store.searchSavedMeals('zzz'), []);
+    assert.deepEqual(store.searchSavedMeals(''), []);
+  });
+
+  test('deleteSavedMeal removes only that meal', () => {
+    const a = store.saveMealTemplate({ name: 'A', mealType: 'breakfast', items: [oats, banana] }).entry;
+    store.saveMealTemplate({ name: 'B', mealType: 'breakfast', items: [oats, banana] });
+    store.saveMyFood({ name: 'Plain food', calories: 1, protein: 1, carbs: 1, fat: 1 });
+    store.deleteSavedMeal(a.myFoodId);
+    assert.deepEqual(store.getSavedMeals().map(m => m.name), ['B']);
+    assert.equal(store.getMyFoods().length, 2);
+  });
+
+  test('getMealTemplateTotals sums per-serving x servings', () => {
+    const { entry } = store.saveMealTemplate({ name: 'Oatmeal+', mealType: 'breakfast', items: [oats, banana, blues] });
+    const t = store.getMealTemplateTotals(entry);
+    assert.equal(t.calories, 150 + 105 * 2 + 84);
+    assert.equal(t.protein, 5 + 2 + 1);
+    assert.equal(t.carbs, 27 + 54 + 21);
+    assert.equal(t.fat, 3);
+    assert.equal(t.count, 3);
+    assert.deepEqual(store.getMealTemplateTotals({ items: [] }), { calories: 0, protein: 0, carbs: 0, fat: 0, count: 0 });
+  });
+
+  test('expanding a saved meal adds separate day foods and skips unchecked items', () => {
+    const { entry } = store.saveMealTemplate({ name: 'Oatmeal+', mealType: 'breakfast', items: [oats, banana, blues] });
+    const foods = store.mealTemplateToFoods(entry, [1]); // banana unchecked
+    assert.deepEqual(foods.map(f => f.name), ['Oatmeal', 'Blueberries']);
+    foods.forEach(f => store.addFoodToMeal('2026-06-01', 'breakfast', f));
+    const logged = store.getDay('2026-06-01').meals.breakfast;
+    assert.equal(logged.length, 2);
+    assert.notEqual(logged[0].id, logged[1].id);
+    assert.ok(logged.every(f => f.id && f.id !== 'day-1' && f.id !== 'day-3'));
+    assert.equal(logged[0].fiber, 4);
+    assert.ok(!('fiber' in logged[1]));
+    // totals work off plain foods, untouched by the meal feature
+    assert.equal(store.getDayTotals('2026-06-01').calories, 150 + 84);
+  });
+
+  test('a My Foods list containing a meal never leaks into single-food search', () => {
+    store.saveMyFood({ name: 'Oatmeal bar', calories: 190, protein: 4, carbs: 30, fat: 6 });
+    store.saveMealTemplate({ name: 'Oatmeal+', mealType: 'breakfast', items: [oats, banana] });
+    const results = store.searchMyFoods('oat');
+    assert.deepEqual(results.map(f => f.name), ['Oatmeal bar']);
+    assert.ok(results.every(f => Number.isFinite(f.calories) && !store.isMealTemplate(f)));
+    // meal is still in the synced array
+    assert.equal(store.getMyFoods().length, 2);
+  });
+
+  test('replaceMyFoods (cloud pull) round-trips meals intact', () => {
+    store.saveMealTemplate({ name: 'Oatmeal+', mealType: 'breakfast', items: [oats, banana] });
+    const snapshot = JSON.parse(JSON.stringify(store.getMyFoods()));
+    store.replaceMyFoods([]);
+    store.replaceMyFoods(snapshot);
+    assert.equal(store.getSavedMeals('breakfast')[0].name, 'Oatmeal+');
+  });
+});

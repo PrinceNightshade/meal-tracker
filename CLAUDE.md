@@ -62,6 +62,9 @@ The Daily grid headlines the macros that move Eric's health: the calorie ring + 
 
 **Bloom-at-goal.** A subtle green bloom (`.macro-card--bloom`, `--good-rgb` glow) eases onto a BUILD TOWARD card when it reaches its goal — Protein or Fiber only. Keep-under cards (sugar, sodium, sat fat) and the carbs/fat footer cards never bloom (`bloom: false`). A finish-line reward, not a continuous meter.
 
+**Saved meals expand into individual foods.**
+A saved meal (e.g. "Oatmeal+") is a template stored inside My Foods (`mt_myfoods`) as `{ kind: 'meal', name, mealType, items: [food snapshots] }`, so it syncs through the existing `pushMyFoods` array with no new Firestore path. Items keep their logged servings and only the nutrients they actually had (never adds a 0). Created from a Daily meal card with 2+ foods ("Save as meal"); re-added from a "saved meals" section at the top of the add sheet (filtered to that meal type) or from search (saved meals rank first). Re-adding opens a checklist so a day's skipped item can be unchecked, then adds each item as a **separate day food** (fresh ids) — so totals, insights, recents and favorites need no changes. Saving an existing name replaces that meal. **Every `getMyFoods()` consumer must ignore `kind: 'meal'` entries** (`searchMyFoods` filters them; food-details "Save to My Foods" lookup skips them) — a meal must never reach the serving picker as a single food. Helpers in `store.js`: `saveMealTemplate`, `getSavedMeals`, `searchSavedMeals`, `deleteSavedMeal`, `getMealTemplateTotals`, `mealTemplateToFoods`.
+
 **UI/UX guiding principle: breathe freely.**
 Favor whitespace and reduce competing elements. When in doubt, remove chrome rather than add toggles. Examples: "Today" hides when on today; date drops the year in the header; whole empty meal cards are tappable instead of relying on the small "+ Add" button alone; tap targets ≥44pt for one-handed use.
 
@@ -207,6 +210,7 @@ Run through these checks in the live preview server or on deployed staging:
 - [x] **Weight tracker rework (bugs, not cosmetics).** EMA **trend line** (`getWeightSeries`, alpha 0.25) is now the primary signal; `getWeightProjection` uses a 21-day recent-window least-squares slope on the trend instead of the old 2-point all-time slope; `getWeightStats` 7-day change compares to the entry *nearest* 7 days ago (suppressed under ~4 days old) and reports trend-based current/change; chart draws faint raw dots + accent trend line + dashed goal line; stat date formatted. Weigh-in already inline. Done Sep 2026.
 
 ### High priority
+- [ ] **Open Food Facts text search is down (OFF-side, Oct 2026).** `world.openfoodfacts.org/cgi/search.pl` and `/api/v2/search` both return 503 with no CORS header, so the OFF half of phase-2 search returns nothing (local `COMMON_FOODS` + USDA still work; barcode lookup via `/api/v2/product` is fine). OFF's replacement, `search.openfoodfacts.org` (search-a-licious), returns data but sends no `Access-Control-Allow-Origin`, so the browser can't call it directly. Re-check periodically; if it stays down, options are a tiny proxy (the existing Cloud Function could host it) or dropping OFF text search.
 - [ ] Calorie budget rollover option (unused calories carry forward)
 - [ ] Meal copy — duplicate yesterday's meals to today with one tap
 - [ ] Streak tracking — consecutive days logged
@@ -225,6 +229,11 @@ Run through these checks in the live preview server or on deployed staging:
 - [ ] Social / friend leaderboard
 - [ ] Apple Health / Google Fit integration — **weight sync only**, explicitly NOT calorie-burn import. Crediting exercise calories triggers the well-documented compensation effect (people overestimate burn 2–4x and the resulting "earned it" snack flips a deficit day into a surplus). The app is intentionally one-sided: precise about intake, silent about burn.
 - [ ] Macro targets by meal type (not just daily totals)
+
+### Recently Completed (Oct 2026 — saved meals + PCC hot bar)
+- [x] Saved meals — "Save as meal" on any meal card with 2+ foods; re-add from the top of the add sheet or search, uncheck what you skipped today, and the items land as separate foods. Stored in My Foods (syncs via Firebase).
+- [x] PCC Community Markets hot bar / deli: 43 items in a `// ── PCC Hot Bar ──` section of `COMMON_FOODS`, from PCC's own panels (via search-engine caches — PCC retired its online deli database). ¼ lb servings to match PCC labels.
+- [ ] **Deferred:** removing a saved meal has no confirm/undo (a mis-tap loses it); no way to rename besides re-saving; saving a combo straight from the add sheet's multi-select bar; suggesting "save this as a meal?" when the same combo is logged repeatedly (the reverted `suggest.js` had usual-combo detection)
 
 ### Recently Completed (Oct 2026 — glow, sat fat, fiber insight)
 - [x] Bloom-at-goal glow — subtle green bloom on Protein/Fiber when they hit goal; build-toward only, never on keep-under or footer cards

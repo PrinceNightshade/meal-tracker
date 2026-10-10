@@ -457,7 +457,7 @@ export function renderDailySummaryCarousel(totals, goals, opportunity = null, to
 
 // ── Meal Section ──
 
-export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFav, onFoodClick }, favorites = []) {
+export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFav, onFoodClick, onSaveMeal }, favorites = []) {
   const mealIconMap = {
     breakfast: 'i-meal-breakfast',
     lunch:     'i-meal-lunch',
@@ -561,6 +561,18 @@ export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFa
 
   section.appendChild(header);
   foodItems.forEach(fi => section.appendChild(fi));
+
+  // Quiet "Save as meal" affordance — only worth showing once there's a combo (2+ foods)
+  if (foods.length >= 2 && onSaveMeal) {
+    const saveMealBtn = el('button', {
+      className: 'meal-save-link',
+      type: 'button',
+      onClick: (e) => { e.stopPropagation(); onSaveMeal(mealType); },
+    });
+    saveMealBtn.appendChild(svgIcon('i-bookmark-plus', 14));
+    saveMealBtn.appendChild(document.createTextNode(' Save as meal'));
+    section.appendChild(saveMealBtn);
+  }
 
   if (isEmpty) {
     section.appendChild(el('div', { className: 'meal-empty-hint', textContent: 'TAP TO COMPOSE' }));

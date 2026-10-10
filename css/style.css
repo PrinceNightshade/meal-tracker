@@ -709,6 +709,16 @@ input, select, textarea { font-size: max(16px, 1em); }
   font-size: 10px; letter-spacing: 0.4px;
   color: var(--ink-3); text-transform: uppercase;
 }
+.meal-save-link {
+  display: flex; align-items: center; gap: 6px;
+  width: 100%; min-height: 44px;
+  padding: 0 14px 0 18px;
+  background: none; border: none; border-top: 1px solid var(--hair-2);
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.4px;
+  text-transform: uppercase; text-align: left;
+  color: var(--ink-3); cursor: pointer;
+}
+.meal-save-link:active { color: var(--ink-2); background: var(--surface-2); }
 .meal-section.is-empty { cursor: pointer; }
 .meal-section.is-empty:active { opacity: 0.8; }
 
@@ -1242,6 +1252,15 @@ input, select, textarea { font-size: max(16px, 1em); }
   accent-color: var(--accent); cursor: pointer; flex-shrink: 0;
 }
 .result-row.is-selected { background: var(--accent-soft); border-radius: 8px; }
+
+/* ── Saved meals (save / re-add sheets) ───────────────────────────── */
+
+.meal-name-input { width: 100%; box-sizing: border-box; margin-bottom: 10px; }
+.meal-item-row { min-height: 44px; }
+.meal-sheet-totals { font-size: 14px; color: var(--ink); padding: 10px 8px 2px; font-variant-numeric: tabular-nums; }
+.meal-sheet-note { min-height: 18px; padding: 2px 8px 6px; font-size: 12px; color: var(--ink-3); }
+.meal-sheet-note.is-error { color: var(--over); }
+.btn-primary.is-disabled { opacity: 0.45; box-shadow: none; }
 
 /* ── Serving picker ───────────────────────────────────────────────── */
 

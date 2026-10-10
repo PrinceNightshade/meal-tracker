@@ -390,6 +390,7 @@ function renderDaily() {
       fb.pushFavorites(store.getFavorites());
     },
     onFoodClick:  (mealType, food) => openFoodDetailsModal(mealType, food),
+    onSaveMeal:   (mealType) => openSaveMealModal(mealType),
   };
 
   for (const mealType of ['breakfast', 'lunch', 'dinner', 'snacks']) {
@@ -981,7 +982,7 @@ function openAddFoodModal(mealType) {
   // Extract recent foods for this meal type
   const recents = store.getRecentFoodsByMealType(mealType, 20);
 
-  const state = { results: [], loading: false };
+  const state = { results: [], savedMeals: [], loading: false };
 
   // Multi-select state for recents/favorites — keyed by food name (lowercased) so the same
   // food can't be selected twice across both lists. Value is the food object to add.
@@ -1080,6 +1081,7 @@ function openAddFoodModal(mealType) {
     if (query.length < 3) {
       resultsList.innerHTML = '';
       state.results = [];
+      state.savedMeals = [];
       return;
     }
 
@@ -1095,6 +1097,7 @@ function openAddFoodModal(mealType) {
     commonDeduped.forEach(f => seen.add(normalizeFoodKey(f.name)));
 
     state.results = [...myFoodResults, ...historyDeduped, ...commonDeduped];
+    state.savedMeals = store.searchSavedMeals(query); // all meal types, shown first
     renderResults();
     setTimeout(() => { resultsList.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
 
@@ -1123,9 +1126,17 @@ function openAddFoodModal(mealType) {
   function renderResults() {
     resultsList.innerHTML = '';
     const modalContent = ui.$('#modal .modal-content');
-    if (state.results.length === 0) {
+    if (state.results.length === 0 && state.savedMeals.length === 0) {
       resultsList.innerHTML = '<div class="no-results">No results found</div>';
       return;
+    }
+    // Saved meals whose name matches float to the top, ahead of single foods
+    for (const meal of state.savedMeals) {
+      resultsList.appendChild(buildSavedMealRow(meal, () => {
+        state.savedMeals = state.savedMeals.filter(m => m.myFoodId !== meal.myFoodId);
+        renderResults();
+        renderSavedMealsSection();
+      }));
     }
     for (const food of state.results) {
       const isMyFood = food.source === 'myfoods';
@@ -1230,6 +1241,48 @@ function openAddFoodModal(mealType) {
       },
     }),
   ]);
+
+  // Saved meals — named combos for this meal type, above recents. Hidden when none.
+  function buildSavedMealRow(meal, onRemoved) {
+    const totals = store.getMealTemplateTotals(meal);
+    const n = totals.count;
+    const removeBtn = ui.el('button', {
+      className: 'btn-icon btn-remove',
+      title: 'Remove saved meal',
+      onClick: (e) => {
+        e.stopPropagation();
+        store.deleteSavedMeal(meal.myFoodId);
+        fb.pushMyFoods(store.getMyFoods());
+        onRemoved();
+      },
+    });
+    removeBtn.appendChild(ui.svgIcon('i-close', 14));
+    return ui.el('div', { className: 'result-row', onClick: () => openSavedMealSheet(meal, mealType) }, [
+      ui.el('div', { className: 'result-info' }, [
+        ui.el('span', { className: 'result-name', textContent: meal.name }),
+        ui.el('span', {
+          className: 'result-macros',
+          textContent: `saved meal · ${n} food${n === 1 ? '' : 's'} · ${Math.round(totals.calories)} cal`,
+        }),
+      ]),
+      ui.el('div', { className: 'result-actions' }, [removeBtn]),
+    ]);
+  }
+
+  const savedMealsHost = ui.el('div', { className: 'saved-meals-section' });
+  function renderSavedMealsSection() {
+    savedMealsHost.innerHTML = '';
+    const meals = store.getSavedMeals(mealType);
+    if (meals.length === 0) return;
+    savedMealsHost.appendChild(ui.el('div', { className: 'divider', textContent: '— saved meals —' }));
+    meals.forEach(meal => savedMealsHost.appendChild(buildSavedMealRow(meal, () => {
+      renderSavedMealsSection();
+      // keep any matching search results in sync
+      state.savedMeals = state.savedMeals.filter(m => m.myFoodId !== meal.myFoodId);
+      if (searchInput.value.trim().length >= 3) renderResults();
+    })));
+  }
+  renderSavedMealsSection();
 
   // Recents section — foods previously logged in this meal type, most recent first
   const recentsSection = recents.length > 0
@@ -1344,6 +1397,7 @@ function openAddFoodModal(mealType) {
   modalBody.appendChild(ui.el('div', { className: 'search-row' }, [searchInput, scanBtn]));
   modalBody.appendChild(resultsList);
   // Recents/favorites/manual below, only shown when search is empty
+  modalBody.appendChild(savedMealsHost);
   if (recentsSection) modalBody.appendChild(recentsSection);
   if (favsSection) modalBody.appendChild(favsSection);
   modalBody.appendChild(manualSection);
@@ -1415,7 +1469,7 @@ function openFoodDetailsModal(mealType, food) {
         store.updateFoodInMeal(currentDate, mealType, food.id, updates);
         if (nutritionEdits.saveToMyFoods) {
           const existing = store.getMyFoods().find(
-            f => f.name && f.name.toLowerCase() === food.name.toLowerCase()
+            f => !store.isMealTemplate(f) && f.name && f.name.toLowerCase() === food.name.toLowerCase()
           );
           if (existing) store.deleteMyFood(existing.myFoodId);
           store.saveMyFood({ ...food, ...updates });
@@ -1441,6 +1495,172 @@ function openFoodDetailsModal(mealType, food) {
   modal.classList.add('open');
 
   // Close handlers
+  ui.$('#modal-close').onclick = closeModal;
+  modal.onclick = (e) => { if (e.target === modal) closeModal(); };
+}
+
+// ── Saved meals (named combos of foods stored in My Foods) ──
+
+// One-line description of a food row inside the checklist sheets
+function mealItemDetail(item) {
+  const base = ui.formatServing(item);
+  const servings = item.servings || 1;
+  const serv = servings !== 1 ? `${servings} × ${base}`.trim() : base;
+  const cals = Math.round((item.calories || 0) * servings);
+  return serv ? `${serv} — ${cals} cal` : `${cals} cal`;
+}
+
+function mealTotalsText(items) {
+  const t = store.getMealTemplateTotals({ items });
+  return `${Math.round(t.calories)} cal · ${Math.round(t.protein)}g protein`;
+}
+
+// Checklist of foods (all checked by default). Returns { list, checkedIndexes() }.
+function buildMealChecklist(items, onChange) {
+  const checked = new Set(items.map((_, i) => i));
+  const list = ui.el('div', { className: 'meal-checklist' });
+  items.forEach((item, i) => {
+    const checkbox = ui.el('input', {
+      type: 'checkbox',
+      className: 'multi-check',
+      onChange: (e) => {
+        if (e.target.checked) checked.add(i); else checked.delete(i);
+        e.target.closest('.result-row')?.classList.toggle('is-selected', e.target.checked);
+        onChange();
+      },
+    });
+    checkbox.checked = true;
+    list.appendChild(ui.el('label', { className: 'result-row meal-item-row is-selected' }, [
+      checkbox,
+      ui.el('div', { className: 'result-info' }, [
+        ui.el('span', { className: 'result-name', textContent: item.name }),
+        ui.el('span', { className: 'result-macros', textContent: mealItemDetail(item) }),
+      ]),
+    ]));
+  });
+  return { list, checkedIndexes: () => items.map((_, i) => i).filter(i => checked.has(i)) };
+}
+
+// Daily meal card -> "Save as meal" sheet
+function openSaveMealModal(mealType) {
+  const foods = store.getDay(currentDate).meals[mealType] || [];
+  if (foods.length < 2) return;
+  const modal = ui.$('#modal');
+  const modalBody = ui.$('#modal-body');
+  modalBody.innerHTML = '';
+
+  const nameInput = ui.el('input', {
+    type: 'text',
+    className: 'input-search meal-name-input',
+    placeholder: 'e.g. Oatmeal+',
+    maxlength: '60',
+    'aria-label': 'Meal name',
+  });
+  const totalsEl = ui.el('div', { className: 'meal-sheet-totals' });
+  const noteEl = ui.el('div', { className: 'meal-sheet-note' });
+  const saveBtn = ui.el('button', { className: 'btn-primary', type: 'button' });
+
+  const checklist = buildMealChecklist(foods, refresh);
+
+  function refresh() {
+    const idx = checklist.checkedIndexes();
+    totalsEl.textContent = mealTotalsText(idx.map(i => foods[i]));
+    const name = nameInput.value.trim();
+    saveBtn.textContent = name ? `Save "${name}"` : 'Save meal';
+    noteEl.textContent = '';
+    noteEl.classList.remove('is-error');
+  }
+  nameInput.addEventListener('input', refresh);
+
+  saveBtn.addEventListener('click', () => {
+    const name = nameInput.value.trim();
+    const idx = checklist.checkedIndexes();
+    if (!name) {
+      noteEl.textContent = 'Give this meal a name.';
+      noteEl.classList.add('is-error');
+      nameInput.focus();
+      return;
+    }
+    if (idx.length < 2) {
+      noteEl.textContent = 'Pick at least 2 foods to save as a meal.';
+      noteEl.classList.add('is-error');
+      return;
+    }
+    const { replaced } = store.saveMealTemplate({ name, mealType, items: idx.map(i => foods[i]) });
+    fb.pushMyFoods(store.getMyFoods());
+    closeModal();
+    showToast(replaced ? `Updated ${name}` : `Saved ${name}`);
+  });
+
+  modalBody.appendChild(ui.el('h2', { textContent: 'Save as meal' }));
+  modalBody.appendChild(nameInput);
+  modalBody.appendChild(checklist.list);
+  modalBody.appendChild(totalsEl);
+  modalBody.appendChild(noteEl);
+  modalBody.appendChild(ui.el('div', { className: 'serving-actions' }, [saveBtn]));
+  refresh();
+
+  modal.classList.add('open');
+  ui.$('#modal-close').onclick = closeModal;
+  modal.onclick = (e) => { if (e.target === modal) closeModal(); };
+  setTimeout(() => nameInput.focus(), 50);
+}
+
+// Tapping a saved meal: checklist of its foods -> add the checked ones as separate foods
+function openSavedMealSheet(meal, mealType) {
+  const modal = ui.$('#modal');
+  const modalBody = ui.$('#modal-body');
+  modalBody.innerHTML = '';
+  const items = meal.items || [];
+
+  const totalsEl = ui.el('div', { className: 'meal-sheet-totals' });
+  const noteEl = ui.el('div', { className: 'meal-sheet-note' });
+  const addBtn = ui.el('button', { className: 'btn-primary', type: 'button' });
+  const checklist = buildMealChecklist(items, refresh);
+
+  function refresh() {
+    const idx = checklist.checkedIndexes();
+    totalsEl.textContent = mealTotalsText(idx.map(i => items[i]));
+    addBtn.textContent = `Add ${idx.length} to ${ui.capitalize(mealType)}`;
+    addBtn.classList.toggle('is-disabled', idx.length === 0);
+    addBtn.setAttribute('aria-disabled', idx.length === 0 ? 'true' : 'false');
+    noteEl.textContent = '';
+    noteEl.classList.remove('is-error');
+  }
+
+  addBtn.addEventListener('click', () => {
+    const idx = checklist.checkedIndexes();
+    if (idx.length === 0) {
+      noteEl.textContent = 'Check at least one food to add.';
+      noteEl.classList.add('is-error');
+      return;
+    }
+    const skipped = items.map((_, i) => i).filter(i => !idx.includes(i));
+    store.mealTemplateToFoods(meal, skipped).forEach(food => {
+      store.addFoodToMeal(currentDate, mealType, food);
+    });
+    fb.pushDay(currentDate, store.getDay(currentDate));
+    closeModal();
+    render();
+    showToast(`Added ${meal.name}`);
+  });
+
+  modalBody.appendChild(ui.el('h2', { textContent: meal.name }));
+  modalBody.appendChild(checklist.list);
+  modalBody.appendChild(totalsEl);
+  modalBody.appendChild(noteEl);
+  modalBody.appendChild(ui.el('div', { className: 'serving-actions' }, [
+    ui.el('button', {
+      className: 'btn-secondary',
+      type: 'button',
+      textContent: 'Back',
+      onClick: () => openAddFoodModal(mealType),
+    }),
+    addBtn,
+  ]));
+  refresh();
+
+  modal.classList.add('open');
   ui.$('#modal-close').onclick = closeModal;
   modal.onclick = (e) => { if (e.target === modal) closeModal(); };
 }
