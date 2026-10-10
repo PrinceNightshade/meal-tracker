@@ -1,7 +1,7 @@
 # Meal Tracker — Project Guide
 
 ## What this app is
-A PWA meal tracker focused on weight loss. Users log meals by meal type (Breakfast, Lunch, Dinner, Snacks), track calories and macros against daily goals, log weight over time, and favorite foods for quick re-entry. Deployed to GitHub Pages at `PrinceNightshade/meal-tracker`. No backend — Firebase for auth/sync, localStorage as the primary data store.
+A PWA meal tracker focused on weight loss and blood-pressure-friendly (DASH-style) eating. Users log meals by meal type (Breakfast, Lunch, Dinner, Snacks), track calories and macros against daily goals, log weight over time, and favorite foods for quick re-entry. Deployed to GitHub Pages at `PrinceNightshade/meal-tracker`. No backend — Firebase for auth/sync, localStorage as the primary data store.
 
 ## Tech stack
 - Vanilla JS (ES modules), no framework
@@ -17,10 +17,10 @@ A PWA meal tracker focused on weight loss. Users log meals by meal type (Breakfa
 `signInWithRedirect` was removed entirely. iOS Safari's ITP breaks the redirect flow on `firebaseapp.com`. Popup works in iOS 16.4+ standalone PWA via SFSafariViewController.
 
 **Food search: two-phase.**
-Phase 1 (instant): `COMMON_FOODS` local array (~590 entries) + My Foods + history render immediately. Phase 2 (background): USDA + Open Food Facts APIs fetch only if local results < 8. This keeps search feeling instant for common foods.
+Phase 1 (instant): `COMMON_FOODS` local array (~620 entries) + My Foods + history render immediately. Phase 2 (background): USDA + Open Food Facts APIs fetch only if local results < 8. This keeps search feeling instant for common foods.
 
 **COMMON_FOODS array.**
-Curated local food data in `js/common-foods.js` (imported by `js/api.js`). Always wins over API results in ranking. Covers whole foods, common meals (fajitas, tikka masala, pad thai, etc.), and branded staples. When expanding, use natural serving units (1 cup, 1 slice, etc.) not raw grams.
+Curated local food data in `js/common-foods.js` (imported by `js/api.js`), ~620 entries including a `PCC Hot Bar` section. Always wins over API results in ranking. Covers whole foods, common meals (fajitas, tikka masala, pad thai, etc.), and branded staples. When expanding, use natural serving units (1 cup, 1 slice, etc.) not raw grams.
 
 **Service worker versioning.**
 Cache key is auto-generated from the git commit SHA during CI deploy (`meal-tracker-<sha>`). No manual version bumps needed. The update banner (`#update-banner`) detects waiting SWs and prompts users to reload. Logic lives in `js/sw-manager.js`.
@@ -53,7 +53,7 @@ Wellness records are keyed by date in their own store (`mt_wellness` localStorag
 Movement/sleep are shown as behavioral context and never converted into "calories earned." A workout's `calories` field is display-only and must never touch the food calorie ring — crediting exercise calories triggers the compensation effect (see the Apple Health / Google Fit backlog note). The marquee wellness feature is an **"opportunity statement"** over a rolling window (default trailing 7 days, wider than 24h) — one ranked, actionable insight across food/movement/sleep, reusing the existing analytics/insight-carousel patterns.
 
 **Sodium / blood-pressure awareness.**
-Eric is pre-hypertensive; sodium is tracked as the #1 dietary lever for BP (DASH pattern), alongside added sugar. Both are "keep under" limit nutrients, so the Daily macro grid is grouped **3+2** — Protein/Carbs/Fat ("build toward") over Sugar/Sodium ("keep under"), both inverse-colored via `renderMacroCard(..., inverse=true)` (green → amber → red → purple-when-over; sodium and sugar share the identical logic). `sodiumGoal` defaults to 2300 mg with a 1500 mg "blood-pressure" preset in Goals. Sodium is **context, never a budget** — no medical claims (framed as DASH / general wellness), no calories-earned. **Never fake a zero:** unknown sodium stays `null` (card shows a "~" prefix + a missing-data hint), never coerced to 0 — a fake 0 reads as "safe" when it's really "unknown." Values parsed from Open Food Facts (`sodium_100g`, `salt_100g/2.5` fallback) + USDA (nutrient 1093); ~318 `COMMON_FOODS` backfilled from real label/USDA data. The at-log flag (serving picker, ≥460 mg or ≥20% of remaining budget) suggests a **protein-aware** lower-sodium swap — deliberately avoiding salty high-protein convenience foods (the trap, since protein goals are often missed). Two `opportunity.js` detectors: high-sodium week + a protein-short × sodium-high cross-signal. **Potassium** is surfaced as *guidance* here, not a tracked metric (its data is too sparse to total honestly): the high-sodium-week insight appends a few potassium-rich whole foods (`POTASSIUM_RICH`) because potassium is the physiological counterweight to sodium for BP.
+Eric is pre-hypertensive; sodium is tracked as the #1 dietary lever for BP (DASH pattern), alongside added sugar. Both are "keep under" limit nutrients and sit in the Daily grid's KEEP UNDER row (see "Macro hierarchy" below), both inverse-colored via `renderMacroCard(..., inverse=true)` (green → amber → red → purple-when-over; sodium and sugar share the identical logic). `sodiumGoal` defaults to 2300 mg with a 1500 mg "blood-pressure" preset in Goals. Sodium is **context, never a budget** — no medical claims (framed as DASH / general wellness), no calories-earned. **Never fake a zero:** unknown sodium stays `null` (card shows a "~" prefix + a missing-data hint), never coerced to 0 — a fake 0 reads as "safe" when it's really "unknown." Values parsed from Open Food Facts (`sodium_100g`, `salt_100g/2.5` fallback) + USDA (nutrient 1093); ~318 `COMMON_FOODS` backfilled from real label/USDA data. The at-log flag (serving picker, ≥460 mg or ≥20% of remaining budget) suggests a **protein-aware** lower-sodium swap — deliberately avoiding salty high-protein convenience foods (the trap, since protein goals are often missed). Two `opportunity.js` detectors: high-sodium week + a protein-short × sodium-high cross-signal. **Potassium** is surfaced as *guidance* here, not a tracked metric (its data is too sparse to total honestly): the high-sodium-week insight appends a few potassium-rich whole foods (`POTASSIUM_RICH`) because potassium is the physiological counterweight to sodium for BP.
 
 **Macro hierarchy: headline the health-movers, demote carbs & fat.**
 The Daily grid headlines the macros that move Eric's health: the calorie ring + a 2+2 grid — BUILD TOWARD (Protein, Fiber) over KEEP UNDER (Sugar, Sodium). Carbs & fat are demoted to a quiet footer (`renderMacroFooter` / `getMacroFooterStatus` / `MACRO_FOOTER_THRESHOLD` in `ui.js`): a muted "Carbs Xg · Fat Yg — in range" line that taps to expand their full cards, and escalates to an amber alert (sodium-note style) when either exceeds goal × 1.1. They're demoted, not dropped — still logged, summed, and goal-editable. **Fiber** is now tracked end-to-end (mirrors sodium): `fiber` field parsed from OFF (`fiber_100g`) + USDA (nutrient **id** 1079 — `NUTRIENT_MAP` keys on `nutrient.id`, not number), `fiberGoal` default 30, ~292 `COMMON_FOODS` backfilled (explicit 0 for meat/dairy/oil/drinks; genuinely-unknown left `null` with the "~" incomplete hint). Fiber is build-toward, so exceeding its goal isn't flagged red (`overIsFine` option on `renderMacroCard`; Protein also uses it).
@@ -160,8 +160,9 @@ Run through these checks in the live preview server or on deployed staging:
 
 **Data Display**
 - [ ] Calorie ring renders and updates
-- [ ] Macro rings (protein/carbs/fat) render
-- [ ] Added sugar progress bar displays (if goals set)
+- [ ] Macro cards render: BUILD TOWARD (Protein, Fiber) and KEEP UNDER (Sugar, Sodium)
+- [ ] Carbs/fat footer shows, expands on tap (Carbs, Fat, Saturated fat), and escalates when out of range
+- [ ] Protein/Fiber bloom when they reach goal (and nothing else does)
 - [ ] Carousel/swipe functionality works (if present)
 - [ ] All text renders without overflow or truncation
 
@@ -246,7 +247,7 @@ Run through these checks in the live preview server or on deployed staging:
 - [x] Carbs & fat demoted to a quiet footer that taps to expand full cards and escalates to an amber alert at >110% of goal (still logged, summed, and goal-editable)
 - [x] Fiber tracked end-to-end — `fiber` field, OFF/USDA parse (nutrient id 1079), `fiberGoal` default 30, manual-form + edit inputs, ~292 `COMMON_FOODS` backfilled (unknown = null, never faked to 0). Values are USDA-from-memory — spot-checked and sound, not live-verified.
 - [x] Fixed edit-modal bug: unknown sodium no longer shows/saves as a fake 0 (blank now stays unknown, mirroring fiber)
-- [ ] **Deferred:** fiber opportunity-engine detector; consider tracking saturated fat (the BP-relevant fat) instead of/alongside total fat
+- [x] ~~Deferred: fiber detector; saturated fat~~ — both shipped in the next round (see "glow, sat fat, fiber insight")
 
 ### Recently Completed (Oct 2026 — bug fixes)
 - [x] **Barcode scanner "Load failed" fixed.** Root cause was NOT the camera/polyfill — `OFF_BASE` pointed at the Open Food Facts **staging** server `world.openfoodfacts.net`, which is now 502ing (no CORS), so the barcode lookup fetch failed at the network layer ("Load failed" in Safari). Switched to production `world.openfoodfacts.org` (HTTP 200, `access-control-allow-origin: *`). Same base feeds OFF **search**, so phase-2 search was silently broken too (masked by the local `COMMON_FOODS` fallback) — also fixed. The earlier scanner diagnostic change (surfacing detect/lookup errors instead of swallowing them) is what revealed the true cause.
@@ -254,7 +255,7 @@ Run through these checks in the live preview server or on deployed staging:
 
 ### Recently Completed (Sep 2026 — sodium / blood-pressure awareness)
 - [x] Sodium tracking end-to-end: `sodium` field across the food schema, parsed from OFF + USDA; `sodiumGoal` (default 2300 mg, 1500 mg BP preset in Goals); ~318 `COMMON_FOODS` backfilled from real label/USDA values (unknowns left `null`, never faked to 0)
-- [x] Daily grid regrouped **3+2** — Protein/Carbs/Fat ("build toward") + Sugar/Sodium ("keep under", inverse-colored); sugar kept its full value/goal/bar
+- [x] Daily grid regrouped **3+2** — Protein/Carbs/Fat ("build toward") + Sugar/Sodium ("keep under", inverse-colored); sugar kept its full value/goal/bar *(superseded Oct 2026 by the 2+2 headline)*
 - [x] At-log salty flag in the serving picker (≥460 mg or ≥20% of remaining budget) with a protein-aware lower-sodium swap
 - [x] Two opportunity detectors — high-sodium week + protein-short × sodium-high cross-signal (top-tier ranking)
 - [x] Manual add-food form gained Sugar (g) + Sodium (mg) fields (sodium left blank = unknown, not 0)
