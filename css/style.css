@@ -1192,6 +1192,14 @@ input, select, textarea { font-size: max(16px, 1em); }
 .goal-divider { border-top: 1px solid var(--hair); margin: 16px 0; }
 .collapsible-content .btn-primary { margin-top: 8px; }
 
+/* Usage-recording opt-in (Goals) — quiet row, 44px tap targets */
+.usage-setting { margin-top: 24px; padding: 0 18px; }
+.usage-setting .goal-row { margin-bottom: 6px; }
+.usage-toggle .toggle-btn { min-height: 44px; min-width: 56px; }
+.usage-toggle { transition: border-color 0.4s ease; }
+.usage-toggle.saved { border-color: var(--good); }
+.usage-setting__hint { font-size: 13px; color: var(--ink-3); line-height: 1.4; margin: 0 0 8px; max-width: 34em; }
+
 /* Wellness data import */
 .wellness-import__hint { font-size: 13px; color: var(--ink-2); line-height: 1.4; margin-bottom: 12px; }
 .wellness-import__file { font-size: 13px; color: var(--ink-2); max-width: 200px; }

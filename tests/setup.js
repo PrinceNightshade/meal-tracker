@@ -15,6 +15,8 @@ defineGlobal('localStorage', {
   setItem:    (k,v) => { _storage[k] = String(v); },
   removeItem: k     => { delete _storage[k]; },
   clear:      ()    => { Object.keys(_storage).forEach(k => delete _storage[k]); },
+  key:        i     => Object.keys(_storage)[i] ?? null,
+  get length() { return Object.keys(_storage).length; },
 });
 
 defineGlobal('crypto', {

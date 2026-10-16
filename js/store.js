@@ -29,6 +29,7 @@ export const DEFAULT_GOALS = {
   fiberGoal: 30,
   satFatGoal: 20, // grams — a "keep under" limit (~<10% of 2000 kcal); context, not a budget
   weightGoal: null,
+  usageEnabled: false, // opt-in "Record how I use the app" (see usage.js) — account-level, syncs with goals
 };
 
 function read(key) {

@@ -1,5 +1,6 @@
 // api.js — Nutrition API integration (USDA FoodData Central + Open Food Facts)
 import { COMMON_FOODS } from './common-foods.js';
+import { logError } from './errorlog.js';
 
 const USDA_BASE = 'https://api.nal.usda.gov/fdc/v1';
 const OFF_BASE = 'https://world.openfoodfacts.org'; // production API (CORS-enabled); the .net staging box 502s
@@ -231,6 +232,8 @@ async function searchUSDA(query, pageSize = 15) {
       if (body?.error?.code === 'OVER_RATE_LIMIT') {
         console.warn('USDA rate limited');
       }
+      // Fixed message (no query) so repeats dedupe to one entry with a rising count.
+      logError('usda-search', new Error(`USDA search HTTP ${res.status}${body?.error?.code ? ' ' + body.error.code : ''}`));
       return [];
     }
 
@@ -286,7 +289,8 @@ async function searchUSDA(query, pageSize = 15) {
       .sort((a, b) => a._score - b._score)
       .slice(0, pageSize)
       .map(({ _score, ...food }) => food); // keep _dataType for merge split, stripped later
-  } catch {
+  } catch (e) {
+    logError('usda-search', e);
     return [];
   }
 }
@@ -320,7 +324,10 @@ async function searchOpenFoodFacts(query, pageSize = 15) {
       }),
     });
     const res = await fetch(`${OFF_BASE}/cgi/search.pl?${params}`);
-    if (!res.ok) return [];
+    if (!res.ok) {
+      logError('off-search', new Error(`Open Food Facts search HTTP ${res.status}`));
+      return [];
+    }
 
     const data = await res.json();
     if (!data.products) return [];
@@ -379,7 +386,10 @@ async function searchOpenFoodFacts(query, pageSize = 15) {
         };
       })
       .filter(Boolean);
-  } catch {
+  } catch (e) {
+    // The OFF text-search outage (503 / no CORS header) lands here as a TypeError
+    // on every search; the log dedupes it to one entry with a rising count.
+    logError('off-search', e);
     return [];
   }
 }
@@ -389,7 +399,11 @@ async function searchOpenFoodFacts(query, pageSize = 15) {
 export async function lookupBarcode(barcode) {
   const url = `${OFF_BASE}/api/v2/product/${barcode}.json`;
   const res = await fetch(url);
-  if (!res.ok) return null;
+  if (!res.ok) {
+    // 404 = barcode simply isn't in the database; anything else is a real failure.
+    if (res.status !== 404) logError('off-barcode', new Error(`Open Food Facts barcode HTTP ${res.status}`));
+    return null;
+  }
 
   const data = await res.json();
   if (data.status !== 1 || !data.product) return null;

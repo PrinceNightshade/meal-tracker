@@ -7,6 +7,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { DEFAULT_GOALS } from './store.js';
+import { logError } from './errorlog.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyA3xKNq1RpiH_ALRFceNxBdwV1VxLVseYE',
@@ -100,6 +101,7 @@ export async function pullFromCloud(store) {
     }
     // Diagnostic visibility log — stored under a separate key so a review on
     // another device never collides with that device's own live mt_vis_log.
+    // Remove after the usage analysis reviews the July–Oct visibility history.
     if (diagSnap.exists()) {
       try {
         localStorage.setItem('mt_vis_log_cloud', JSON.stringify(diagSnap.data().log || []));
@@ -120,52 +122,72 @@ export async function pullFromCloud(store) {
     }
   } catch (e) {
     console.warn('Cloud pull failed:', e);
+    logError('pull from cloud', e);
   }
 }
 
 // ── Push localStorage → Firestore (fire & forget) ──
 
+// Shared failure handler: keep the console warning AND record it in the
+// always-on error log (fixed context label only — never user data).
+function pushFailed(label, e) {
+  console.warn(`Push ${label} failed:`, e);
+  logError(`push ${label}`, e);
+}
+
 export function pushProfile(data) {
   if (!currentUser) return;
-  setDoc(userDoc('data/profile'), data).catch(e => console.warn('Push profile failed:', e));
+  setDoc(userDoc('data/profile'), data).catch(e => pushFailed('profile', e));
 }
 
 export function pushGoals(data) {
   if (!currentUser) return;
-  setDoc(userDoc('data/goals'), data).catch(e => console.warn('Push goals failed:', e));
+  setDoc(userDoc('data/goals'), data).catch(e => pushFailed('goals', e));
 }
 
 export function pushWeight(allEntries) {
   if (!currentUser) return;
-  setDoc(userDoc('data/weight'), allEntries).catch(e => console.warn('Push weight failed:', e));
+  setDoc(userDoc('data/weight'), allEntries).catch(e => pushFailed('weight', e));
 }
 
 export function pushFavorites(items) {
   if (!currentUser) return;
-  setDoc(userDoc('data/favorites'), { items }).catch(e => console.warn('Push favorites failed:', e));
+  setDoc(userDoc('data/favorites'), { items }).catch(e => pushFailed('favorites', e));
 }
 
 export function pushMyFoods(items) {
   if (!currentUser) return;
-  setDoc(userDoc('data/myfoods'), { items }).catch(e => console.warn('Push myfoods failed:', e));
+  setDoc(userDoc('data/myfoods'), { items }).catch(e => pushFailed('myfoods', e));
 }
 
 export function pushDay(date, dayData) {
   if (!currentUser) return;
-  setDoc(doc(db, 'users', currentUser.uid, 'days', date), dayData).catch(e => console.warn(`Push day ${date} failed:`, e));
+  setDoc(doc(db, 'users', currentUser.uid, 'days', date), dayData).catch(e => pushFailed('day', e));
 }
 
 // Wellness records live in their own collection (see wellness.js). The nightly
 // sync worker writes here server-side; the app writes here on manual import.
 export function pushWellness(date, record) {
   if (!currentUser) return;
-  setDoc(doc(db, 'users', currentUser.uid, 'wellness', date), record).catch(e => console.warn(`Push wellness ${date} failed:`, e));
+  setDoc(doc(db, 'users', currentUser.uid, 'wellness', date), record).catch(e => pushFailed('wellness', e));
 }
 
-// Temporary — syncs the visibility diagnostic log so it can be reviewed off-device.
-// Remove alongside initVisibilityLog once the Screen Time question is settled.
-export function pushDiag(log) {
-  if (!currentUser) return;
-  setDoc(userDoc('data/diag'), { log, updatedAt: new Date().toISOString() })
-    .catch(e => console.warn('Push diag failed:', e));
+// Usage events (opt-in) and the error log (always on) live in their own
+// subcollections under the user's own doc, one doc per device so phone and
+// laptop never overwrite each other. Both resolve to true/false (false = signed
+// out or failed) so usage.js / errorlog.js know whether to keep buffering.
+// These deliberately do NOT call logError: a failing error-sync that logged
+// itself would feed its own buffer and retry forever.
+export function pushUsageDay(docId, data) {
+  if (!currentUser) return Promise.resolve(false);
+  return setDoc(doc(db, 'users', currentUser.uid, 'usage', docId), data)
+    .then(() => true)
+    .catch(e => { console.warn('Push usage failed:', e); return false; });
+}
+
+export function pushErrors(deviceId, data) {
+  if (!currentUser) return Promise.resolve(false);
+  return setDoc(doc(db, 'users', currentUser.uid, 'errors', deviceId), data)
+    .then(() => true)
+    .catch(e => { console.warn('Push errors failed:', e); return false; });
 }

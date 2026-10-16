@@ -1,16 +1,30 @@
 // Service Worker — Meal Tracker
 const CACHE = 'meal-tracker-v62';
+// Every file the app needs to boot. app.js statically imports most of js/, so a
+// module missing here can leave the app blank offline right after an update
+// (the old cache is deleted on activate). Keep this in sync with js/ — the
+// "SW precache covers every module" test enforces it. A path that 404s makes
+// cache.addAll() reject and the SW never installs, so list only real files.
 const ASSETS = [
   '/meal-tracker/',
   '/meal-tracker/index.html',
   '/meal-tracker/css/style.css',
+  '/meal-tracker/manifest.json',
+  '/meal-tracker/icons/icon-192.png',
+  '/meal-tracker/js/pulse-theme.js',
   '/meal-tracker/js/app.js',
   '/meal-tracker/js/store.js',
   '/meal-tracker/js/api.js',
+  '/meal-tracker/js/common-foods.js',
   '/meal-tracker/js/ui.js',
   '/meal-tracker/js/analytics.js',
   '/meal-tracker/js/ui-analytics.js',
-  '/meal-tracker/manifest.json',
+  '/meal-tracker/js/opportunity.js',
+  '/meal-tracker/js/wellness.js',
+  '/meal-tracker/js/firebase.js',
+  '/meal-tracker/js/sw-manager.js',
+  '/meal-tracker/js/usage.js',
+  '/meal-tracker/js/errorlog.js',
 ];
 
 self.addEventListener('install', e => {

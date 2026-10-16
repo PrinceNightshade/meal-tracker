@@ -6,6 +6,14 @@ import * as fb from './firebase.js';
 import * as analytics from './analytics.js';
 import * as opp from './opportunity.js';
 import { initSW } from './sw-manager.js';
+import * as usage from './usage.js';
+import { initErrorLog, logError, setErrorSink, flushErrors } from './errorlog.js';
+
+// Always-on error log (no personal data) + opt-in usage recording. The Firestore
+// writes are injected so these modules stay import-light and testable.
+initErrorLog();
+setErrorSink(fb.pushErrors);
+usage.setUsageSink(fb.pushUsageDay);
 
 let currentDate = ui.todayStr();
 let currentView = 'daily'; // daily | goals | weight
@@ -21,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Deduplicate favorites that accumulated from the add-without-check bug
   store.replaceFavorites(store.getFavorites());
   initTheme();
-  initVisibilityLog();
+  usage.initUsage();
   initSW(ui.$);
   if (store.isUnderage()) {
     renderAgeGate();
@@ -31,33 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
   bindNav();
   initAuth();
 });
-
-// ── Visibility diagnostics ──
-// Temporary instrument to check whether iOS Screen Time's multi-hour bars
-// reflect the page genuinely staying visible, or an iOS PWA mis-attribution.
-// Writes a rolling log of visibility/focus transitions to localStorage
-// (mt_vis_log). Inspect with: JSON.parse(localStorage.getItem('mt_vis_log'))
-// Safe to remove once the question is settled.
-function initVisibilityLog() {
-  const KEY = 'mt_vis_log';
-  const MAX = 200; // cap so the log can't grow unbounded
-
-  function record(event) {
-    let log;
-    try { log = JSON.parse(localStorage.getItem(KEY)) || []; } catch { log = []; }
-    log.push({ t: new Date().toISOString(), event, state: document.visibilityState });
-    if (log.length > MAX) log = log.slice(-MAX);
-    try { localStorage.setItem(KEY, JSON.stringify(log)); } catch { /* quota — ignore */ }
-    // Sync up so the log is reviewable off-device (no-op until signed in).
-    fb.pushDiag(log);
-  }
-
-  record('load');
-  document.addEventListener('visibilitychange', () => record('visibilitychange'));
-  window.addEventListener('focus', () => record('focus'));
-  window.addEventListener('blur', () => record('blur'));
-  window.addEventListener('pagehide', () => record('pagehide'));
-}
 
 // ── Theme ──
 
@@ -101,6 +82,10 @@ function initAuth() {
       await fb.pullFromCloud(store);
       render();
       showToast('Synced');
+      // Push anything buffered while signed out (after the pull, so the synced
+      // usageEnabled flag is already known).
+      usage.flushUsage();
+      flushErrors();
     }
   });
 }
@@ -210,14 +195,17 @@ function bindNav() {
     const next = e.target.closest('#btn-next');
     if (prev) {
       currentDate = ui.shiftDate(currentDate, -1);
+      usage.track('date_nav', { dir: 'prev' });
       render();
     } else if (next && !next.disabled) {
       currentDate = ui.shiftDate(currentDate, 1);
+      usage.track('date_nav', { dir: 'next' });
       render();
     }
   });
   ui.$('#btn-today').addEventListener('click', () => {
     currentDate = ui.todayStr();
+    usage.track('date_nav', { dir: 'today' });
     render();
   });
   ui.$('#nav-daily').addEventListener('click', () => switchView('daily'));
@@ -226,6 +214,7 @@ function bindNav() {
 }
 
 function switchView(view) {
+  if (view !== currentView) usage.track('tab', { to: view });
   currentView = view;
   ui.$$('.nav-btn').forEach(b => b.classList.toggle('active', b.id === `nav-${view}`));
   render();
@@ -353,7 +342,7 @@ function renderDaily() {
   const logBtn = ui.el('button', {
     className: 'action-btn action-btn--primary',
     type: 'button',
-    onClick: () => openAddFoodModal(null),  // null = no meal preselected
+    onClick: () => openAddFoodModal(null, { from: 'log-btn' }),  // null = no meal preselected
   });
   const boltSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   boltSvg.setAttribute('width', '14'); boltSvg.setAttribute('height', '14');
@@ -372,15 +361,17 @@ function renderDaily() {
   // Meals
   const favorites = store.getFavorites();
   const mealCallbacks = {
-    onAdd:        (mealType) => openAddFoodModal(mealType),
+    onAdd:        (mealType, from) => openAddFoodModal(mealType, { from: from || 'meal-card' }),
     onRemove:     (mealType, foodId) => {
+      usage.track('food_remove', { mealType, from: 'card' });
       store.removeFoodFromMeal(currentDate, mealType, foodId);
       fb.pushDay(currentDate, store.getDay(currentDate));
       render();
     },
     onToggleFav:  (food, adding, mealType) => {
+      usage.track('fav', { on: !!adding });
       if (adding) {
-        store.addFavorite({ ...food, mealType });
+        store.addFavorite({ ...usage.stripUsageFields(food), mealType });
         showToast('Added to favorites');
       } else {
         const fav = store.getFavorites().find(f => f.name === food.name);
@@ -433,11 +424,17 @@ function renderGoals() {
     updated.heightIn = inInput.value ? parseInt(inInput.value) : null;
     const actInput = ui.$('[data-profile="activityLevel"]', container);
     updated.activityLevel = actInput.value;
+    const profileBefore = store.getProfile();
     store.saveProfile(updated);
     fb.pushProfile(updated);
+    // Usage: which profile fields actually changed (field names only, never values)
+    for (const k of ['sex', 'birthYear', 'heightFt', 'heightIn', 'activityLevel']) {
+      if ((profileBefore[k] ?? null) !== (updated[k] ?? null)) usage.track('goals_change', { field: k });
+    }
 
     const weightInput = ui.$('[data-profile="weight"]', container);
     if (weightInput && weightInput.value) {
+      if (parseFloat(weightInput.value) !== store.getWeight(ui.todayStr())) usage.track('goals_change', { field: 'weight' });
       store.saveWeight(ui.todayStr(), weightInput.value);
       fb.pushWeight(store.getAllWeightEntries());
     }
@@ -589,6 +586,7 @@ function renderGoals() {
           };
           store.saveGoals(tdeeGoals);
           fb.pushGoals(tdeeGoals);
+          usage.track('goals_change', { field: 'tdee-apply' });
           showToast('Goals updated from TDEE');
           renderGoals();
         },
@@ -603,12 +601,14 @@ function renderGoals() {
   const goalsSummary = `${goals.calories} cal · ${goals.protein}p · ${goals.carbs}c · ${goals.fat}f`;
 
   const saveNutritionGoals = (input) => {
-    const updated = { ...store.getGoals() };
+    const before = store.getGoals();
+    const updated = { ...before };
     ui.$$('.input-goal[data-key]', container).forEach(inp => {
       const k = inp.dataset.key;
       if (k === 'weightGoal') return; // handled in its own section
       const val = inp.value.trim();
       updated[k] = parseInt(val) || 0;
+      if (updated[k] !== (before[k] ?? store.DEFAULT_GOALS[k])) usage.track('goals_change', { field: k });
     });
     store.saveGoals(updated);
     fb.pushGoals(updated);
@@ -619,6 +619,7 @@ function renderGoals() {
   // 2300mg default and a tighter 1500mg "blood-pressure" target, plus the
   // usual autosave-on-blur numeric input for a custom value.
   const applySodiumPreset = (mg, btnEl) => {
+    if (mg !== (store.getGoals().sodiumGoal || 2300)) usage.track('goals_change', { field: 'sodiumGoal' });
     const updated = { ...store.getGoals(), sodiumGoal: mg };
     store.saveGoals(updated);
     fb.pushGoals(updated);
@@ -701,6 +702,7 @@ function renderGoals() {
     const val = input.value.trim();
     const current = store.getGoals();
     const wGoals = { ...current, weightGoal: val ? parseFloat(val) : null };
+    if (wGoals.weightGoal !== (current.weightGoal ?? null)) usage.track('goals_change', { field: 'weightGoal' });
     store.saveGoals(wGoals);
     fb.pushGoals(wGoals);
     flashSaved(input);
@@ -817,6 +819,42 @@ function renderGoals() {
   ]);
 
   container.appendChild(ui.collapsible('Wellness Data', wellnessSummary, wellnessContent, { startOpen: false }));
+
+  // ── Usage recording (opt-in, account-level) ──
+  // Autosaves on change like the rest of Goals. The flag lives on the synced goals
+  // object, so it follows the account to every device. Off by default.
+  const usageOn = usage.isUsageEnabled();
+  const setUsageEnabled = (on, btnEl) => {
+    if (usage.isUsageEnabled() === on) return; // tapping the already-active side
+    const updated = { ...store.getGoals(), usageEnabled: on };
+    store.saveGoals(updated);
+    fb.pushGoals(updated);
+    usage.onUsageEnabledChanged(on);
+    flashSaved(btnEl.parentElement);
+  };
+  container.appendChild(ui.el('div', { className: 'usage-setting' }, [
+    ui.el('div', { className: 'goal-row' }, [
+      ui.el('label', { textContent: 'Record how I use the app' }),
+      ui.el('div', { className: 'toggle-group usage-toggle' }, [
+        ui.el('button', {
+          className: `toggle-btn ${usageOn ? '' : 'active'}`,
+          type: 'button',
+          textContent: 'Off',
+          onClick: (e) => { selectToggle(e.target); setUsageEnabled(false, e.target); },
+        }),
+        ui.el('button', {
+          className: `toggle-btn ${usageOn ? 'active' : ''}`,
+          type: 'button',
+          textContent: 'On',
+          onClick: (e) => { selectToggle(e.target); setUsageEnabled(true, e.target); },
+        }),
+      ]),
+    ]),
+    ui.el('p', {
+      className: 'usage-setting__hint',
+      textContent: 'Saves which features you use and when — to your account only — to help improve the app.',
+    }),
+  ]));
 
   // AI Food Analysis collapsible — paused pending monetization decision
 }
@@ -949,9 +987,38 @@ function renderWeight() {
   container.appendChild(section);
 }
 
+// ── Usage helpers (all no-ops when recording is off) ──
+
+// One entry per time the add-food sheet is opened. Re-opens that are part of the
+// same flow (after adding, Back, Search instead…) pass { resume: true } and keep
+// the session, so open counts and abandon detection stay honest.
+let addSession = null; // { mealType, qLen, results, added }
+
+function endAddSession() {
+  const s = addSession;
+  addSession = null;
+  // Sheet closed after a real query with nothing added.
+  if (s && !s.added && s.qLen >= 3) usage.track('search_abandon', { qLen: s.qLen, results: s.results });
+}
+
+// Single funnel for every "food lands on the day" path: stamps addedAt + via
+// (only when recording is on — foods are untouched otherwise), adds, and tracks.
+function logFoodToDay(mealType, food, via, source) {
+  const stamped = usage.stampFood(food, via);
+  store.addFoodToMeal(currentDate, mealType, stamped);
+  if (addSession) addSession.added = true;
+  usage.track('food_add', {
+    via,
+    mealType,
+    source: source || food.source || 'unknown',
+    name: food.name,
+    servings: stamped.servings,
+  });
+}
+
 // ── Add Food Modal ──
 
-function openAddFoodModal(mealType) {
+function openAddFoodModal(mealType, opts = {}) {
   stopActiveCamera();
   const modal = ui.$('#modal');
   const modalBody = ui.$('#modal-body');
@@ -967,7 +1034,7 @@ function openAddFoodModal(mealType) {
         className: 'btn-secondary',
         style: 'padding:14px;font-size:15px;font-weight:600;border-radius:14px;',
         textContent: ui.capitalize(mt),
-        onClick: () => openAddFoodModal(mt),
+        onClick: () => openAddFoodModal(mt, { from: opts.from, resume: opts.resume }),
       });
       mealPickerGrid.appendChild(btn);
     }
@@ -979,10 +1046,22 @@ function openAddFoodModal(mealType) {
     return;
   }
 
+  // Usage session: a fresh open counts as one add_sheet; a resume continues the last one.
+  if (opts.resume) {
+    if (!addSession || addSession.mealType !== mealType) {
+      addSession = { mealType, qLen: 0, results: 0, added: false };
+    }
+  } else {
+    endAddSession();
+    addSession = { mealType, qLen: 0, results: 0, added: false };
+    usage.track('add_sheet', { mealType, from: opts.from || 'unknown' });
+  }
+
   // Extract recent foods for this meal type
   const recents = store.getRecentFoodsByMealType(mealType, 20);
 
-  const state = { results: [], savedMeals: [], loading: false };
+  // origins: where each result came from (for search_pick); apiArrived: phase-2 landed
+  const state = { results: [], savedMeals: [], loading: false, origins: new Map(), apiArrived: false };
 
   // Multi-select state for recents/favorites — keyed by food name (lowercased) so the same
   // food can't be selected twice across both lists. Value is the food object to add.
@@ -1021,7 +1100,7 @@ function openAddFoodModal(mealType) {
       onClick: () => {
         const items = Array.from(selected.values());
         items.forEach(food => {
-          store.addFoodToMeal(currentDate, mealType, { ...food, servings: 1 });
+          logFoodToDay(mealType, { ...food, servings: 1 }, 'multi-add');
         });
         fb.pushDay(currentDate, store.getDay(currentDate));
         showToast(`Added ${items.length} item${items.length === 1 ? '' : 's'}`);
@@ -1084,6 +1163,7 @@ function openAddFoodModal(mealType) {
       state.savedMeals = [];
       return;
     }
+    state.apiArrived = false;
 
     // ── Phase 1: instant local results ──
     const myFoodResults = store.searchMyFoods(query);
@@ -1098,6 +1178,11 @@ function openAddFoodModal(mealType) {
 
     state.results = [...myFoodResults, ...historyDeduped, ...commonDeduped];
     state.savedMeals = store.searchSavedMeals(query); // all meal types, shown first
+    state.origins = new Map();
+    myFoodResults.forEach(f => state.origins.set(f, 'myfoods'));
+    historyDeduped.forEach(f => state.origins.set(f, 'history'));
+    commonDeduped.forEach(f => state.origins.set(f, 'common'));
+    if (addSession) { addSession.qLen = query.length; addSession.results = state.savedMeals.length + state.results.length; }
     renderResults();
     setTimeout(() => { resultsList.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
 
@@ -1115,6 +1200,9 @@ function openAddFoodModal(mealType) {
       hint.remove();
       if (apiResults.length === 0) return;
       state.results = [...state.results, ...apiResults];
+      state.apiArrived = true;
+      apiResults.forEach(f => state.origins.set(f, f.source === 'openfoodfacts' ? 'off' : (f.source || 'api')));
+      if (addSession) addSession.results = state.savedMeals.length + state.results.length;
       renderResults();
     }).catch(() => {
       if (token === apiSearchToken) hint.remove();
@@ -1131,13 +1219,13 @@ function openAddFoodModal(mealType) {
       return;
     }
     // Saved meals whose name matches float to the top, ahead of single foods
-    for (const meal of state.savedMeals) {
+    state.savedMeals.forEach((meal, i) => {
       resultsList.appendChild(buildSavedMealRow(meal, () => {
         state.savedMeals = state.savedMeals.filter(m => m.myFoodId !== meal.myFoodId);
         renderResults();
         renderSavedMealsSection();
-      }));
-    }
+      }, i + 1));
+    });
     for (const food of state.results) {
       const isMyFood = food.source === 'myfoods';
       const label = food.brand ? `${food.name} (${food.brand})` : food.name;
@@ -1189,7 +1277,14 @@ function openAddFoodModal(mealType) {
   }
 
   function selectFood(food) {
-    showServingPicker(food, mealType);
+    // rank = 1-based position as displayed (saved meals are listed above single foods)
+    usage.track('search_pick', {
+      qLen: searchInput.value.trim().length,
+      rank: state.savedMeals.length + state.results.indexOf(food) + 1,
+      source: state.origins.get(food) || food.source || 'unknown',
+      phase2: state.apiArrived,
+    });
+    showServingPicker(food, mealType, { via: 'search' });
   }
 
   // Manual entry section
@@ -1253,7 +1348,7 @@ function openAddFoodModal(mealType) {
           store.saveMyFood(food);
           fb.pushMyFoods(store.getMyFoods());
         }
-        store.addFoodToMeal(currentDate, mealType, food);
+        logFoodToDay(mealType, food, 'manual');
         fb.pushDay(currentDate, store.getDay(currentDate));
         closeModal();
         render();
@@ -1262,7 +1357,8 @@ function openAddFoodModal(mealType) {
   ]);
 
   // Saved meals — named combos for this meal type, above recents. Hidden when none.
-  function buildSavedMealRow(meal, onRemoved) {
+  // `searchRank` is set only for rows shown as search results (for search_pick).
+  function buildSavedMealRow(meal, onRemoved, searchRank = null) {
     const totals = store.getMealTemplateTotals(meal);
     const n = totals.count;
     const removeBtn = ui.el('button', {
@@ -1284,7 +1380,15 @@ function openAddFoodModal(mealType) {
     const nameEl = ui.el('span', { className: 'result-name', textContent: meal.name });
     nameEl.appendChild(ui.el('span', { className: 'my-food-badge', textContent: 'My Meal' }));
     const r = (v) => Math.round(v);
-    return ui.el('div', { className: 'result-row', onClick: () => openSavedMealSheet(meal, mealType) }, [
+    return ui.el('div', {
+      className: 'result-row',
+      onClick: () => {
+        if (searchRank !== null) {
+          usage.track('search_pick', { qLen: searchInput.value.trim().length, rank: searchRank, source: 'saved-meal', phase2: state.apiArrived });
+        }
+        openSavedMealSheet(meal, mealType);
+      },
+    }, [
       ui.el('div', { className: 'result-info' }, [
         nameEl,
         ui.el('span', {
@@ -1345,7 +1449,7 @@ function openAddFoodModal(mealType) {
         recents.forEach(food => {
           const checkbox = makeMultiCheckbox(food);
           section.appendChild(
-            ui.el('div', { className: 'result-row', onClick: () => showServingPicker(food, mealType) }, [
+            ui.el('div', { className: 'result-row', onClick: () => showServingPicker(food, mealType, { via: 'recent' }) }, [
               checkbox,
               ui.el('div', { className: 'result-info' }, [
                 ui.el('span', { className: 'result-name', textContent: food.name }),
@@ -1362,7 +1466,8 @@ function openAddFoodModal(mealType) {
                     onClick: (e) => {
                       e.stopPropagation();
                       store.removeRecentFood(mealType, food.name);
-                      openAddFoodModal(mealType);
+                      usage.track('recent_dismiss', { mealType });
+                      openAddFoodModal(mealType, { resume: true });
                     },
                   });
                   b.appendChild(ui.svgIcon('i-close', 14));
@@ -1385,7 +1490,7 @@ function openAddFoodModal(mealType) {
         ui.el('div', { className: 'divider', textContent: '— favorites —' }),
         ...favs.map(fav => {
           const checkbox = makeMultiCheckbox(fav);
-          return ui.el('div', { className: 'result-row', onClick: () => showServingPicker(fav, mealType) }, [
+          return ui.el('div', { className: 'result-row', onClick: () => showServingPicker(fav, mealType, { via: 'favorite' }) }, [
             checkbox,
             ui.el('div', { className: 'result-info' }, [
               ui.el('span', { className: 'result-name', textContent: fav.name }),
@@ -1402,11 +1507,12 @@ function openAddFoodModal(mealType) {
                   onClick: (e) => {
                     e.stopPropagation();
                     store.removeFavorite(fav.favId);
+                    usage.track('fav', { on: false });
                     // Also suppress from recents in this meal type so the food doesn't pop
                     // back tomorrow as a "recent" — matches the user's expectation that X means gone.
                     store.removeRecentFood(mealType, fav.name);
                     fb.pushFavorites(store.getFavorites());
-                    openAddFoodModal(mealType);
+                    openAddFoodModal(mealType, { resume: true });
                   },
                 });
                 b.appendChild(ui.svgIcon('i-close', 14));
@@ -1437,6 +1543,8 @@ function openAddFoodModal(mealType) {
 }
 
 function closeModal() {
+  endScan('cancel'); // no-op unless a scan was still in flight
+  endAddSession();
   stopActiveCamera();
   ui.$('#modal').classList.remove('open');
 }
@@ -1469,6 +1577,7 @@ function openFoodDetailsModal(mealType, food) {
   const foodModal = ui.renderFoodModal(food, goals, {
     onSave: (newServings, nutritionEdits) => {
       if (nutritionEdits) {
+        usage.track('food_edit', { kind: 'nutrition' });
         const perServing = (val) => (parseFloat(newServings) || 1) > 0
           ? val / (parseFloat(newServings) || 1)
           : 0;
@@ -1503,12 +1612,13 @@ function openFoodDetailsModal(mealType, food) {
             showToast(`A saved meal is already named “${food.name}” — not added to My Foods`);
           } else {
             if (existing) store.deleteMyFood(existing.myFoodId);
-            store.saveMyFood({ ...food, ...updates });
+            store.saveMyFood(usage.stripUsageFields({ ...food, ...updates }));
             fb.pushMyFoods(store.getMyFoods());
             showToast('Saved to My Foods');
           }
         }
       } else {
+        if (Number(newServings) !== Number(food.servings || 1)) usage.track('food_edit', { kind: 'servings' });
         store.updateFoodQuantity(currentDate, mealType, food.id, newServings);
       }
       fb.pushDay(currentDate, store.getDay(currentDate));
@@ -1516,6 +1626,7 @@ function openFoodDetailsModal(mealType, food) {
       render();
     },
     onDelete: () => {
+      usage.track('food_remove', { mealType, from: 'details' });
       store.removeFoodFromMeal(currentDate, mealType, food.id);
       fb.pushDay(currentDate, store.getDay(currentDate));
       closeModal();
@@ -1661,6 +1772,7 @@ function openSaveMealModal(mealType) {
     }
     if (existing && !store.isMealTemplate(existing)) store.deleteMyFood(existing.myFoodId);
     store.saveMealTemplate({ name, mealType, items: idx.map(i => foods[i]) });
+    usage.track('saved_meal_save', { items: idx.length, replaced: !!existing });
     fb.pushMyFoods(store.getMyFoods());
     closeModal();
     showToast(existing ? `Replaced ${name}` : `Saved ${name}`);
@@ -1711,8 +1823,9 @@ function openSavedMealSheet(meal, mealType) {
     }
     const skipped = items.map((_, i) => i).filter(i => !idx.includes(i));
     store.mealTemplateToFoods(meal, skipped).forEach(food => {
-      store.addFoodToMeal(currentDate, mealType, food);
+      logFoodToDay(mealType, food, 'saved-meal', 'saved-meal');
     });
+    usage.track('saved_meal_add', { items: items.length - skipped.length, unchecked: skipped.length });
     fb.pushDay(currentDate, store.getDay(currentDate));
     closeModal();
     render();
@@ -1728,7 +1841,7 @@ function openSavedMealSheet(meal, mealType) {
       className: 'btn-secondary',
       type: 'button',
       textContent: 'Back',
-      onClick: () => openAddFoodModal(mealType),
+      onClick: () => openAddFoodModal(mealType, { resume: true }),
     }),
     addBtn,
   ]));
@@ -1741,7 +1854,7 @@ function openSavedMealSheet(meal, mealType) {
 
 // ── Serving Picker (shared by text search and barcode scanner) ──
 
-function showServingPicker(food, mealType) {
+function showServingPicker(food, mealType, ctx = {}) {
   // If no meal type yet (from action-row scan/log), redirect to picker then come back
   if (!mealType) {
     const modalBody = ui.$('#modal-body');
@@ -1754,7 +1867,7 @@ function showServingPicker(food, mealType) {
         className: 'btn-secondary',
         style: 'padding:14px;font-size:15px;font-weight:600;border-radius:14px;',
         textContent: ui.capitalize(mt),
-        onClick: () => showServingPicker(food, mt),
+        onClick: () => showServingPicker(food, mt, ctx),
       });
       grid.appendChild(btn);
     }
@@ -1848,16 +1961,16 @@ function showServingPicker(food, mealType) {
       ui.el('button', {
         className: 'btn-secondary',
         textContent: 'Back',
-        onClick: () => openAddFoodModal(mealType),
+        onClick: () => openAddFoodModal(mealType, { resume: true }),
       }),
       ui.el('button', {
         className: 'btn-primary',
         textContent: 'Add',
         onClick: () => {
-          store.addFoodToMeal(currentDate, mealType, { ...food, servings });
+          logFoodToDay(mealType, { ...food, servings }, ctx.via || 'search');
           fb.pushDay(currentDate, store.getDay(currentDate));
           render();
-          openAddFoodModal(mealType);
+          openAddFoodModal(mealType, { resume: true });
         },
       }),
     ]),
@@ -1866,7 +1979,19 @@ function showServingPicker(food, mealType) {
 
 // ── Barcode Scanner ──
 
+// Usage: exactly one `scan` outcome per scanner opening. closeModal() settles an
+// unfinished scan as 'cancel'.
+let activeScan = null;
+function endScan(outcome) {
+  if (activeScan && !activeScan.done) {
+    activeScan.done = true;
+    usage.track('scan', { outcome });
+  }
+}
+
 async function openBarcodeScanner(mealType) {
+  endScan('cancel'); // a previous scanner left without finishing
+  activeScan = { done: false };
   stopActiveCamera();
   const modalBody = ui.$('#modal-body');
   modalBody.innerHTML = '';
@@ -1891,14 +2016,16 @@ async function openBarcodeScanner(mealType) {
   modalBody.appendChild(ui.el('button', {
     className: 'btn-secondary scanner-back',
     textContent: '← Search instead',
-    onClick: () => { stopActiveCamera(); openAddFoodModal(mealType); },
+    onClick: () => { endScan('cancel'); stopActiveCamera(); openAddFoodModal(mealType, { resume: true }); },
   }));
 
   // Load BarcodeDetector polyfill on first use if not natively available
   if (!('BarcodeDetector' in window)) {
     try {
       await import('https://cdn.jsdelivr.net/npm/barcode-detector@3/dist/es/polyfill.min.js');
-    } catch {
+    } catch (e) {
+      logError('scan-polyfill', e);
+      endScan('error');
       statusEl.textContent = 'Barcode scanning not supported on this browser.';
       return;
     }
@@ -1907,7 +2034,9 @@ async function openBarcodeScanner(mealType) {
   let detector;
   try {
     detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] });
-  } catch {
+  } catch (e) {
+    logError('scan-detector-init', e);
+    endScan('error');
     statusEl.textContent = 'Barcode scanning not supported on this device.';
     return;
   }
@@ -1938,6 +2067,8 @@ async function openBarcodeScanner(mealType) {
         // the detector itself is broken (e.g. the polyfill's WASM never loaded) —
         // surface it and stop, so the camera doesn't hang on with no feedback.
         if (++detectErrors >= 8) {
+          logError('scan-detect', e);
+          endScan('error');
           clearInterval(activeScanTimer);
           activeScanTimer = null;
           stopActiveCamera();
@@ -1961,26 +2092,30 @@ async function openBarcodeScanner(mealType) {
         stopActiveCamera();
 
         if (food) {
-          showServingPicker(food, mealType);
+          endScan('found');
+          showServingPicker(food, mealType, { via: 'scan' });
         } else {
+          endScan('not-found');
           statusEl.textContent = `Barcode ${code} not found in database.`;
           statusEl.className = 'scanner-status error';
           modalBody.appendChild(ui.el('button', {
             className: 'btn-primary',
             textContent: 'Search manually',
-            onClick: () => openAddFoodModal(mealType),
+            onClick: () => openAddFoodModal(mealType, { resume: true }),
             style: 'margin-top:12px',
           }));
         }
       } catch (e) {
         // Lookup threw (network, etc.) — release the camera and let the user recover.
+        logError('scan-lookup', e);
+        endScan('error');
         stopActiveCamera();
         statusEl.textContent = `Lookup failed: ${e.message || 'network error'}.`;
         statusEl.className = 'scanner-status error';
         modalBody.appendChild(ui.el('button', {
           className: 'btn-primary',
           textContent: 'Search manually',
-          onClick: () => openAddFoodModal(mealType),
+          onClick: () => openAddFoodModal(mealType, { resume: true }),
           style: 'margin-top:12px',
         }));
       }
@@ -1988,6 +2123,9 @@ async function openBarcodeScanner(mealType) {
 
   } catch (err) {
     const denied = err.name === 'NotAllowedError';
+    // A denied permission is the user's choice, not a fault — only log real failures.
+    if (!denied) logError('scan-camera', err);
+    endScan('error');
     statusEl.textContent = denied
       ? 'Camera access denied — please allow camera in your device settings.'
       : `Camera unavailable: ${err.message}`;
@@ -2016,7 +2154,7 @@ function openPhotoAnalyzer(mealType) {
   modalBody.appendChild(ui.el('button', {
     className: 'btn-secondary scanner-back',
     textContent: '← Search instead',
-    onClick: () => openAddFoodModal(mealType),
+    onClick: () => openAddFoodModal(mealType, { resume: true }),
   }));
 
   // Hidden file input — no `capture` so user can choose camera or library
@@ -2029,7 +2167,7 @@ function openPhotoAnalyzer(mealType) {
   fileInput.onchange = async () => {
     document.body.removeChild(fileInput);
     const file = fileInput.files[0];
-    if (!file) { openAddFoodModal(mealType); return; }
+    if (!file) { openAddFoodModal(mealType, { resume: true }); return; }
 
     statusEl.textContent = 'Analyzing your photo…';
 
@@ -2039,14 +2177,14 @@ function openPhotoAnalyzer(mealType) {
     } catch (err) {
       if (err.code === 'no_key' || err.code === 'auth_error') {
         showToast(err.code === 'auth_error' ? 'Invalid API key — check Goals → AI Food Analysis' : 'API key missing');
-        openAddFoodModal(mealType);
+        openAddFoodModal(mealType, { resume: true });
       } else {
         modalBody.innerHTML = '';
         modalBody.appendChild(ui.el('h2', { textContent: `Add to ${ui.capitalize(mealType)}` }));
         modalBody.appendChild(ui.el('p', { className: 'analyze-error', textContent: `Analysis failed: ${err.message}` }));
         modalBody.appendChild(ui.el('div', { className: 'serving-actions', style: 'margin-top:16px' }, [
           ui.el('button', { className: 'btn-secondary', textContent: '← Try again', onClick: () => openPhotoAnalyzer(mealType) }),
-          ui.el('button', { className: 'btn-primary',   textContent: 'Search instead', onClick: () => openAddFoodModal(mealType) }),
+          ui.el('button', { className: 'btn-primary',   textContent: 'Search instead', onClick: () => openAddFoodModal(mealType, { resume: true }) }),
         ]));
       }
     }
@@ -2129,7 +2267,7 @@ function showAnalyzeResults(foods, mealType) {
         if (!toAdd.length) { showToast('No items selected'); return; }
         foods.forEach((food, i) => {
           if (!states[i].checked) return;
-          store.addFoodToMeal(currentDate, mealType, { ...food, servings: states[i].servings });
+          logFoodToDay(mealType, { ...food, servings: states[i].servings }, 'photo');
         });
         fb.pushDay(currentDate, store.getDay(currentDate));
         closeModal();

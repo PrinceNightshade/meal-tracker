@@ -1,4 +1,5 @@
 // ui.js — DOM rendering helpers
+import { track } from './usage.js';
 
 export function $(sel, parent = document) {
   return parent.querySelector(sel);
@@ -256,6 +257,7 @@ export function renderMacroFooter(totals, goals) {
   toggle.addEventListener('click', () => {
     macroFooterOpen = !macroFooterOpen;
     apply();
+    track('footer', { open: macroFooterOpen });
   });
   apply();
   return wrapper;
@@ -422,6 +424,7 @@ export function renderDailySummaryCarousel(totals, goals, opportunity = null, to
   ]);
 
   // Update dots on scroll
+  let trackedCard = 0;
   carousel.addEventListener('scroll', () => {
     const scrollLeft = carousel.scrollLeft;
     const cardWidth = carousel.offsetWidth;
@@ -430,6 +433,11 @@ export function renderDailySummaryCarousel(totals, goals, opportunity = null, to
     dots.forEach((dot, idx) => {
       dot.classList.toggle('active', idx === currentCard);
     });
+    // Usage: one event per settled slide change (slide is 1-based; 2 = opportunity insight)
+    if (currentCard !== trackedCard) {
+      trackedCard = currentCard;
+      track('carousel', { slide: currentCard + 1 });
+    }
   });
 
   carouselWrapper.appendChild(carousel);
@@ -534,7 +542,7 @@ export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFa
   const addBtn = el('button', {
     className: 'btn-add',
     'aria-label': `Add to ${mealType}`,
-    onClick: (e) => { e.stopPropagation(); onAdd(mealType); },
+    onClick: (e) => { e.stopPropagation(); onAdd(mealType, 'meal-card'); },
   });
   addBtn.appendChild(svgIcon('i-plus', 14));
 
@@ -576,7 +584,7 @@ export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFa
 
   if (isEmpty) {
     section.appendChild(el('div', { className: 'meal-empty-hint', textContent: 'TAP TO COMPOSE' }));
-    section.addEventListener('click', () => onAdd(mealType));
+    section.addEventListener('click', () => onAdd(mealType, 'empty-card'));
   }
 
   return section;

@@ -65,6 +65,9 @@ The Daily grid headlines the macros that move Eric's health: the calorie ring + 
 **Saved meals expand into individual foods.**
 A saved meal (e.g. "Oatmeal+") is a template stored inside My Foods (`mt_myfoods`) as `{ kind: 'meal', name, mealType, items: [food snapshots] }`, so it syncs through the existing `pushMyFoods` array with no new Firestore path. Items keep their logged servings and only the nutrients they actually had (never adds a 0). Created from a Daily meal card with 2+ foods ("Save as meal"); re-added from a "saved meals" section at the top of the add sheet (filtered to that meal type) or from search (saved meals rank first). Re-adding opens a checklist so a day's skipped item can be unchecked, then adds each item as a **separate day food** (fresh ids) — so totals, insights, recents and favorites need no changes. **Names are unique across My Foods** (custom foods *and* saved meals, case-insensitive, via `store.findMyFoodByName`): saving a meal under a taken name shows a Replace it / Rename prompt; manual-add "Save to My Foods" warns on the first Add tap and replaces on the second; the food-details "Save to My Foods" still replaces a same-name custom food (that's its purpose) but refuses to clobber a saved meal. Search results tag saved meals with a **"My Meal"** pill — the same `.my-food-badge` (accent-colored) as "My Food" — and show their macros plus a `+`. **Every `getMyFoods()` consumer must ignore `kind: 'meal'` entries** (`searchMyFoods` filters them; food-details "Save to My Foods" lookup skips them) — a meal must never reach the serving picker as a single food. Helpers in `store.js`: `saveMealTemplate`, `getSavedMeals`, `searchSavedMeals`, `deleteSavedMeal`, `getMealTemplateTotals`, `mealTemplateToFoods`.
 
+**Usage instrumentation is opt-in; the error log is always on.**
+`js/usage.js`: `track(type, props)` records events only when `goals.usageEnabled` is true (the "Record how I use the app" switch in Goals, default **off**, syncs with goals). Events `{ t, type, v, ...props }` buffer per local day in `mt_usage_<date>` and flush to `users/{uid}/usage/<date>_<deviceId>` (per-device docs so phone + laptop never clobber). `v` = the deployed build SHA (read from the SW cache name). When enabled, every logged food also gets `addedAt` + `via` (search / recent / favorite / saved-meal / scan / manual / multi-add) through the single `logFoodToDay` funnel in `app.js`. Instrumented: sessions, tabs, date nav, carousel slide, footer toggle, add-sheet opens, food adds, search pick/abandon, saved meals, scanner outcomes, favorites, recent dismissals, edits/removals, goal changes (field names only, never values). `js/errorlog.js` is **always on and carries no personal data**: global errors + explicit `logError(context, err)` (Firebase push failures, USDA/Open Food Facts failures, scanner errors), scrubbed of query strings/emails, deduped with a `count`, 50-entry ring buffer → `users/{uid}/errors/<deviceId>`. Any new add path must go through `logFoodToDay`; any new failure path should call `logError`. The July visibility probe (`initVisibilityLog`/`pushDiag`) is retired — only its `data/diag` → `mt_vis_log_cloud` pull remains until that history is analyzed.
+
 **UI/UX guiding principle: breathe freely.**
 Favor whitespace and reduce competing elements. When in doubt, remove chrome rather than add toggles. Examples: "Today" hides when on today; date drops the year in the header; whole empty meal cards are tappable instead of relying on the small "+ Add" button alone; tap targets ≥44pt for one-handed use.
 
@@ -83,6 +86,8 @@ Favor whitespace and reduce competing elements. When in doubt, remove chrome rat
 **SW cache versioning** is automated: the CI deploy step replaces `meal-tracker-vN` in `sw.js` with `meal-tracker-<git-short-sha>` before upload. No manual version bumps needed.
 
 **Docs/CI-only pushes don't redeploy.** Tests run on every push, but the deploy job first diffs the push and only redeploys if a shipped file changed (`js/`, `css/`, `icons/`, `index.html`, `manifest.json`, `sw.js`). Otherwise users would get a new SW cache key and a pointless Reload banner.
+
+**SW precache must list every module.** `sw.js` `ASSETS` names every file in `js/` (plus shell files). A module missing there can leave the app blank offline right after an update; a path that 404s makes the SW install fail so users silently stop getting updates. `tests/sw-precache.test.js` enforces both — add new modules to `ASSETS`.
 
 **Deploy artifacts** are filtered: only `js/`, `css/`, `icons/`, `index.html`, `manifest.json`, and `sw.js` are deployed. `.git/`, `.claude/`, `.md` files, and `tests/` are excluded.
 
@@ -171,7 +176,7 @@ Run through these checks in the live preview server or on deployed staging:
 **Service Worker & Updates**
 - [ ] SW registers without errors (DevTools > Application > Service Workers)
 - [ ] App works offline after first load
-- [ ] If SW changed: verify cache version bumped in sw.js
+- [ ] If SW changed: cache version is auto-set by CI; confirm on the live site that the new SW installed (`navigator.serviceWorker` registration active, cache contains every `ASSETS` entry)
 - [ ] Test update banner: deploy a dummy change, reload, check for "Update Available"
 
 **Edge Cases**
@@ -232,6 +237,14 @@ Run through these checks in the live preview server or on deployed staging:
 - [ ] Social / friend leaderboard
 - [ ] Apple Health / Google Fit integration — **weight sync only**, explicitly NOT calorie-burn import. Crediting exercise calories triggers the well-documented compensation effect (people overestimate burn 2–4x and the resulting "earned it" snack flips a deficit day into a surplus). The app is intentionally one-sided: precise about intake, silent about burn.
 - [ ] Macro targets by meal type (not just daily totals)
+
+### Recently Completed (Oct 2026 — usage instrumentation + error log)
+- [x] Opt-in usage recording (Goals → "Record how I use the app", off by default): sessions, how foods are added, search picks/abandons, feature taps; foods stamped with `addedAt` + `via`. Per-device daily docs under the user's own account.
+- [x] Always-on, no-personal-data error log (global + Firebase push / API / scanner failures), deduped, synced per device
+- [x] Retired the July visibility probe (collection stopped; history kept for analysis)
+- [x] SW precache now covers every module (8 of 14 were missing) + a test that enforces it
+- [ ] **Next:** analyze the existing July–Oct visibility history + food logs; after a few weeks of opted-in usage data, review it for UI changes; then remove the `data/diag` pull
+- [ ] **Open question:** the Firebase SDK is a static cross-origin import (gstatic) the SW doesn't cache, so an offline cold start depends on the browser HTTP cache keeping it
 
 ### Recently Completed (Oct 2026 — saved meals + PCC hot bar)
 - [x] Saved meals — "Save as meal" on any meal card with 2+ foods; re-add from the top of the add sheet or search, uncheck what you skipped today, and the items land as separate foods. Stored in My Foods (syncs via Firebase).
