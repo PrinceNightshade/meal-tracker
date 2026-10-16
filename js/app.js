@@ -1194,6 +1194,15 @@ function openAddFoodModal(mealType) {
 
   // Manual entry section
   const saveToLibraryCheckbox = ui.el('input', { type: 'checkbox', id: 'save-to-library' });
+  // Replace-confirm for "Save to My Foods" when the name is already taken:
+  // first Add tap warns, a second tap (same name) replaces.
+  const manualNote = ui.el('div', { className: 'meal-sheet-note' });
+  let manualConfirmFor = null;
+  saveToLibraryCheckbox.addEventListener('change', () => {
+    manualConfirmFor = null;
+    manualNote.textContent = '';
+    manualNote.classList.remove('is-warn');
+  });
   const manualSection = ui.el('div', { className: 'manual-entry' }, [
     ui.el('div', { className: 'divider', textContent: '— or add manually —' }),
     ui.el('input', { type: 'text', className: 'input-manual', placeholder: 'Food name', dataset: { field: 'name' } }),
@@ -1213,6 +1222,7 @@ function openAddFoodModal(mealType) {
       saveToLibraryCheckbox,
       ui.el('span', { textContent: 'Save to My Foods library' }),
     ]),
+    manualNote,
     ui.el('button', {
       className: 'btn-primary',
       textContent: 'Add',
@@ -1231,6 +1241,15 @@ function openAddFoodModal(mealType) {
         }
         const food = { ...fields, servingSize: '', servingUnit: '', servings: 1, source: 'manual' };
         if (saveToLibraryCheckbox.checked) {
+          const key = food.name.trim().toLowerCase();
+          const existing = store.findMyFoodByName(food.name);
+          if (existing && manualConfirmFor !== key) {
+            manualConfirmFor = key;
+            manualNote.textContent = `You already have ${describeMyFood(existing)}. Tap Add again to replace it, or uncheck “Save to My Foods” to just log it.`;
+            manualNote.classList.add('is-warn');
+            return;
+          }
+          if (existing) store.deleteMyFood(existing.myFoodId);
           store.saveMyFood(food);
           fb.pushMyFoods(store.getMyFoods());
         }
@@ -1257,15 +1276,23 @@ function openAddFoodModal(mealType) {
       },
     });
     removeBtn.appendChild(ui.svgIcon('i-close', 14));
+    // + does the same as tapping the row (opens the checklist) — it's there so the
+    // row reads as addable like every other result.
+    const addBtn = ui.el('button', { className: 'btn-icon', title: 'Add this meal' });
+    addBtn.appendChild(ui.svgIcon('i-plus', 16));
+    // Same pill as "My Food" (accent-colored), so the two read as siblings.
+    const nameEl = ui.el('span', { className: 'result-name', textContent: meal.name });
+    nameEl.appendChild(ui.el('span', { className: 'my-food-badge', textContent: 'My Meal' }));
+    const r = (v) => Math.round(v);
     return ui.el('div', { className: 'result-row', onClick: () => openSavedMealSheet(meal, mealType) }, [
       ui.el('div', { className: 'result-info' }, [
-        ui.el('span', { className: 'result-name', textContent: meal.name }),
+        nameEl,
         ui.el('span', {
           className: 'result-macros',
-          textContent: `saved meal · ${n} food${n === 1 ? '' : 's'} · ${Math.round(totals.calories)} cal`,
+          textContent: `${n} food${n === 1 ? '' : 's'} · ${r(totals.calories)} cal · ${r(totals.protein)}p · ${r(totals.carbs)}c · ${r(totals.fat)}f`,
         }),
       ]),
-      ui.el('div', { className: 'result-actions' }, [removeBtn]),
+      ui.el('div', { className: 'result-actions' }, [removeBtn, addBtn]),
     ]);
   }
 
@@ -1468,13 +1495,18 @@ function openFoodDetailsModal(mealType, food) {
         }
         store.updateFoodInMeal(currentDate, mealType, food.id, updates);
         if (nutritionEdits.saveToMyFoods) {
-          const existing = store.getMyFoods().find(
-            f => !store.isMealTemplate(f) && f.name && f.name.toLowerCase() === food.name.toLowerCase()
-          );
-          if (existing) store.deleteMyFood(existing.myFoodId);
-          store.saveMyFood({ ...food, ...updates });
-          fb.pushMyFoods(store.getMyFoods());
-          showToast('Saved to My Foods');
+          // Updating your own custom food by name is the point of this checkbox, so
+          // a same-name custom food is replaced. A same-name saved meal is not —
+          // that would silently delete a whole combo.
+          const existing = store.findMyFoodByName(food.name);
+          if (existing && store.isMealTemplate(existing)) {
+            showToast(`A saved meal is already named “${food.name}” — not added to My Foods`);
+          } else {
+            if (existing) store.deleteMyFood(existing.myFoodId);
+            store.saveMyFood({ ...food, ...updates });
+            fb.pushMyFoods(store.getMyFoods());
+            showToast('Saved to My Foods');
+          }
         }
       } else {
         store.updateFoodQuantity(currentDate, mealType, food.id, newServings);
@@ -1542,6 +1574,16 @@ function buildMealChecklist(items, onChange) {
 }
 
 // Daily meal card -> "Save as meal" sheet
+// Human description of an existing My Foods entry, for replace prompts:
+// "a custom food called “Oatmeal+” (300 cal)" / "a saved meal called “Oatmeal+” (3 foods, 343 cal)"
+function describeMyFood(entry) {
+  if (store.isMealTemplate(entry)) {
+    const t = store.getMealTemplateTotals(entry);
+    return `a saved meal called “${entry.name}” (${t.count} food${t.count === 1 ? '' : 's'}, ${Math.round(t.calories)} cal)`;
+  }
+  return `a custom food called “${entry.name}” (${Math.round(entry.calories || 0)} cal)`;
+}
+
 function openSaveMealModal(mealType) {
   const foods = store.getDay(currentDate).meals[mealType] || [];
   if (foods.length < 2) return;
@@ -1559,6 +1601,11 @@ function openSaveMealModal(mealType) {
   const totalsEl = ui.el('div', { className: 'meal-sheet-totals' });
   const noteEl = ui.el('div', { className: 'meal-sheet-note' });
   const saveBtn = ui.el('button', { className: 'btn-primary', type: 'button' });
+  const renameBtn = ui.el('button', { className: 'btn-secondary', type: 'button', textContent: 'Rename' });
+  renameBtn.style.display = 'none';
+  // Lowercased name the user has already been warned about. While set, the
+  // primary button reads "Replace it"; editing the name clears it.
+  let confirmFor = null;
 
   const checklist = buildMealChecklist(foods, refresh);
 
@@ -1566,11 +1613,30 @@ function openSaveMealModal(mealType) {
     const idx = checklist.checkedIndexes();
     totalsEl.textContent = mealTotalsText(idx.map(i => foods[i]));
     const name = nameInput.value.trim();
+    if (confirmFor !== null && name.toLowerCase() !== confirmFor) confirmFor = null;
+    const clash = confirmFor !== null ? store.findMyFoodByName(name) : null;
+    if (clash) {
+      noteEl.textContent = `You already have ${describeMyFood(clash)}. Replace it with this meal?`;
+      noteEl.classList.remove('is-error');
+      noteEl.classList.add('is-warn');
+      saveBtn.textContent = 'Replace it';
+      renameBtn.style.display = '';
+      return;
+    }
+    confirmFor = null;
     saveBtn.textContent = name ? `Save "${name}"` : 'Save meal';
+    renameBtn.style.display = 'none';
     noteEl.textContent = '';
-    noteEl.classList.remove('is-error');
+    noteEl.classList.remove('is-error', 'is-warn');
   }
   nameInput.addEventListener('input', refresh);
+
+  renameBtn.addEventListener('click', () => {
+    confirmFor = null;
+    refresh();
+    nameInput.focus();
+    nameInput.select();
+  });
 
   saveBtn.addEventListener('click', () => {
     const name = nameInput.value.trim();
@@ -1586,10 +1652,18 @@ function openSaveMealModal(mealType) {
       noteEl.classList.add('is-error');
       return;
     }
-    const { replaced } = store.saveMealTemplate({ name, mealType, items: idx.map(i => foods[i]) });
+    // Names are unique across My Foods (custom foods AND saved meals): ask first.
+    const existing = store.findMyFoodByName(name);
+    if (existing && confirmFor !== name.toLowerCase()) {
+      confirmFor = name.toLowerCase();
+      refresh(); // shows the replace prompt
+      return;
+    }
+    if (existing && !store.isMealTemplate(existing)) store.deleteMyFood(existing.myFoodId);
+    store.saveMealTemplate({ name, mealType, items: idx.map(i => foods[i]) });
     fb.pushMyFoods(store.getMyFoods());
     closeModal();
-    showToast(replaced ? `Updated ${name}` : `Saved ${name}`);
+    showToast(existing ? `Replaced ${name}` : `Saved ${name}`);
   });
 
   modalBody.appendChild(ui.el('h2', { textContent: 'Save as meal' }));
@@ -1597,7 +1671,7 @@ function openSaveMealModal(mealType) {
   modalBody.appendChild(checklist.list);
   modalBody.appendChild(totalsEl);
   modalBody.appendChild(noteEl);
-  modalBody.appendChild(ui.el('div', { className: 'serving-actions' }, [saveBtn]));
+  modalBody.appendChild(ui.el('div', { className: 'serving-actions' }, [renameBtn, saveBtn]));
   refresh();
 
   modal.classList.add('open');

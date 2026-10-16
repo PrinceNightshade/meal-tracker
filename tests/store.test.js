@@ -508,3 +508,48 @@ describe('Saved meals', () => {
     assert.equal(store.getSavedMeals('breakfast')[0].name, 'Oatmeal+');
   });
 });
+
+// ── My Foods name uniqueness ──
+
+describe('findMyFoodByName', () => {
+  test('finds a custom food case-insensitively, ignoring surrounding spaces', () => {
+    store.saveMyFood({ name: 'Oatmeal+', calories: 300, protein: 7, carbs: 65, fat: 7 });
+    const hit = store.findMyFoodByName('  oatmeal+ ');
+    assert.ok(hit);
+    assert.equal(hit.calories, 300);
+    assert.equal(store.isMealTemplate(hit), false);
+  });
+
+  test('finds a saved meal too (names are unique across both kinds)', () => {
+    store.saveMealTemplate({ name: 'Oatmeal+', mealType: 'breakfast', items: [
+      { name: 'Oatmeal', calories: 154, protein: 5, carbs: 27, fat: 3, servings: 1 },
+      { name: 'Banana', calories: 105, protein: 1, carbs: 27, fat: 0, servings: 1 },
+    ] });
+    const hit = store.findMyFoodByName('OATMEAL+');
+    assert.ok(hit);
+    assert.equal(store.isMealTemplate(hit), true);
+  });
+
+  test('returns null for no match or an empty name', () => {
+    store.saveMyFood({ name: 'Oatmeal+', calories: 300, protein: 7, carbs: 65, fat: 7 });
+    assert.equal(store.findMyFoodByName('Oatmeal'), null); // exact name, not substring
+    assert.equal(store.findMyFoodByName(''), null);
+    assert.equal(store.findMyFoodByName('   '), null);
+    assert.equal(store.findMyFoodByName(undefined), null);
+  });
+
+  test('replacing a custom food with a meal leaves exactly one entry for the name', () => {
+    const food = store.saveMyFood({ name: 'Oatmeal+', calories: 300, protein: 7, carbs: 65, fat: 7 });
+    // what the save sheet does on "Replace it"
+    const existing = store.findMyFoodByName('Oatmeal+');
+    store.deleteMyFood(existing.myFoodId);
+    store.saveMealTemplate({ name: 'Oatmeal+', mealType: 'breakfast', items: [
+      { name: 'Oatmeal', calories: 154, protein: 5, carbs: 27, fat: 3, servings: 1 },
+      { name: 'Banana', calories: 105, protein: 1, carbs: 27, fat: 0, servings: 1 },
+    ] });
+    const all = store.getMyFoods().filter(f => f.name.toLowerCase() === 'oatmeal+');
+    assert.equal(all.length, 1);
+    assert.equal(store.isMealTemplate(all[0]), true);
+    assert.notEqual(all[0].myFoodId, food.myFoodId);
+  });
+});

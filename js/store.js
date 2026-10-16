@@ -311,6 +311,15 @@ export function searchMyFoods(query) {
   return getMyFoods().filter(f => !isMealTemplate(f) && f.name && f.name.toLowerCase().includes(q));
 }
 
+// Case-insensitive name lookup across ALL My Foods entries (single foods and
+// saved meals). Names are kept unique so search never shows twins — callers
+// ask the user before replacing whatever this returns.
+export function findMyFoodByName(name) {
+  const key = (name || '').trim().toLowerCase();
+  if (!key) return null;
+  return getMyFoods().find(f => f.name && f.name.trim().toLowerCase() === key) || null;
+}
+
 // ── Saved meals (named combos stored inside My Foods) ──
 
 const OPTIONAL_NUTRIENTS = ['sodium', 'fiber', 'saturatedFat', 'addedSugars'];
