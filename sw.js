@@ -24,6 +24,7 @@ const ASSETS = [
   '/meal-tracker/js/firebase.js',
   '/meal-tracker/js/sw-manager.js',
   '/meal-tracker/js/usage.js',
+  '/meal-tracker/js/gestures.js',
   '/meal-tracker/js/errorlog.js',
 ];
 

@@ -7,6 +7,7 @@ import * as analytics from './analytics.js';
 import * as opp from './opportunity.js';
 import { initSW } from './sw-manager.js';
 import * as usage from './usage.js';
+import { initGestures } from './gestures.js';
 import { initErrorLog, logError, setErrorSink, flushErrors } from './errorlog.js';
 
 // Always-on error log (no personal data) + opt-in usage recording. The Firestore
@@ -23,6 +24,12 @@ let activeScanTimer = null; // barcode poll loop — cleared alongside the camer
 let activeScanVideo = null; // <video> preview element — paused/detached on stop
 let currentUser = null; // tracked separately from button rendering
 
+// Names the screen currently in the sheet (#modal-body) for gesture instrumentation
+// (js/gestures.js). Cheap attribute write; harmless when recording is off.
+function setModalSurface(name) {
+  try { ui.$('#modal-body').setAttribute('data-usage-surface', name); } catch { /* ignore */ }
+}
+
 // ── Init ──
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -30,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
   store.replaceFavorites(store.getFavorites());
   initTheme();
   usage.initUsage();
+  initGestures();
   initSW(ui.$);
   if (store.isUnderage()) {
     renderAgeGate();
@@ -109,6 +117,7 @@ function openProfileSheet() {
   const modal = ui.$('#modal');
   const modalBody = ui.$('#modal-body');
   modalBody.innerHTML = '';
+  setModalSurface('profile-sheet');
 
   const sheet = ui.el('div', { className: 'profile-sheet' });
 
@@ -289,6 +298,7 @@ function render() {
 function renderDaily() {
   const container = ui.$('#view-content');
   container.innerHTML = '';
+  container.setAttribute('data-usage-surface', 'daily');
 
   const goals  = store.getGoals();
   const totals = store.getDayTotals(currentDate);
@@ -352,7 +362,7 @@ function renderDaily() {
   logBtn.appendChild(boltSvg);
   logBtn.appendChild(document.createTextNode(' Log'));
 
-  const actionRow = ui.el('div', { className: 'action-row' }, [waterChip, scanBtn, logBtn]);
+  const actionRow = ui.el('div', { className: 'action-row', 'data-usage-section': 'action-row' }, [waterChip, scanBtn, logBtn]);
   container.appendChild(actionRow);
 
   // Spacer
@@ -398,6 +408,7 @@ function renderDaily() {
 function renderGoals() {
   const container = ui.$('#view-content');
   container.innerHTML = '';
+  container.setAttribute('data-usage-surface', 'goals');
 
   const profile = store.getProfile();
   const goals = store.getGoals();
@@ -551,7 +562,7 @@ function renderGoals() {
     ]),
   ]);
 
-  container.appendChild(ui.collapsible('Profile', profileSummary, profileContent, { startOpen: !profileFilled }));
+  container.appendChild(ui.collapsible('Profile', profileSummary, profileContent, { startOpen: !profileFilled, usageSection: 'goals-profile' }));
 
   // ── TDEE Suggestion ──
   const suggested = store.getSuggestedGoals();
@@ -593,7 +604,7 @@ function renderGoals() {
       }),
     ]);
 
-    container.appendChild(ui.collapsible('TDEE Estimate', tdeeSummary, tdeeContent, { startOpen: false }));
+    container.appendChild(ui.collapsible('TDEE Estimate', tdeeSummary, tdeeContent, { startOpen: false, usageSection: 'goals-tdee' }));
   }
 
   // ── Nutrition Goals ──
@@ -693,7 +704,7 @@ function renderGoals() {
     ]),
   ]);
 
-  container.appendChild(ui.collapsible('Nutrition Goals', goalsSummary, nutritionContent, { startOpen: !goalsCustomized }));
+  container.appendChild(ui.collapsible('Nutrition Goals', goalsSummary, nutritionContent, { startOpen: !goalsCustomized, usageSection: 'goals-nutrition' }));
 
   // ── Weight Goal ──
   const weightSummary = goals.weightGoal ? `Target: ${goals.weightGoal} lbs` : null;
@@ -723,7 +734,7 @@ function renderGoals() {
     ]),
   ]);
 
-  container.appendChild(ui.collapsible('Weight Goal', weightSummary, weightContent, { startOpen: !goals.weightGoal }));
+  container.appendChild(ui.collapsible('Weight Goal', weightSummary, weightContent, { startOpen: !goals.weightGoal, usageSection: 'goals-weight' }));
 
   // ── Wellness Data (movement + sleep import) ──
   // Phase 1 ingest path: import steps/workouts/sleep from a CSV or JSON file
@@ -818,7 +829,7 @@ function renderGoals() {
     syncIdBlock,
   ]);
 
-  container.appendChild(ui.collapsible('Wellness Data', wellnessSummary, wellnessContent, { startOpen: false }));
+  container.appendChild(ui.collapsible('Wellness Data', wellnessSummary, wellnessContent, { startOpen: false, usageSection: 'goals-wellness' }));
 
   // ── Usage recording (opt-in, account-level) ──
   // Autosaves on change like the rest of Goals. The flag lives on the synced goals
@@ -826,13 +837,14 @@ function renderGoals() {
   const usageOn = usage.isUsageEnabled();
   const setUsageEnabled = (on, btnEl) => {
     if (usage.isUsageEnabled() === on) return; // tapping the already-active side
+    if (!on) usage.prepareUsageDisable(); // lets gestures.js emit its summary while recording is still on
     const updated = { ...store.getGoals(), usageEnabled: on };
     store.saveGoals(updated);
     fb.pushGoals(updated);
     usage.onUsageEnabledChanged(on);
     flashSaved(btnEl.parentElement);
   };
-  container.appendChild(ui.el('div', { className: 'usage-setting' }, [
+  container.appendChild(ui.el('div', { className: 'usage-setting', 'data-usage-section': 'goals-usage' }, [
     ui.el('div', { className: 'goal-row' }, [
       ui.el('label', { textContent: 'Record how I use the app' }),
       ui.el('div', { className: 'toggle-group usage-toggle' }, [
@@ -870,6 +882,7 @@ function selectToggle(btn) {
 function renderWeight() {
   const container = ui.$('#view-content');
   container.innerHTML = '';
+  container.setAttribute('data-usage-surface', 'weight');
 
   const stats = store.getWeightStats();
   const series = store.getWeightSeries(0);
@@ -881,7 +894,7 @@ function renderWeight() {
 
   // Weight entry for today
   const todayWeight = store.getWeight(ui.todayStr());
-  const weightInput = ui.el('div', { className: 'weight-today-entry' }, [
+  const weightInput = ui.el('div', { className: 'weight-today-entry', 'data-usage-section': 'weigh-in' }, [
     ui.el('label', { textContent: "Today's weight" }),
     ui.el('div', { className: 'weight-today-row' }, [
       ui.el('input', {
@@ -913,30 +926,30 @@ function renderWeight() {
     } else {
       projMsg = `At your recent ${projection.windowDays}-day trend of ${Math.abs(projection.lbsPerWeek)} lbs/week, you'll reach ${projection.target} lbs around ${ui.formatDate(projection.estDate)} (~${projection.daysToGoal} days).`;
     }
-    section.appendChild(ui.el('div', { className: 'weight-projection' }, [
+    section.appendChild(ui.el('div', { className: 'weight-projection', 'data-usage-section': 'weight-projection' }, [
       ui.el('span', { className: 'projection-label', textContent: 'Projection' }),
       ui.el('span', { className: 'projection-msg', textContent: projMsg }),
     ]));
   } else {
     if (goals.weightGoal) {
-      section.appendChild(ui.el('div', { className: 'weight-projection muted' }, [
+      section.appendChild(ui.el('div', { className: 'weight-projection muted', 'data-usage-section': 'weight-projection' }, [
         ui.el('span', { textContent: 'Log at least 2 days of weight to see a projection.' }),
       ]));
     } else {
-      section.appendChild(ui.el('div', { className: 'weight-projection muted' }, [
+      section.appendChild(ui.el('div', { className: 'weight-projection muted', 'data-usage-section': 'weight-projection' }, [
         ui.el('span', { textContent: 'Set a weight goal in Goals to see a projection.' }),
       ]));
     }
   }
 
   if (stats) {
-    const statsEl = ui.el('div', { className: 'weight-stats' }, [
-      ui.el('div', { className: 'stat' }, [
+    const statsEl = ui.el('div', { className: 'weight-stats', 'data-usage-section': 'weight-stats' }, [
+      ui.el('div', { className: 'stat', 'data-usage-el': 'weight-stat' }, [
         ui.el('span', { className: 'stat-value', textContent: `${stats.current} lbs` }),
         ui.el('span', { className: 'stat-label', textContent: 'Trend weight' }),
       ]),
       stats.weekChange !== null
-        ? ui.el('div', { className: 'stat' }, [
+        ? ui.el('div', { className: 'stat', 'data-usage-el': 'weight-stat' }, [
             ui.el('span', {
               className: `stat-value ${stats.weekChange > 0 ? 'up' : stats.weekChange < 0 ? 'down' : ''}`,
               textContent: `${stats.weekChange > 0 ? '+' : ''}${stats.weekChange} lbs`,
@@ -944,7 +957,7 @@ function renderWeight() {
             ui.el('span', { className: 'stat-label', textContent: '7-day change' }),
           ])
         : null,
-      ui.el('div', { className: 'stat' }, [
+      ui.el('div', { className: 'stat', 'data-usage-el': 'weight-stat' }, [
         ui.el('span', {
           className: `stat-value ${stats.totalChange > 0 ? 'up' : stats.totalChange < 0 ? 'down' : ''}`,
           textContent: `${stats.totalChange > 0 ? '+' : ''}${stats.totalChange} lbs`,
@@ -956,22 +969,25 @@ function renderWeight() {
   }
 
   // Trend chart — EMA line is the signal, raw dailies faint, goal dashed
-  section.appendChild(ui.el('h3', { textContent: 'Trend' }));
-  section.appendChild(ui.el('div', { className: 'weight-legend' }, [
+  // Chart parts share one named section; the inline flex/gap mirrors .weight-view so layout is unchanged.
+  const chartSection = ui.el('div', { 'data-usage-section': 'weight-chart', style: 'display:flex;flex-direction:column;gap:12px' });
+  section.appendChild(chartSection);
+  chartSection.appendChild(ui.el('h3', { textContent: 'Trend' }));
+  chartSection.appendChild(ui.el('div', { className: 'weight-legend' }, [
     ui.el('span', { className: 'legend-item legend-trend', textContent: 'Trend' }),
     ui.el('span', { className: 'legend-item legend-daily', textContent: 'Daily' }),
     goals.weightGoal ? ui.el('span', { className: 'legend-item legend-goal', textContent: 'Goal' }) : null,
   ]));
-  section.appendChild(ui.renderWeightChart(series.slice(-90), goals.weightGoal || null));
-  section.appendChild(ui.el('p', { className: 'weight-hint', textContent: 'Daily weight bounces a few pounds on water and food — the line is the real signal.' }));
+  chartSection.appendChild(ui.renderWeightChart(series.slice(-90), goals.weightGoal || null));
+  chartSection.appendChild(ui.el('p', { className: 'weight-hint', textContent: 'Daily weight bounces a few pounds on water and food — the line is the real signal.' }));
 
   // Weight log table (raw daily entries)
   if (series.length > 0) {
-    const table = ui.el('div', { className: 'weight-log' }, [
+    const table = ui.el('div', { className: 'weight-log', 'data-usage-section': 'weight-log' }, [
       ...series.slice(-30).reverse().map((entry, i, arr) => {
         const prev = arr[i + 1];
         const diff = prev ? +(entry.weight - prev.weight).toFixed(1) : null;
-        return ui.el('div', { className: 'weight-log-row' }, [
+        return ui.el('div', { className: 'weight-log-row', 'data-usage-el': 'weight-log-row' }, [
           ui.el('span', { textContent: ui.formatDate(entry.date) }),
           ui.el('span', { textContent: `${entry.weight} lbs` }),
           ui.el('span', {
@@ -1024,6 +1040,7 @@ function openAddFoodModal(mealType, opts = {}) {
   const modalBody = ui.$('#modal-body');
 
   modalBody.innerHTML = '';
+  setModalSurface(mealType ? 'add-sheet' : 'meal-picker');
 
   // If mealType is null (from the global "Log" button), show a meal picker first
   if (!mealType) {
@@ -1527,7 +1544,12 @@ function openAddFoodModal(mealType, opts = {}) {
   // Assemble modal
   modalBody.appendChild(ui.el('h2', { textContent: `Add to ${ui.capitalize(mealType)}` }));
   // Search row first (sticky), then results immediately below for better UX
-  modalBody.appendChild(ui.el('div', { className: 'search-row' }, [searchInput, scanBtn]));
+  modalBody.appendChild(ui.el('div', { className: 'search-row', 'data-usage-section': 'add-search' }, [searchInput, scanBtn]));
+  resultsList.setAttribute('data-usage-section', 'add-results');
+  savedMealsHost.setAttribute('data-usage-section', 'add-saved-meals');
+  manualSection.setAttribute('data-usage-section', 'add-manual');
+  if (recentsSection) recentsSection.setAttribute('data-usage-section', 'add-recents');
+  if (favsSection) favsSection.setAttribute('data-usage-section', 'add-favorites');
   modalBody.appendChild(resultsList);
   // Recents/favorites/manual below, only shown when search is empty
   modalBody.appendChild(savedMealsHost);
@@ -1573,6 +1595,7 @@ function openFoodDetailsModal(mealType, food) {
   const goals = store.getGoals();
 
   modalBody.innerHTML = '';
+  setModalSurface('food-details');
 
   const foodModal = ui.renderFoodModal(food, goals, {
     onSave: (newServings, nutritionEdits) => {
@@ -1701,6 +1724,7 @@ function openSaveMealModal(mealType) {
   const modal = ui.$('#modal');
   const modalBody = ui.$('#modal-body');
   modalBody.innerHTML = '';
+  setModalSurface('save-as-meal');
 
   const nameInput = ui.el('input', {
     type: 'text',
@@ -1797,6 +1821,7 @@ function openSavedMealSheet(meal, mealType) {
   const modal = ui.$('#modal');
   const modalBody = ui.$('#modal-body');
   modalBody.innerHTML = '';
+  setModalSurface('saved-meal');
   const items = meal.items || [];
 
   const totalsEl = ui.el('div', { className: 'meal-sheet-totals' });
@@ -1859,6 +1884,7 @@ function showServingPicker(food, mealType, ctx = {}) {
   if (!mealType) {
     const modalBody = ui.$('#modal-body');
     modalBody.innerHTML = '';
+    setModalSurface('meal-picker');
     const modal = ui.$('#modal');
     modalBody.appendChild(ui.el('h2', { textContent: 'Add to…' }));
     const grid = ui.el('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px' });
@@ -1880,6 +1906,7 @@ function showServingPicker(food, mealType, ctx = {}) {
 
   const modalBody = ui.$('#modal-body');
   modalBody.innerHTML = '';
+  setModalSurface('serving-picker');
   let servings = 1;
 
   const preview = ui.el('div', { className: 'serving-preview' });
@@ -1995,6 +2022,7 @@ async function openBarcodeScanner(mealType) {
   stopActiveCamera();
   const modalBody = ui.$('#modal-body');
   modalBody.innerHTML = '';
+  setModalSurface('scanner');
 
   const scannerTitle = mealType ? `Scan for ${ui.capitalize(mealType)}` : 'Scan Barcode';
   modalBody.appendChild(ui.el('h2', { textContent: scannerTitle }));
@@ -2144,6 +2172,7 @@ function openPhotoAnalyzer(mealType) {
 
   const modalBody = ui.$('#modal-body');
   modalBody.innerHTML = '';
+  setModalSurface('photo-analyzer');
   modalBody.appendChild(ui.el('h2', { textContent: `Add to ${ui.capitalize(mealType)}` }));
 
   const statusEl = ui.el('div', { className: 'analyze-status', textContent: 'Opening camera…' });
@@ -2180,6 +2209,7 @@ function openPhotoAnalyzer(mealType) {
         openAddFoodModal(mealType, { resume: true });
       } else {
         modalBody.innerHTML = '';
+        setModalSurface('photo-analyzer');
         modalBody.appendChild(ui.el('h2', { textContent: `Add to ${ui.capitalize(mealType)}` }));
         modalBody.appendChild(ui.el('p', { className: 'analyze-error', textContent: `Analysis failed: ${err.message}` }));
         modalBody.appendChild(ui.el('div', { className: 'serving-actions', style: 'margin-top:16px' }, [
@@ -2197,6 +2227,7 @@ function openPhotoAnalyzer(mealType) {
 function showAnalyzeResults(foods, mealType) {
   const modalBody = ui.$('#modal-body');
   modalBody.innerHTML = '';
+  setModalSurface('analyze-results');
   modalBody.appendChild(ui.el('h2', { textContent: `Add to ${ui.capitalize(mealType)}` }));
   modalBody.appendChild(ui.el('p', {
     className: 'analyze-caption',

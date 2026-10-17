@@ -317,12 +317,36 @@ export async function flushUsage() {
 let openedAt = null;
 let initialized = false;
 
+// Lifecycle hooks: other leaf-ish modules (gestures.js) mirror the session
+// lifecycle without usage.js importing them. fn(ev) with ev one of
+// 'show' | 'hide' | 'enable' | 'disable'. Each hook is isolated in try/catch.
+const lifecycleHooks = [];
+
+export function addUsageLifecycleHook(fn) {
+  if (typeof fn === 'function' && !lifecycleHooks.includes(fn)) lifecycleHooks.push(fn);
+}
+
+function fireHooks(ev) {
+  for (const fn of lifecycleHooks.slice()) {
+    try { fn(ev); } catch { /* instrumentation must never reach the UI */ }
+  }
+}
+
+// Called by the Goals toggle BEFORE it saves usageEnabled=false, so hooks can
+// still record what was gathered while recording was on (track() is a no-op once
+// the flag is off).
+export function prepareUsageDisable() {
+  fireHooks('disable');
+}
+
 function onVisible() {
   openedAt = Date.now();
   track('session', { ev: 'open' });
+  fireHooks('show');
 }
 
 function onHidden() {
+  fireHooks('hide');
   if (openedAt != null) {
     const ms = Date.now() - openedAt;
     openedAt = null;
@@ -354,7 +378,9 @@ export function onUsageEnabledChanged(on) {
     if (on) {
       openedAt = Date.now();
       track('session', { ev: 'open' });
+      fireHooks('enable');
     } else {
+      fireHooks('disable'); // no-op if prepareUsageDisable() already ran
       flushUsage();
     }
   } catch { /* ignore */ }

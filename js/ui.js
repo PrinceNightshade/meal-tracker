@@ -15,7 +15,11 @@ export function el(tag, attrs = {}, children = []) {
     if (k === 'className') e.className = v;
     else if (k === 'textContent') e.textContent = v;
     else if (k === 'innerHTML') e.innerHTML = v;
-    else if (k.startsWith('on')) e.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k.startsWith('on')) {
+      e.addEventListener(k.slice(2).toLowerCase(), v);
+      // Marks the element as interactive for gesture instrumentation (js/gestures.js dead-tap detection).
+      e.setAttribute('data-tappable', '');
+    }
     else if (k === 'dataset') Object.assign(e.dataset, v);
     else e.setAttribute(k, v);
   }
@@ -157,7 +161,7 @@ export function renderMacroCard(label, current, goal, unit = 'g', inverse = fals
 
   const valueText = `${incomplete ? '~' : ''}${String(Math.round(current))}`;
 
-  const card = el('div', { className: cardClass }, [
+  const card = el('div', { className: cardClass, 'data-usage-el': 'macro-card-' + label.toLowerCase().replace(/[^a-z]+/g, '-') }, [
     el('div', { className: 'macro-card__label', textContent: label }),
     el('div', { className: 'macro-card__value' }, [
       el('b', { textContent: valueText }),
@@ -248,7 +252,7 @@ export function renderMacroFooter(totals, goals) {
     satFatCard,
   ]);
 
-  const wrapper = el('div', { className: 'macro-footer' }, [toggle, detail]);
+  const wrapper = el('div', { className: 'macro-footer', 'data-usage-section': 'macro-footer' }, [toggle, detail]);
   const apply = () => {
     wrapper.classList.toggle('is-open', macroFooterOpen);
     toggle.setAttribute('aria-expanded', String(macroFooterOpen));
@@ -269,29 +273,32 @@ export function renderDailySummaryRings(totals, goals) {
   const container = el('div', {});
 
   // Big calorie ring
-  const ringsContainer = el('div', { className: 'rings-container' });
+  const ringsContainer = el('div', { className: 'rings-container', 'data-usage-section': 'ring', 'data-usage-el': 'calorie-ring' });
   ringsContainer.appendChild(renderRing(totals.calories, goals.calories, 'Calories', '', 120, 10));
   container.appendChild(ringsContainer);
 
   // Row 1 "build toward": protein / fiber — normal coloring. Fiber's "~" +
   // hint shows when any logged food has unknown fiber (never faked to 0).
   // Exceeding either goal is fine (never red), and each blooms green on hitting it.
-  container.appendChild(el('div', { className: 'macro-group-caption', textContent: 'BUILD TOWARD' }));
+  // The two macro rows + their captions share one named section (a plain block wrapper: no layout change).
+  const macroCards = el('div', { 'data-usage-section': 'macro-cards' });
+  container.appendChild(macroCards);
+  macroCards.appendChild(el('div', { className: 'macro-group-caption', 'data-usage-el': 'macro-caption', textContent: 'BUILD TOWARD' }));
   const macroRow = el('div', { className: 'macro-row macro-row--build' });
   macroRow.appendChild(renderMacroCard('PROTEIN', totals.protein || 0, goals.protein || 150, 'g', false, { overIsFine: true }));
   const fiberGoal = goals.fiberGoal && goals.fiberGoal > 0 ? goals.fiberGoal : 30;
   macroRow.appendChild(renderMacroCard('FIBER', totals.fiber || 0, fiberGoal, 'g', false, { incomplete: !!totals.fiberIncomplete, missing: 'fiber', overIsFine: true }));
-  container.appendChild(macroRow);
+  macroCards.appendChild(macroRow);
 
   // Row 2 "keep under": added sugar / sodium — both inverse-colored (low = good).
   // Faint uppercase group captions — trivially removable (this one element).
-  container.appendChild(el('div', { className: 'macro-group-caption', textContent: 'KEEP UNDER' }));
+  macroCards.appendChild(el('div', { className: 'macro-group-caption', 'data-usage-el': 'macro-caption', textContent: 'KEEP UNDER' }));
   const limitRow = el('div', { className: 'macro-row macro-row--limit' });
   const sugarGoal = goals.addedSugars && goals.addedSugars > 0 ? goals.addedSugars : 25;
   limitRow.appendChild(renderMacroCard('SUGAR', totals.addedSugars || 0, sugarGoal, 'g', true));
   const sodiumGoal = goals.sodiumGoal && goals.sodiumGoal > 0 ? goals.sodiumGoal : 2300;
   limitRow.appendChild(renderMacroCard('SODIUM', totals.sodium || 0, sodiumGoal, 'mg', true, { incomplete: !!totals.sodiumIncomplete }));
-  container.appendChild(limitRow);
+  macroCards.appendChild(limitRow);
 
   // Carbs & fat — demoted to a quiet footer (display hierarchy only; they're
   // still logged, summed, and have editable goals).
@@ -314,7 +321,7 @@ export function renderOpportunityCard(opportunity) {
   const opp = opportunity || { tone: 'neutral', eyebrow: 'THIS WEEK', headline: 'Keep logging to unlock insights', sub: 'A few more days of data sharpens your weekly opportunity.', series: null };
   const tone = opp.tone || 'neutral';
 
-  const card = el('div', { className: `daily-summary insight-card carousel-card insight-card--${tone}` });
+  const card = el('div', { className: `daily-summary insight-card carousel-card insight-card--${tone}`, 'data-usage-section': 'opportunity' });
 
   // Head
   const headEl = el('div', { className: 'insight-card__head' });
@@ -325,7 +332,7 @@ export function renderOpportunityCard(opportunity) {
   card.appendChild(headEl);
 
   // Headline
-  card.appendChild(el('h2', { className: 'insight-card__hed', textContent: opp.headline }));
+  card.appendChild(el('h2', { className: 'insight-card__hed', 'data-usage-el': 'opportunity-headline', textContent: opp.headline }));
 
   // Sub
   if (opp.sub) card.appendChild(el('p', { className: 'insight-card__sub', textContent: opp.sub }));
@@ -365,6 +372,7 @@ export function renderWellnessStrip(stats, { onEmptyClick } = {}) {
   if (!stats || !stats.daysWithData) {
     const hint = el('button', {
       className: 'wellness-strip wellness-strip--empty',
+      'data-usage-section': 'wellness-strip',
       type: 'button',
       onClick: () => onEmptyClick && onEmptyClick(),
     }, [
@@ -373,12 +381,12 @@ export function renderWellnessStrip(stats, { onEmptyClick } = {}) {
     return hint;
   }
 
-  const cell = (label, value) => el('div', { className: 'wellness-strip__cell' }, [
+  const cell = (label, value) => el('div', { className: 'wellness-strip__cell', 'data-usage-el': 'wellness-' + label.toLowerCase().replace(/[^a-z]+/g, '-').replace(/^-|-$/g, '') }, [
     el('div', { className: 'wellness-strip__val', textContent: value }),
     el('div', { className: 'wellness-strip__label', textContent: label }),
   ]);
 
-  return el('div', { className: 'wellness-strip' }, [
+  return el('div', { className: 'wellness-strip', 'data-usage-section': 'wellness-strip' }, [
     cell('STEPS / DAY', stats.avgSteps != null ? Math.round(stats.avgSteps).toLocaleString() : '—'),
     cell('SLEEP / NIGHT', fmtSleep(stats.avgSleepMinutes)),
     cell('WORKOUT DAYS', `${stats.workoutDays}`),
@@ -390,7 +398,7 @@ export function renderDailySummaryCarousel(totals, goals, opportunity = null, to
   const carousel = el('div', { className: 'daily-carousel' });
 
   // Card 1: Calorie ring + macro cards (with prev/next nav overlays)
-  const ringsCard = el('div', { className: 'daily-summary carousel-card' });
+  const ringsCard = el('div', { className: 'daily-summary carousel-card', 'data-usage-el': 'summary-card' });
 
   const prevBtn = el('button', {
     id: 'btn-prev',
@@ -418,9 +426,11 @@ export function renderDailySummaryCarousel(totals, goals, opportunity = null, to
   carousel.appendChild(insightCard);
 
   // Page indicator dots
-  const dotsContainer = el('div', { className: 'carousel-dots' }, [
-    el('div', { className: 'carousel-dot active' }),
-    el('div', { className: 'carousel-dot' }),
+  // Named for usage gestures: the dots look tappable but aren't (dead taps here
+  // would suggest making them switch slides).
+  const dotsContainer = el('div', { className: 'carousel-dots', 'data-usage-section': 'carousel-dots' }, [
+    el('div', { className: 'carousel-dot active', 'data-usage-el': 'carousel-dot-1' }),
+    el('div', { className: 'carousel-dot', 'data-usage-el': 'carousel-dot-2' }),
   ]);
 
   // Update dots on scroll
@@ -525,6 +535,7 @@ export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFa
       el('div', { className: 'food-actions' }, [favBtn, removeBtn]),
     ]);
 
+    foodItemEl.setAttribute('data-tappable', ''); // click via addEventListener (see gestures.js)
     foodItemEl.addEventListener('click', () => {
       if (onFoodClick) onFoodClick(mealType, food);
     });
@@ -547,7 +558,7 @@ export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFa
   addBtn.appendChild(svgIcon('i-plus', 14));
 
   // Calorie display
-  const calsEl = el('div', { className: 'meal-cals' }, [
+  const calsEl = el('div', { className: 'meal-cals', 'data-usage-el': 'meal-total' }, [
     document.createTextNode(String(Math.round(mealCals))),
   ]);
   const calsUnit = el('span', { className: 'meal-cals__unit', textContent: 'kcal' });
@@ -555,9 +566,10 @@ export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFa
 
   const section = el('div', {
     className: `meal-section meal-section--${mealType}${isEmpty ? ' is-empty meal-section--empty' : ''}`,
+    'data-usage-section': `meal-${mealType}`,
   });
 
-  const header = el('div', { className: 'meal-header' }, [
+  const header = el('div', { className: 'meal-header', 'data-usage-el': 'meal-header' }, [
     mealIconEl,
     el('div', { className: 'meal-title-block' }, [
       el('div', { className: 'meal-title', textContent: capitalize(mealType) }),
@@ -584,6 +596,7 @@ export function renderMealSection(mealType, foods, { onAdd, onRemove, onToggleFa
 
   if (isEmpty) {
     section.appendChild(el('div', { className: 'meal-empty-hint', textContent: 'TAP TO COMPOSE' }));
+    section.setAttribute('data-tappable', ''); // whole empty card is tappable
     section.addEventListener('click', () => onAdd(mealType, 'empty-card'));
   }
 
@@ -639,7 +652,7 @@ export function renderWeightChart(series, goal = null) {
 
 // ── Collapsible Section ──
 
-export function collapsible(title, summary, content, { startOpen = true } = {}) {
+export function collapsible(title, summary, content, { startOpen = true, usageSection = null } = {}) {
   const body = el('div', { className: `collapsible-body ${startOpen ? 'open' : ''}` }, [content]);
 
   // Chevron SVG
@@ -657,7 +670,9 @@ export function collapsible(title, summary, content, { startOpen = true } = {}) 
   ]);
 
   const wrapper = el('div', { className: `collapsible ${startOpen ? 'open' : ''}` }, [header, body]);
+  if (usageSection) wrapper.setAttribute('data-usage-section', usageSection);
 
+  header.setAttribute('data-tappable', '');
   header.addEventListener('click', () => {
     const isOpen = wrapper.classList.toggle('open');
     body.classList.toggle('open', isOpen);
@@ -880,7 +895,7 @@ export function renderFoodModal(food, goals, { onSave, onDelete } = {}) {
 // Returns the chip element that fits inside the .action-row
 
 export function renderWaterChip(water, { onAdd, onSet } = {}) {
-  const chip = el('div', { className: 'water-chip' });
+  const chip = el('div', { className: 'water-chip', 'data-tappable': '' }); // pointer handlers below
 
   // Left: icon + label + value
   const iconEl = el('span', {});
